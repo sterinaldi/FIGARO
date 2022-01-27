@@ -9,11 +9,11 @@ def antiprobit(func):
 def probit(func):
     def f_transf(ref, x, *args):
         y = transform_to_probit(x, ref.bounds)
-        return func(y, *args)
+        return func(ref, y, *args)
     return f_transf
 
 def from_probit(func):
     def f_transf(ref, *args):
-        y = func(*args)
+        y = func(ref, *args)
         return transform_from_probit(y, ref.bounds)
     return f_transf
