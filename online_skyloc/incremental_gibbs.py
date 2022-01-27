@@ -11,7 +11,6 @@ class component:
         self.mu    = np.atleast_2d((prior.mu*prior.k + self.N*self.mean)/(prior.k + self.N))[0]
         self.sigma = np.identity(x.shape[-1])*prior.L
         self.w     = 0.
-        self.normalised = False
 
 class prior:
     def __init__(self, k, L, nu, mu):
@@ -50,7 +49,8 @@ class mixture:
         self.clusters = []
         self.n_cl     = 0
         self.n_pts    = 0
-        self.s2max    = (1./3.)**2
+        self.s2max    = (0.05)**2
+        self.normalised = False
 
     def add_datapoint_to_component(self, x, ss):
         x = np.atleast_2d(x)
@@ -89,8 +89,6 @@ class mixture:
         mu_n = np.atleast_2d((self.prior.mu*self.prior.k + N*mean)/k_n)
         nu_n = self.prior.nu + N
         L_n  = self.prior.L*self.prior.k + S*N + self.prior.k*N*np.matmul((mean - self.prior.mu).T, (mean - self.prior.mu))/k_n
-        if not np.isfinite(np.log(np.linalg.eigh(L_n)[0])).all():
-            print((mean, L_n))
         # Update t-parameters
         t_df    = nu_n - dim + 1
         t_shape = L_n*(k_n+1)/(k_n*t_df)
@@ -137,44 +135,52 @@ class mixture:
         for ss in self.clusters:
             ss.w = ss.N/self.n_pts
         self.clusters = np.array(self.clusters)
+        self.w = np.array([ss.w for ss in self.clusters])
     
     @from_probit
-    def sample_from_dpgmm(self, mixture, n_samps):
+    def sample_from_dpgmm(self, n_samps):
         if not self.normalised:
-            self.normalise_mixture
-        samples = np.array([mn(mixture[i].mu, mixture[i].sigma).rvs() for i in np.random.choice(np.arange(len(w)), p = w, size = n_samps)])
+            self.normalise_mixture()
+        idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = n_samps)
+        samples = np.array([mn(self.clusters[i].mu, self.clusters[i].sigma).rvs() for i in idx])
         return samples
+    
 
 if __name__ == '__main__':
 
     from tqdm import tqdm
     from scipy.stats import multivariate_normal as mn
     from corner import corner
+    from online_skyloc.coordinates import celestial_to_cartesian, cartesian_to_celestial
     
     
 #    samples = np.genfromtxt('/Users/stefanorinaldi/Desktop/posterior.dat', skip_header = 1, usecols = np.arange(11, dtype = int))
-    samples = np.genfromtxt('data/GW150914_full_volume.txt')#, usecols = (0,1))
+    samples = np.genfromtxt('data/GW150914_full_volume.txt')
 #    corner(samples)
 #    plt.show()
 #    exit()
 #    samples[:,3] = samples[:,3] - np.mean(samples[:,3])
-    prior_pars = (1, np.cov(samples.T), 1, np.mean(samples)) # k, L, nu, mu
-    alpha0 = 1
-    n_samps = len(samples)#1000
-    DPGMM = mixture(prior_pars, alpha0)
+    cart_samples = np.array([celestial_to_cartesian(s) for s in samples])
+    prior_pars = (1, np.identity(samples.shape[-1])*0.5, samples.shape[-1], np.zeros(samples.shape[-1])) # k, L, nu, mu
+    bounds = np.array([[-1000,1000], [-1000,1000], [-1000,1000]])
+    #bounds = np.array([[0, 2*np.pi], [-np.pi/2., np.pi/2.], [1,1000]])
+    n_samps = len(samples)
+    DPGMM = mixture(prior_pars, bounds)
     all_samples = []
-    for s in tqdm(samples):
+    for s in tqdm(cart_samples):
         DPGMM.add_new_point(np.atleast_2d(s))
         all_samples.append(s)
     
     
-    samps_mix = sample_from_dpgmm(DPGMM.clusters, n_samps)
+    samps_mix = DPGMM.sample_from_dpgmm(n_samps)
+    samps_mix = np.array([cartesian_to_celestial(s) for s in samps_mix])
+    samps_back = np.array([cartesian_to_celestial(s) for s in cart_samples])
 #    x  = np.linspace(np.min(samples),np.max(samples),1000)
 #    dx = x[1]-x[0]
 #    p  = np.zeros(len(x))
 #    for comp in DPGMM.clusters:
 #        p = p + comp.N*mn(comp.mu, comp.sigma).pdf(x)/n_samps
-    c = corner(samples, color = 'red', hist_kwargs={'density':True})
+    c = corner(samps_back, color = 'red', hist_kwargs={'density':True})
     c = corner(samps_mix, fig = c, color = 'blue', hist_kwargs={'density':True})
     
     plt.show()
