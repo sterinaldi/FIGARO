@@ -153,7 +153,7 @@ if __name__ == '__main__':
     
     
 #    samples = np.genfromtxt('/Users/stefanorinaldi/Desktop/posterior.dat', skip_header = 1, usecols = np.arange(11, dtype = int))
-    samples = np.genfromtxt('/Users/stefanorinaldi/Documents/mass_inference/GW150914_multidim/GW150914_full_volume.txt')#, usecols = (0,1))
+    samples = np.genfromtxt('data/GW150914_full_volume.txt')#, usecols = (0,1))
 #    corner(samples)
 #    plt.show()
 #    exit()
