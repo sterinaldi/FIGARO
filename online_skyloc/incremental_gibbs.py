@@ -2,6 +2,7 @@ import numpy as np
 from scipy.special import gammaln
 import matplotlib.pyplot as plt
 from online_skyloc.decorators import *
+from scipy.stats import multivariate_normal as mn
 
 class component:
     def __init__(self, x, prior):
@@ -48,7 +49,7 @@ class mixture:
         if prior_pars is not None:
             self.prior = prior(*prior_pars)
         else:
-            self.prior = prior((1, np.identity(self.dim)*0.5, self.dim, np.zeros(self.dim)))
+            self.prior = prior(1, np.identity(self.dim)*0.5, self.dim, np.zeros(self.dim))
         self.alpha    = alpha0
         self.clusters = []
         self.n_cl     = 0
