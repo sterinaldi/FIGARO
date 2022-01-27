@@ -42,9 +42,13 @@ def student_t(df, t, mu, sigma, dim, s2max = np.inf):
     return float(A - B - C - D + E)
 
 class mixture:
-    def __init__(self, prior_pars, bounds, alpha0 = 1):
+    def __init__(self, bounds, prior_pars = None, alpha0 = 1):
         self.bounds   = bounds
-        self.prior    = prior(*prior_pars)
+        self.dim      = len(self.bounds)
+        if prior_pars is not None:
+            self.prior = prior(*prior_pars)
+        else:
+            self.prior = prior((1, np.identity(self.dim)*0.5, self.dim, np.zeros(self.dim))
         self.alpha    = alpha0
         self.clusters = []
         self.n_cl     = 0
