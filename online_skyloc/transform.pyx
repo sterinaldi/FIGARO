@@ -6,13 +6,12 @@
 from __future__ import division
 from libc.math cimport M_SQRT2, M_PI, erf, log, fabs
 cimport cython
-from cpnest.parameter cimport LivePoint
 from scipy.special.cython_special cimport erfinv
 
 def transform_to_probit(LivePoint x, list bounds):
     return _transform_to_probit(x, bounds)
 
-cdef LivePoint _transform_to_probit(LivePoint x, list bounds):
+cdef np.ndarray[np.float64_t, ndim=2] _transform_to_probit(np.ndarray[np.float64_t, ndim=1] x, list bounds):
     '''
     Coordinate change into probit space.
     cdf_normal is the cumulative distribution function of the unit normal distribution.

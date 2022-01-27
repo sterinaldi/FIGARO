@@ -1,25 +1,19 @@
-from .transform import transform_from_probit, transform_to_probit, transform_from_hypercube, transform_to_hypercube
+from online_skyloc.transform import transform_from_probit, transform_to_probit
 
 def antiprobit(func):
-    def f_transf(ref, x):
+    def f_transf(ref, x, *args):
         y = transform_from_probit(x, ref.bounds)
-        return func(y)
+        return func(y, *args)
     return f_transf
 
 def probit(func):
-    def f_transf(ref, x):
+    def f_transf(ref, x, *args):
         y = transform_to_probit(x, ref.bounds)
-        return func(y)
+        return func(y, *args)
     return f_transf
 
-def to_hypercube(func):
-    def f_transf(ref, x):
-        y = transform_to_hypercube(x, ref.bounds)
-        return func(y)
-    return f_transf
-
-def from_hypercube(func):
-    def f_transf(ref, x):
-        y = transform_from_hypercube(x, ref.bounds)
-        return func(y)
+def from_probit(func):
+    def f_transf(ref, *args):
+        y = func(*args)
+        return transform_from_probit(y, ref.bounds)
     return f_transf

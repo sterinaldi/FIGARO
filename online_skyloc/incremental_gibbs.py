@@ -1,14 +1,7 @@
 import numpy as np
 from scipy.special import gammaln
 import matplotlib.pyplot as plt
-from scipy.stats import multivariate_normal as mn
-
-def sample_from_dpgmm(mixture, n_samps):
-    w = np.array([m.N for m in mixture])
-    w = w/np.sum(w)
-    idx = np.random.choice(np.arange(len(w)), p = w, size = n_samps)
-    samples = np.array([mn(mixture[i].mu, mixture[i].sigma).rvs() for i in idx])
-    return samples
+from online_skyloc.decorators import *
 
 class component:
     def __init__(self, x, prior):
@@ -18,6 +11,7 @@ class component:
         self.mu    = np.atleast_2d((prior.mu*prior.k + self.N*self.mean)/(prior.k + self.N))[0]
         self.sigma = np.identity(x.shape[-1])*prior.L
         self.w     = 0.
+        self.normalised = False
 
 class prior:
     def __init__(self, k, L, nu, mu):
@@ -49,13 +43,14 @@ def student_t(df, t, mu, sigma, dim, s2max = np.inf):
     return float(A - B - C - D + E)
 
 class mixture:
-    def __init__(self, prior_pars, alpha0 = 1):
-        self.prior = prior(*prior_pars)
-        self.alpha = alpha0
+    def __init__(self, prior_pars, bounds, alpha0 = 1):
+        self.bounds   = bounds
+        self.prior    = prior(*prior_pars)
+        self.alpha    = alpha0
         self.clusters = []
-        self.n_cl  = 0
-        self.n_pts = 0
-        self.s2max = (1./3.)**2
+        self.n_cl     = 0
+        self.n_pts    = 0
+        self.s2max    = (1./3.)**2
 
     def add_datapoint_to_component(self, x, ss):
         x = np.atleast_2d(x)
@@ -130,16 +125,25 @@ class mixture:
         else:
             self.clusters[int(cid)] = self.add_datapoint_to_component(x, self.clusters[int(cid)])
         return
-
+    
+    @probit
     def add_new_point(self, x):
         self.n_pts += 1
         self.assign_to_cluster(x)
         self.update_alpha()
     
     def normalise_mixture(self):
+        self.normalised = True
         for ss in self.clusters:
             ss.w = ss.N/self.n_pts
         self.clusters = np.array(self.clusters)
+    
+    @from_probit
+    def sample_from_dpgmm(self, mixture, n_samps):
+        if not self.normalised:
+            self.normalise_mixture
+        samples = np.array([mn(mixture[i].mu, mixture[i].sigma).rvs() for i in np.random.choice(np.arange(len(w)), p = w, size = n_samps)])
+        return samples
 
 if __name__ == '__main__':
 
