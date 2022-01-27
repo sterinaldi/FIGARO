@@ -7,11 +7,6 @@ from os import path
 from distutils.extension import Extension
 import os
 
-try:
-    from Cython.Build import cythonize
-except ModuleNotFoundError:
-    print('Cython not found. Please install it via\n\tpip install Cython')
-
 # see https://stackoverflow.com/a/21621689/1862861 for why this is here
 class build_ext(_build_ext):
     def finalize_options(self):
@@ -20,24 +15,8 @@ class build_ext(_build_ext):
         __builtins__.__NUMPY_SETUP__ = False
         self.include_dirs.append(numpy.get_include())
 
-ext_modules=[
-             Extension("online_skyloc.coordinates",
-                       sources=[os.path.join("online_skyloc","coordinates.pyx")],
-                       libraries=["m"], # Unix-like specific
-                       extra_compile_args=["-O3","-ffast-math"],
-                       include_dirs=['online_skyloc', numpy.get_include()]
-                       ),
-#             Extension("online_skyloc.transform",
-#                       sources=[os.path.join("online_skyloc","transform.pyx")],
-#                       libraries=["m"], # Unix-like specific
-#                       extra_compile_args=["-O3","-ffast-math"],
-#                       include_dirs=['online_skyloc', numpy.get_include()]
-#                       ),
-             ]
-ext_modules = cythonize(ext_modules, compiler_directives={'language_level' : "3"})
-
 setup(
-    name = 'hdpgmm',
+    name = 'online_skyloc',
     use_scm_version=True,
     description = 'Online sky localisation',
     author = 'Walter Del Pozzo, Stefano Rinaldi',
@@ -49,5 +28,4 @@ setup(
     setup_requires=['numpy', 'cython', 'setuptools_scm'],
     entry_points={},
     package_data={"": ['*.c', '*.pyx', '*.pxd']},
-    ext_modules=ext_modules,
     )
