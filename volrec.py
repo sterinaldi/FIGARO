@@ -1,11 +1,13 @@
+import numpy as np
+import matplotlib.pyplot as plt
 from tqdm import tqdm
-from scipy.stats import multivariate_normal as mn
 from corner import corner
+from online_skyloc.incremental_gibbs import mixture
 from online_skyloc.coordinates import celestial_to_cartesian, cartesian_to_celestial
 
 samples = np.genfromtxt('data/GW150914_full_volume.txt')
 
-cart_samples = celestial_to_cartesian(samples))
+cart_samples = celestial_to_cartesian(samples)
 bounds = np.array([[-1000,1000], [-1000,1000], [-1000,1000]])
 n_samps = len(samples)
 
