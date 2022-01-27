@@ -43,7 +43,7 @@ def student_t(df, t, mu, sigma, dim, s2max = np.inf):
     return float(A - B - C - D + E)
 
 class mixture:
-    def __init__(self, bounds, prior_pars = None, alpha0 = 1):
+    def __init__(self, bounds, prior_pars = None, alpha0 = 1, sigma_max = 0.05):
         self.bounds   = bounds
         self.dim      = len(self.bounds)
         if prior_pars is not None:
@@ -54,7 +54,7 @@ class mixture:
         self.clusters = []
         self.n_cl     = 0
         self.n_pts    = 0
-        self.s2max    = (0.05)**2
+        self.s2max    = (sigma_max)**2
         self.normalised = False
 
     def add_datapoint_to_component(self, x, ss):
