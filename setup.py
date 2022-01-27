@@ -27,12 +27,12 @@ ext_modules=[
                        extra_compile_args=["-O3","-ffast-math"],
                        include_dirs=['online_skyloc', numpy.get_include()]
                        ),
-             Extension("online_skyloc.transform",
-                       sources=[os.path.join("online_skyloc","transform.pyx")],
-                       libraries=["m"], # Unix-like specific
-                       extra_compile_args=["-O3","-ffast-math"],
-                       include_dirs=['online_skyloc', numpy.get_include()]
-                       ),
+#             Extension("online_skyloc.transform",
+#                       sources=[os.path.join("online_skyloc","transform.pyx")],
+#                       libraries=["m"], # Unix-like specific
+#                       extra_compile_args=["-O3","-ffast-math"],
+#                       include_dirs=['online_skyloc', numpy.get_include()]
+#                       ),
              ]
 ext_modules = cythonize(ext_modules, compiler_directives={'language_level' : "3"})
 
