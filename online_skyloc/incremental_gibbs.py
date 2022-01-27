@@ -1,8 +1,29 @@
 import numpy as np
+
 from scipy.special import gammaln
-import matplotlib.pyplot as plt
-from online_skyloc.decorators import *
 from scipy.stats import multivariate_normal as mn
+
+import matplotlib.pyplot as plt
+from matplotlib import rcParams
+from corner import corner
+
+from online_skyloc.decorators import *
+from online_skyloc.coordinates import celestial_to_cartesian, cartesian_to_celestial
+
+from pathlib import Path
+from distutils.spawn import find_executable
+from tqdm import tqdm
+
+if find_executable('latex'):
+    rcParams["text.usetex"] = True
+rcParams["xtick.labelsize"]=14
+rcParams["ytick.labelsize"]=14
+rcParams["xtick.direction"]="in"
+rcParams["ytick.direction"]="in"
+rcParams["legend.fontsize"]=15
+rcParams["axes.labelsize"]=16
+rcParams["axes.grid"] = True
+rcParams["grid.alpha"] = 0.6
 
 class component:
     def __init__(self, x, prior):
@@ -43,7 +64,11 @@ def student_t(df, t, mu, sigma, dim, s2max = np.inf):
     return float(A - B - C - D + E)
 
 class mixture:
-    def __init__(self, bounds, prior_pars = None, alpha0 = 1, sigma_max = 0.05):
+    def __init__(self, bounds,
+                       prior_pars = None,
+                       alpha0     = 1,
+                       sigma_max  = 0.05,
+                       ):
         self.bounds   = bounds
         self.dim      = len(self.bounds)
         if prior_pars is not None:
@@ -51,7 +76,7 @@ class mixture:
         else:
             self.prior = prior(1, np.identity(self.dim)*0.5, self.dim, np.zeros(self.dim))
         self.alpha    = alpha0
-        self.clusters = []
+        self.mixture  = []
         self.n_cl     = 0
         self.n_pts    = 0
         self.s2max    = (sigma_max)**2
@@ -107,7 +132,7 @@ class mixture:
             if i == "new":
                 ss = "new"
             else:
-                ss = self.clusters[i]
+                ss = self.mixture[i]
             scores[i] = self.log_predictive_likelihood(x, ss)
             if ss is "new":
                 scores[i] += np.log(self.alpha)
@@ -123,10 +148,10 @@ class mixture:
         labels, scores = zip(*scores)
         cid = np.random.choice(labels, p=scores)
         if cid == "new":
-            self.clusters.append(component(x, prior = self.prior))
+            self.mixture.append(component(x, prior = self.prior))
             self.n_cl += 1
         else:
-            self.clusters[int(cid)] = self.add_datapoint_to_component(x, self.clusters[int(cid)])
+            self.mixture[int(cid)] = self.add_datapoint_to_component(x, self.mixture[int(cid)])
         return
     
     @probit
@@ -137,15 +162,80 @@ class mixture:
     
     def normalise_mixture(self):
         self.normalised = True
-        for ss in self.clusters:
+        for ss in self.mixture:
             ss.w = ss.N/self.n_pts
-        self.clusters = np.array(self.clusters)
-        self.w = np.array([ss.w for ss in self.clusters])
+        self.mixture = np.array(self.mixture)
+        self.w = np.array([ss.w for ss in self.mixture])
     
     @from_probit
     def sample_from_dpgmm(self, n_samps):
         if not self.normalised:
             self.normalise_mixture()
         idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = n_samps)
-        samples = np.array([mn(self.clusters[i].mu, self.clusters[i].sigma).rvs() for i in idx])
+        samples = np.array([mn(self.mixture[i].mu, self.mixture[i].sigma).rvs() for i in idx])
         return samples
+
+
+class VolumeReconstruction(mixture):
+    def __init__(self, max_dist,
+                       out_folder   = '.',
+                       prior_pars   = None,
+                       alpha0       = 1,
+                       sigma_max    = 0.05,
+                       n_gridpoints = 100,
+                       name         = 'skymap',
+                       ):
+        
+        self.max_dist = max_dist
+        bounds = np.array([[-max_dist, max_dist] for _ in range(3)])
+        super().__init__(bounds, prior_pars, alpha0, sigma_max)
+        
+        self.n_gridpoints = n_gridpoints
+        self.ra, self.dec, self.dist = np.meshgrid(np.linspace(0,2*np.pi, n_gridpoints), np.linspace(-np.pi/2., np.pi/2., n_gridpoints), np.linspace(1, max_dist, n_gridpoints))
+        self.grid = np.array([self.ra, self.dec, self.dist]).reshape(3,-1)
+        
+        self.out_folder = Path(out_folder).resolve()
+        self.skymap_folder = Path(out_folder, 'skymaps')
+        if not self.skymap_folder.exists():
+            self.skymap_folder.mkdir()
+        self.name = name
+        
+    def add_sample(self, x):
+        cart_x = celestial_to_cartesian(x)
+        super().add_new_point(np.atleast_2d(x))
+    
+    def sample_from_volume(self, n_samps):
+        samples = super().sample_from_dpgmm(n_samps)
+        return cartesian_to_celestial(samples)
+    
+    def plot_samples(self, n_samps, initial_samples = None):
+        mix_samples = self.sample_from_volume(n_samps)
+        if initial_samples is not None:
+            c = corner(initial_samples, color = 'orange', labels = ['$\\alpha$', '$\\delta$', '$D\ [Mpc]$'], hist_kwargs={'density':True})
+            c = corner(mix_samples, fig = c, color = 'blue', labels = ['$\\alpha$', '$\\delta$', '$D\ [Mpc]$'], hist_kwargs={'density':True})
+        else:
+            c = corner(mix_samples, fig = c, color = 'blue', labels = ['$\\alpha$', '$\\delta$', '$D\ [Mpc]$'], hist_kwargs={'density':True})
+        plt.savefig(Path(self.skymap_folder, 'samples'+self.name+'.pdf'), bbox_inches = 'tight')
+    
+    def evaluate_skymap(self):
+        p_vol = np.zeros((self.n_gridpoints, self.n_gridpoints, self.n_gridpoints))
+        for comp, w in zip(self.mixture, self.w):
+            p_vol = p_vol + w*mn(comp.mu, comp.sigma).pdf(self.grid)
+        self.p_skymap = p_vol.sum(axis = -1)
+    
+    def make_skymap(self):
+        self.evaluate_skymap()
+        fig, ax = plt.subplots()
+        ax.contourf(self.ra, self.dec, self.p_skymap)
+        ax.set_xlabel('$\\alpha$')
+        ax.set_ylabel('$\\delta$')
+        fig.savefig(Path(self.skymap_folder, self.name+'.pdf'), bbox_inches = 'tight')
+    
+    def density_from_samples(self, samples):
+        n_samps = len(samples)
+        for s in tqdm(samples):
+            self.add_sample(s)
+        self.plot_samples(n_samps, initial_samples = samples)
+        self.make_skymap()
+
+        
