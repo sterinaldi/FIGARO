@@ -1,4 +1,5 @@
-from online_skyloc.transform import transform_from_probit, transform_to_probit
+from online_skyloc.transform import transform_from_probit, transform_to_probit, probit_logJ
+import numpy as np
 
 def antiprobit(func):
     def f_transf(ref, x, *args):
@@ -16,4 +17,10 @@ def from_probit(func):
     def f_transf(ref, *args):
         y = func(ref, *args)
         return transform_from_probit(y, ref.bounds)
+    return f_transf
+
+def jacobian_probit(func):
+    def f_transf(ref, x, *args):
+        y = func(ref, x)
+        return y*np.exp(probit_logJ(x, ref.bounds))
     return f_transf
