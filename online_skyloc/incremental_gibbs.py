@@ -1,4 +1,5 @@
 import numpy as np
+from itertools import product
 
 from scipy.special import gammaln
 from scipy.stats import multivariate_normal as mn
@@ -8,7 +9,7 @@ from matplotlib import rcParams
 from corner import corner
 
 from online_skyloc.decorators import *
-from online_skyloc.coordinates import celestial_to_cartesian, cartesian_to_celestial, Jacobian, inv_Jacobian
+from online_skyloc.coordinates import celestial_to_cartesian, cartesian_to_celestial, inv_Jacobian, inv_Jacobian_distance
 
 from pathlib import Path
 from distutils.spawn import find_executable
@@ -160,6 +161,8 @@ class mixture:
         self.update_alpha()
     
     def normalise_mixture(self):
+        if self.normalised == True:
+            return
         self.normalised = True
         for ss in self.mixture:
             ss.w = ss.N/self.n_pts
@@ -173,7 +176,17 @@ class mixture:
         idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = n_samps)
         samples = np.array([mn(self.mixture[i].mu, self.mixture[i].sigma).rvs() for i in idx])
         return samples
-
+    
+    @probit
+    @jacobian_probit
+    def evaluate_mixture(self, x):
+        self.normalise_mixture()
+        x = np.atleast_2d(x)
+        p = np.zeros(len(x))
+        for comp, w in zip(self.mixture, self.w):
+            p += w*mn(comp.mu, comp.sigma).pdf(x)
+        return p
+        
 
 class VolumeReconstruction(mixture):
     def __init__(self, max_dist,
@@ -190,10 +203,12 @@ class VolumeReconstruction(mixture):
         super().__init__(bounds, prior_pars, alpha0, sigma_max)
         
         self.n_gridpoints = n_gridpoints
-        self.ra, self.dec, self.dist = np.meshgrid(np.linspace(0,2*np.pi, n_gridpoints), np.linspace(-np.pi/2., np.pi/2., n_gridpoints), np.linspace(1, max_dist, n_gridpoints))
-        self.ra_2d, self.dec_2d = np.meshgrid(np.linspace(0,2*np.pi, n_gridpoints), np.linspace(-np.pi/2., np.pi/2., n_gridpoints))
-        self.grid = np.transpose(np.array([self.ra, self.dec, self.dist]).reshape(3,-1))
-        self.dD = max_dist/n_gridpoints
+        self.ra   = np.linspace(0,2*np.pi, n_gridpoints)
+        self.dec  = np.linspace(-np.pi/2., np.pi/2., n_gridpoints)
+        self.dist = np.linspace(1, max_dist, n_gridpoints)
+        self.dD   = max_dist/n_gridpoints
+        self.grid = np.array([v for v in product(*(self.ra,self.dec,self.dist))])
+        self.ra_2d, self.dec_2d = np.meshgrid(self.ra, self.dec)
         
         self.out_folder = Path(out_folder).resolve()
         self.skymap_folder = Path(out_folder, 'skymaps')
@@ -219,20 +234,17 @@ class VolumeReconstruction(mixture):
         plt.savefig(Path(self.skymap_folder, 'samples_'+self.name+'.pdf'), bbox_inches = 'tight')
     
     def evaluate_skymap(self):
-        p_vol = np.zeros((self.n_gridpoints, self.n_gridpoints, self.n_gridpoints))
-        for comp, w in zip(self.mixture, self.w):
-            p_comp = w*mn(comp.mu, comp.sigma).pdf(self.grid).reshape(self.n_gridpoints, self.n_gridpoints, self.n_gridpoints)
-            p_vol = p_vol + p_comp
-        inv_J = inv_Jacobian(self.grid).reshape(self.n_gridpoints, self.n_gridpoints, self.n_gridpoints)
-        p_vol = p_vol * inv_J * self.dD
-        self.p_skymap = p_vol.sum(axis = -1)
+        p_vol = super().evaluate_mixture(celestial_to_cartesian(self.grid)).reshape(self.n_gridpoints, self.n_gridpoints, self.n_gridpoints)
+        inv_J = inv_Jacobian_distance(self.grid).reshape(self.n_gridpoints, self.n_gridpoints, self.n_gridpoints)
+        self.p_skymap = (p_vol*inv_J).sum(axis = -1)
     
     def make_skymap(self):
         self.evaluate_skymap()
         fig, ax = plt.subplots()
-        ax.contour(self.ra_2d, self.dec_2d, self.p_skymap, 5)
+        c = ax.contourf(self.ra_2d, self.dec_2d, self.p_skymap.T, 1000)
         ax.set_xlabel('$\\alpha$')
         ax.set_ylabel('$\\delta$')
+        plt.colorbar(c, label = '$p(\\alpha,\\delta)$')
         fig.savefig(Path(self.skymap_folder, self.name+'.pdf'), bbox_inches = 'tight')
     
     def density_from_samples(self, samples):
