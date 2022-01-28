@@ -83,7 +83,6 @@ class mixture:
         self.normalised = False
 
     def add_datapoint_to_component(self, x, ss):
-        x = np.atleast_2d(x)
         old_mean = ss.mean
         ss.mean  = np.atleast_2d((ss.mean*(ss.N)+x)/(ss.N+1))
         ss.cov   = (ss.N*(ss.cov + np.matmul(old_mean.T, old_mean)) + np.matmul(x.T, x))/(ss.N+1) - np.matmul(ss.mean.T, ss.mean)
@@ -157,7 +156,7 @@ class mixture:
     @probit
     def add_new_point(self, x):
         self.n_pts += 1
-        self.assign_to_cluster(x)
+        self.assign_to_cluster(np.atleast_2d(x))
         self.update_alpha()
     
     def normalise_mixture(self):
@@ -203,7 +202,7 @@ class VolumeReconstruction(mixture):
         
     def add_sample(self, x):
         cart_x = celestial_to_cartesian(x)
-        super().add_new_point(np.atleast_2d(x))
+        super().add_new_point(cart_x)
     
     def sample_from_volume(self, n_samps):
         samples = super().sample_from_dpgmm(n_samps)
@@ -216,7 +215,7 @@ class VolumeReconstruction(mixture):
             c = corner(mix_samples, fig = c, color = 'blue', labels = ['$\\alpha$', '$\\delta$', '$D\ [Mpc]$'], hist_kwargs={'density':True})
         else:
             c = corner(mix_samples, fig = c, color = 'blue', labels = ['$\\alpha$', '$\\delta$', '$D\ [Mpc]$'], hist_kwargs={'density':True})
-        plt.savefig(Path(self.skymap_folder, 'samples'+self.name+'.pdf'), bbox_inches = 'tight')
+        plt.savefig(Path(self.skymap_folder, 'samples_'+self.name+'.pdf'), bbox_inches = 'tight')
     
     def evaluate_skymap(self):
         p_vol = np.zeros((self.n_gridpoints, self.n_gridpoints, self.n_gridpoints))
@@ -235,7 +234,8 @@ class VolumeReconstruction(mixture):
     
     def density_from_samples(self, samples):
         n_samps = len(samples)
-        for s in tqdm(samples):
+        samples_copy = np.copy(samples)
+        for s in tqdm(samples_copy):
             self.add_sample(s)
         self.plot_samples(n_samps, initial_samples = samples)
         self.make_skymap()
