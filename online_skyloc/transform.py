@@ -2,6 +2,8 @@ from __future__ import division
 import numpy as np
 from scipy.special import erfinv, erf
 
+log2PI = np.log(2.0*np.pi)
+
 def transform_to_probit(x, bounds):
     '''
     Coordinate change into probit space.
@@ -39,6 +41,5 @@ def transform_from_probit(x, bounds):
     return o
 
 def probit_logJ(x, bounds):
-    log2PI = log(2.0*M_PI)
-    res = np.sum(-0.5*x**2-0.5*log2PI-np.log(bounds[:,1]-bounds[:,0]))
+    res = np.sum(-0.5*x**2-0.5*log2PI-np.log(bounds[:,1]-bounds[:,0]), axis = -1)
     return res
