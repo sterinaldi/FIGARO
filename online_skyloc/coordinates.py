@@ -16,6 +16,7 @@ def cartesian_to_spherical(vector):
     unit = np.array([v/np.linalg.norm(v) for v in vector])
     theta = np.arccos(unit[:,2])
     phi = np.arctan2(unit[:,1], unit[:,0])
+    phi[phi<0] += 2*np.pi
     coord = np.array([r,theta,phi]).T
     return coord
 
@@ -58,11 +59,20 @@ def cartesian_to_celestial(cartesian_vect):
 def Jacobian(cartesian_vect):
     cartesian_vect = np.atleast_2d(cartesian_vect)
     d = np.linalg.norm(cartesian_vect, axis = -1)
-    d_sin_theta = np.linalg.norm(cartesian_vect[:,:-1])
-    return d*d_sin_theta
+    unit = np.array([v/np.linalg.norm(v) for v in cartesian_vect])
+    theta = np.arccos(unit[:,2])
+    return d*d*np.sin(theta)
 
 def inv_Jacobian(celestial_vect):
     celestial_vect = np.atleast_2d(celestial_vect)
     cartesian_vect = celestial_to_cartesian(celestial_vect)
     detJ = Jacobian(cartesian_vect)
     return 1/detJ
+    
+def Jacobian_distance(cartesian_vect):
+    cartesian_vect = np.atleast_2d(cartesian_vect)
+    d = np.linalg.norm(cartesian_vect, axis = -1)
+    return d
+
+def inv_Jacobian_distance(celestial_vect):
+    return 1/celestial_vect[:,2]
