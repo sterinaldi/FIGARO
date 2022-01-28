@@ -192,7 +192,8 @@ class VolumeReconstruction(mixture):
         
         self.n_gridpoints = n_gridpoints
         self.ra, self.dec, self.dist = np.meshgrid(np.linspace(0,2*np.pi, n_gridpoints), np.linspace(-np.pi/2., np.pi/2., n_gridpoints), np.linspace(1, max_dist, n_gridpoints))
-        self.grid = np.array([self.ra, self.dec, self.dist]).reshape(3,-1)
+        self.ra_2d, self.dec_2d = np.meshgrid(np.linspace(0,2*np.pi, n_gridpoints), np.linspace(-np.pi/2., np.pi/2., n_gridpoints))
+        self.grid = np.transpose(np.array([self.ra, self.dec, self.dist]).reshape(3,-1))
         
         self.out_folder = Path(out_folder).resolve()
         self.skymap_folder = Path(out_folder, 'skymaps')
@@ -220,13 +221,14 @@ class VolumeReconstruction(mixture):
     def evaluate_skymap(self):
         p_vol = np.zeros((self.n_gridpoints, self.n_gridpoints, self.n_gridpoints))
         for comp, w in zip(self.mixture, self.w):
-            p_vol = p_vol + w*mn(comp.mu, comp.sigma).pdf(self.grid)
+            p_comp = w*mn(comp.mu, comp.sigma).pdf(self.grid).reshape(self.n_gridpoints, self.n_gridpoints, self.n_gridpoints)
+            p_vol = p_vol + p_comp
         self.p_skymap = p_vol.sum(axis = -1)
     
     def make_skymap(self):
         self.evaluate_skymap()
         fig, ax = plt.subplots()
-        ax.contourf(self.ra, self.dec, self.p_skymap)
+        ax.contourf(self.ra_2d, self.dec_2d, self.p_skymap, 1000)
         ax.set_xlabel('$\\alpha$')
         ax.set_ylabel('$\\delta$')
         fig.savefig(Path(self.skymap_folder, self.name+'.pdf'), bbox_inches = 'tight')
