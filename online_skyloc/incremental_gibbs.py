@@ -1,5 +1,6 @@
 import numpy as np
 from itertools import product
+from collections import Counter
 
 from scipy.special import gammaln
 from scipy.stats import multivariate_normal as mn
@@ -174,8 +175,11 @@ class mixture:
         if not self.normalised:
             self.normalise_mixture()
         idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = n_samps)
-        samples = np.array([mn(self.mixture[i].mu, self.mixture[i].sigma).rvs() for i in idx])
-        return samples
+        ctr = Counter(idx)
+        samples = np.empty(shape = (1,3))
+        for i, n in zip(ctr.keys(), ctr.values()):
+            samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n))))
+        return samples[1:]
     
     @probit
     @jacobian_probit
@@ -205,7 +209,7 @@ class VolumeReconstruction(mixture):
         self.n_gridpoints = n_gridpoints
         self.ra   = np.linspace(0,2*np.pi, n_gridpoints)
         self.dec  = np.linspace(-np.pi/2., np.pi/2., n_gridpoints)
-        self.dist = np.linspace(1, max_dist, n_gridpoints)
+        self.dist = np.linspace(1e-9, max_dist, n_gridpoints)
         self.dD   = max_dist/n_gridpoints
         self.grid = np.array([v for v in product(*(self.ra,self.dec,self.dist))])
         self.ra_2d, self.dec_2d = np.meshgrid(self.ra, self.dec)
