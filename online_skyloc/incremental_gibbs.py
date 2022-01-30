@@ -217,6 +217,16 @@ class mixture:
         for comp, w in zip(self.mixture, self.w):
             p += w*mn(comp.mu, comp.sigma).pdf(x)
         return p
+
+    @probit
+    @jacobian_probit
+    def evaluate_log_mixture(self, x):
+        self.normalise_mixture()
+        p = np.ones(len(x)) * -np.inf
+        for comp, w in zip(self.mixture, self.log_w):
+            #FIXME: can be improved
+            p = logsumexp((p, w + mn(comp.mu, comp.sigma).logpdf(x)), axis = 0)
+        return p
         
 
 class VolumeReconstruction(mixture):
@@ -246,6 +256,9 @@ class VolumeReconstruction(mixture):
         self.skymap_folder = Path(out_folder, 'skymaps')
         if not self.skymap_folder.exists():
             self.skymap_folder.mkdir()
+        self.density_folder = Path(out_folder, 'density')
+        if not self.density_folder.exists():
+            self.density_folder.mkdir()
         self.name = name
         self.labels = labels
         
@@ -272,17 +285,20 @@ class VolumeReconstruction(mixture):
         inv_J = inv_Jacobian_distance(self.grid).reshape(len(self.ra), len(self.dec), len(self.dist))
         self.p_skymap = (p_vol*inv_J).sum(axis = -1)
     
-    def make_skymap(self):
+    def make_skymap(self, plot = 'contour'): # 'contour' or 'image'
         self.evaluate_skymap()
         fig, ax = plt.subplots()
-        c = ax.contourf(self.ra_2d, self.dec_2d, self.p_skymap.T, 1000)
+        if plot == 'image':
+            c = ax.imshow(self.p_skymap.T, extent = (self.ra.min(), self.ra.max(), self.dec.min(), self.dec.max()), origin = 'lower', aspect = 'auto')
+        if plot == 'contour':
+            c = ax.contourf(self.ra_2d, self.dec_2d, self.p_skymap.T, 990)
         ax.set_xlabel('$\\alpha$')
         ax.set_ylabel('$\\delta$')
         plt.colorbar(c, label = '$p(\\alpha,\\delta)$')
         fig.savefig(Path(self.skymap_folder, self.name+'.pdf'), bbox_inches = 'tight')
     
     def save_density(self):
-        with open(Path(self.out_folder, self.name + '_density.pkl'), 'wb') as dill_file:
+        with open(Path(self.density_folder, self.name + '_density.pkl'), 'wb') as dill_file:
             dill.dump(self, dill_file)
 
     def density_from_samples(self, samples):
