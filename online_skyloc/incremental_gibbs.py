@@ -9,8 +9,10 @@ import matplotlib.pyplot as plt
 from matplotlib import rcParams
 from corner import corner
 
+import dill
+
 from online_skyloc.decorators import *
-from online_skyloc.coordinates import celestial_to_cartesian, cartesian_to_celestial, inv_Jacobian, inv_Jacobian_distance
+from online_skyloc.coordinates import celestial_to_cartesian, cartesian_to_celestial, inv_Jacobian_distance
 
 from pathlib import Path
 from distutils.spawn import find_executable
@@ -200,6 +202,7 @@ class VolumeReconstruction(mixture):
                        sigma_max    = 0.05,
                        n_gridpoints = 100,
                        name         = 'skymap',
+                       labels       = ['$\\alpha$', '$\\delta$', '$D\ [Mpc]$']
                        ):
         
         self.max_dist = max_dist
@@ -219,6 +222,7 @@ class VolumeReconstruction(mixture):
         if not self.skymap_folder.exists():
             self.skymap_folder.mkdir()
         self.name = name
+        self.labels = labels
         
     def add_sample(self, x):
         cart_x = celestial_to_cartesian(x)
@@ -231,10 +235,11 @@ class VolumeReconstruction(mixture):
     def plot_samples(self, n_samps, initial_samples = None):
         mix_samples = self.sample_from_volume(n_samps)
         if initial_samples is not None:
-            c = corner(initial_samples, color = 'orange', labels = ['$\\alpha$', '$\\delta$', '$D\ [Mpc]$'], hist_kwargs={'density':True})
-            c = corner(mix_samples, fig = c, color = 'blue', labels = ['$\\alpha$', '$\\delta$', '$D\ [Mpc]$'], hist_kwargs={'density':True})
+            c = corner(initial_samples, color = 'coral', labels = self.labels, hist_kwargs={'density':True, 'label':'$\\textsc{Samples}$'})
+            c = corner(mix_samples, fig = c, color = 'dodgerblue', labels = self.labels, hist_kwargs={'density':True, 'label':'$\\textsc{DPGMM}$'})
         else:
-            c = corner(mix_samples, fig = c, color = 'blue', labels = ['$\\alpha$', '$\\delta$', '$D\ [Mpc]$'], hist_kwargs={'density':True})
+            c = corner(mix_samples, fig = c, color = 'dodgerblue', labels = self.labels, hist_kwargs={'density':True, 'label':'$\\textsc{DPGMM}$'})
+        plt.legend(loc = 0, frameon = False,fontsize = 15, bbox_to_anchor = (1-0.05, 2.8))
         plt.savefig(Path(self.skymap_folder, 'samples_'+self.name+'.pdf'), bbox_inches = 'tight')
     
     def evaluate_skymap(self):
@@ -251,6 +256,10 @@ class VolumeReconstruction(mixture):
         plt.colorbar(c, label = '$p(\\alpha,\\delta)$')
         fig.savefig(Path(self.skymap_folder, self.name+'.pdf'), bbox_inches = 'tight')
     
+    def save_density(self):
+        with open(Path(self.out_folder, self.name + '_density.pkl'), 'wb') as dill_file:
+            dill.dump(self, dill_file)
+
     def density_from_samples(self, samples):
         n_samps = len(samples)
         samples_copy = np.copy(samples)
@@ -258,5 +267,7 @@ class VolumeReconstruction(mixture):
             self.add_sample(s)
         self.plot_samples(n_samps, initial_samples = samples)
         self.make_skymap()
+        self.save_density()
 
-        
+    def evaluate_density(self, x):
+        return super().evaluate_mixture(celestial_to_cartesian(x))
