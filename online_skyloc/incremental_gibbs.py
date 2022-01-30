@@ -18,6 +18,22 @@ from pathlib import Path
 from distutils.spawn import find_executable
 from tqdm import tqdm
 
+from numba import jit, njit
+from numba.extending import get_cython_function_address
+import ctypes
+
+_PTR = ctypes.POINTER
+_dble = ctypes.c_double
+_ptr_dble = _PTR(_dble)
+
+addr = get_cython_function_address("scipy.special.cython_special", "gammaln")
+functype = ctypes.CFUNCTYPE(_dble, _dble)
+gammaln_float64 = functype(addr)
+
+@njit
+def numba_gammaln(x):
+  return gammaln_float64(x)
+
 if find_executable('latex'):
     rcParams["text.usetex"] = True
 rcParams["xtick.labelsize"]=14
@@ -32,7 +48,7 @@ rcParams["grid.alpha"] = 0.6
 class component:
     def __init__(self, x, prior):
         self.N     = 1
-        self.mean  = np.atleast_2d(x)
+        self.mean  = x
         self.cov   = np.identity(x.shape[-1])*0.
         self.mu    = np.atleast_2d((prior.mu*prior.k + self.N*self.mean)/(prior.k + self.N))[0]
         self.sigma = np.identity(x.shape[-1])*prior.L
@@ -45,10 +61,10 @@ class prior:
         self.mu = mu
         self.nu = nu
 
-def student_t(df, t, mu, sigma, dim, s2max = np.inf):
+@jit
+def student_t(df, t, mu, sigma, dim, s2max):
     """
     http://gregorygundersen.com/blog/2020/01/20/multivariate-t/
-    s2max can be removed if useless
     """
     vals, vecs = np.linalg.eigh(sigma)
     vals       = np.minimum(vals, s2max)
@@ -59,18 +75,54 @@ def student_t(df, t, mu, sigma, dim, s2max = np.inf):
     maha       = np.square(np.dot(dev, U)).sum(axis=-1)
 
     x = 0.5 * (df + dim)
-    A = gammaln(x)
-    B = gammaln(0.5 * df)
+    A = numba_gammaln(x)
+    B = numba_gammaln(0.5 * df)
     C = dim/2. * np.log(df * np.pi)
     D = 0.5 * logdet
     E = -x * np.log1p((1./df) * maha)
 
-    return float(A - B - C - D + E)
+    return (A - B - C - D + E)[0]
+
+@jit
+def update_alpha(alpha, n, K, burnin = 100):
+    a_old = alpha
+    n_draws = burnin+np.random.randint(100)
+    for i in range(n_draws):
+        a_new = a_old + (np.random.random() - 0.5)
+        if a_new > 0.:
+            logP_old = numba_gammaln(a_old) - numba_gammaln(a_old + n) + K * np.log(a_old) - 1./a_old
+            logP_new = numba_gammaln(a_new) - numba_gammaln(a_new + n) + K * np.log(a_new) - 1./a_new
+            if logP_new - logP_old > np.log(np.random.random()):
+                a_old = a_new
+    return a_old
+
+@jit
+def compute_t_pars(k, mu, nu, L, mean, S, N, dim):
+    # Update hyperparameters
+    k_n  = k + N
+    mu_n = (mu*k + N*mean)/k_n
+    nu_n = nu + N
+    L_n  = L*k + S*N + k*N*((mean - mu).T@(mean - mu))/k_n
+    # Update t-parameters
+    t_df    = nu_n - dim + 1
+    t_shape = L_n*(k_n+1)/(k_n*t_df)
+    return t_df, t_shape, mu_n
+
+@jit
+def compute_component_suffstats(x, mean, cov, N, mu, sigma, p_mu, p_k, p_nu, p_L):
+
+    new_mean  = (mean*N+x)/(N+1)
+    new_cov   = (N*(cov + mean.T@mean) + x.T@x)/(N+1) - new_mean.T@new_mean
+    new_N     = N+1
+    new_mu    = ((p_mu*p_k + new_N*new_mean)/(p_k + new_N))[0]
+    new_sigma = (p_L*p_k + new_cov*new_N + p_k*new_N*((new_mean - p_mu).T@(new_mean - p_mu))/(p_k + new_N))/(p_nu + new_N)
+    
+    return new_mean, new_cov, new_N, new_mu, new_sigma
 
 class mixture:
     def __init__(self, bounds,
                        prior_pars = None,
-                       alpha0     = 1,
+                       alpha0     = 1.,
                        sigma_max  = 0.05,
                        ):
         self.bounds   = bounds
@@ -85,49 +137,23 @@ class mixture:
         self.n_pts    = 0
         self.s2max    = (sigma_max)**2
         self.normalised = False
-
+    
     def add_datapoint_to_component(self, x, ss):
-        old_mean = ss.mean
-        ss.mean  = np.atleast_2d((ss.mean*(ss.N)+x)/(ss.N+1))
-        ss.cov   = (ss.N*(ss.cov + np.matmul(old_mean.T, old_mean)) + np.matmul(x.T, x))/(ss.N+1) - np.matmul(ss.mean.T, ss.mean)
-        ss.N     = ss.N+1
-        ss.mu    = ((self.prior.mu*self.prior.k + ss.N*ss.mean)/(self.prior.k + ss.N))[0]
-        ss.sigma = (np.atleast_2d(self.prior.L*self.prior.k) + ss.cov*ss.N + self.prior.k*ss.N*np.matmul((ss.mean - self.prior.mu).T, (ss.mean - self.prior.mu))/(self.prior.k + ss.N))/(self.prior.nu + ss.N)
+        new_mean, new_cov, new_N, new_mu, new_sigma = compute_component_suffstats(x, ss.mean, ss.cov, ss.N, ss.mu, ss.sigma, self.prior.mu, self.prior.k, self.prior.nu, self.prior.L)
+        ss.mean  = new_mean
+        ss.cov   = new_cov
+        ss.N     = new_N
+        ss.mu    = new_mu
+        ss.sigma = new_sigma
         return ss
-
-    def update_alpha(self, burnin = 200):
-        a_old = self.alpha
-        n     = self.n_pts
-        K     = self.n_cl
-        for _ in range(burnin+np.random.randint(100)):
-            a_new = a_old + np.random.uniform(-1,1)*0.5
-            if a_new > 0:
-                logP_old = gammaln(a_old) - gammaln(a_old + n) + K * np.log(a_old) - 1./a_old
-                logP_new = gammaln(a_new) - gammaln(a_new + n) + K * np.log(a_new) - 1./a_new
-                if logP_new - logP_old > np.log(np.random.uniform()):
-                    a_old = a_new
-        self.alpha = a_old
-        return
-
+    
     def log_predictive_likelihood(self, x, ss):
         dim = x.shape[-1]
         if ss == "new":
             ss = component(np.zeros(dim), prior = self.prior)
-            ss.N = 0
-        mean = ss.mean
-        S    = ss.cov
-        N    = ss.N
-        # Update hyperparameters
-        k_n  = self.prior.k + N
-        mu_n = np.atleast_2d((self.prior.mu*self.prior.k + N*mean)/k_n)
-        nu_n = self.prior.nu + N
-        L_n  = self.prior.L*self.prior.k + S*N + self.prior.k*N*np.matmul((mean - self.prior.mu).T, (mean - self.prior.mu))/k_n
-        # Update t-parameters
-        t_df    = nu_n - dim + 1
-        t_shape = L_n*(k_n+1)/(k_n*t_df)
-        # Compute logLikelihood
-        logL = student_t(df = t_df, t = np.atleast_2d(x), mu = mu_n, sigma = t_shape, dim = dim, s2max = self.s2max)
-        return logL
+            ss.N = 0.
+        t_df, t_shape, mu_n = compute_t_pars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.cov, ss.N, dim)
+        return student_t(df = t_df, t = x, mu = mu_n, sigma = t_shape, dim = dim, s2max = self.s2max)
 
     def cluster_assignment_distribution(self, x):
         scores = {}
@@ -160,8 +186,8 @@ class mixture:
     @probit
     def add_new_point(self, x):
         self.n_pts += 1
-        self.assign_to_cluster(np.atleast_2d(x))
-        self.update_alpha()
+        self.assign_to_cluster(x)
+        self.alpha = update_alpha(self.alpha, self.n_pts, self.n_cl)
     
     def normalise_mixture(self):
         if self.normalised == True:
@@ -187,7 +213,6 @@ class mixture:
     @jacobian_probit
     def evaluate_mixture(self, x):
         self.normalise_mixture()
-        x = np.atleast_2d(x)
         p = np.zeros(len(x))
         for comp, w in zip(self.mixture, self.w):
             p += w*mn(comp.mu, comp.sigma).pdf(x)
@@ -243,8 +268,8 @@ class VolumeReconstruction(mixture):
         plt.savefig(Path(self.skymap_folder, 'samples_'+self.name+'.pdf'), bbox_inches = 'tight')
     
     def evaluate_skymap(self):
-        p_vol = super().evaluate_mixture(celestial_to_cartesian(self.grid)).reshape(self.n_gridpoints, self.n_gridpoints, self.n_gridpoints)
-        inv_J = inv_Jacobian_distance(self.grid).reshape(self.n_gridpoints, self.n_gridpoints, self.n_gridpoints)
+        p_vol = super().evaluate_mixture(celestial_to_cartesian(self.grid)).reshape(len(self.ra), len(self.dec), len(self.dist))
+        inv_J = inv_Jacobian_distance(self.grid).reshape(len(self.ra), len(self.dec), len(self.dist))
         self.p_skymap = (p_vol*inv_J).sum(axis = -1)
     
     def make_skymap(self):
