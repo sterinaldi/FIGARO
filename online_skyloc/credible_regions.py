@@ -1,6 +1,5 @@
 import numpy as np
 from online_skyloc.cumulative import fast_log_cumulative
-import healpy as hp
 
 def FindHeights(args):
     (sortarr,  cumarr, level) = args
@@ -46,10 +45,10 @@ def ConfidenceArea(log_skymap, dec_grid, ra_grid, adLevels = [0.68, 0.90]):
     index = []
                 
     for height in adHeights:
-        (i_ra,i_dec,) = np.where(self.log_skymap>=height)
-        areas.append(np.sum([dra*np.cos(dec_grid[i_dec])*ddec for i_dec in index_dec])*(180.0/np.pi)**2.0)
+        (i_ra,i_dec,) = np.where(log_skymap>=height)
+        areas.append(np.sum([dra*np.cos(dec_grid[i_d])*ddec for i_d in i_dec])*(180.0/np.pi)**2.0)
 
-        index.append(np.array(i_ra, i_dec))
+        index.append(np.array([i_ra, i_dec]).T)
     area_confidence = np.array(areas)
     
     return area_confidence, index, adHeights
