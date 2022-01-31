@@ -6,7 +6,7 @@ def FindHeights(args):
     (sortarr,  cumarr, level) = args
     return sortarr[np.abs(cumarr-np.log(level)).argmin()]
 
-def ConfidenceVolume(log_volume_map, n_points_area, distance_grid, area_grid, adLevels = [0.68, 0.90]):
+def ConfidenceVolume(log_volume_map, distance_grid, dec_grid, ra_grid, adLevels = [0.68, 0.90]):
     # create a normalized cumulative distribution
     log_volume_map_sorted = np.sort(log_volume_map.flatten())[::-1]
     log_volume_map_cum = fast_log_cumulative(log_volume_map_sorted)
@@ -16,19 +16,22 @@ def ConfidenceVolume(log_volume_map, n_points_area, distance_grid, area_grid, ad
     args = [(log_volume_map_sorted, log_volume_map_cum, level) for level in adLevels]
     adHeights = [FindHeights(a) for a in args]
     heights = {str(lev):hei for lev,hei in zip(adLevels,adHeights)}
-    dd = np.diff(distance_grid)[0]
-    dA = hp.nside2pixarea(n_points_area, degrees = False)
-    volumes = []
-    index   = []
+    dd  = np.diff(distance_grid)[0]
+    ddec = np.diff(dec_grid)[0]
+    dra = np.diff(ra_grid)[0]
+    volumes         = []
+    index           = []
     for height in adHeights:
-        index_v = np.array(np.where(log_volume_map > height))
-        volumes.append(np.sum([distance_grid[i_d]**2. * dd * dA for i_d in index_d[:,2]]))
-        index.append(index_v.T)
+        
+        (i_ra, i_dec, i_d,) = np.where(log_volume_map>=height)
+        volumes.append(np.sum([distance_grid[i_d]**2. *np.cos(dec_grid[i_dec]) * dd * dra * ddec for i_d,i_dec in zip(i_d,i_dec)]))
+        index.append(np.array(i_ra, i_dec, i_d))
+
     volume_confidence = np.array(volumes)
     
     return volume_confidence, index, adHeights
 
-def ConfidenceArea(log_skymap, n_points_area, adLevels = [0.68, 0.90]):
+def ConfidenceArea(log_skymap, dec_grid, ra_grid, adLevels = [0.68, 0.90]):
     
     # create a normalized cumulative distribution
     log_skymap_sorted = np.sort(log_skymap.flatten())[::-1]
@@ -37,13 +40,16 @@ def ConfidenceArea(log_skymap, n_points_area, adLevels = [0.68, 0.90]):
     adLevels = np.ravel([adLevels])
     args = [(log_skymap_sorted, log_skymap_cum, level) for level in adLevels]
     adHeights = [FindHeights(a) for a in args]
-    dA = hp.nside2pixarea(n_points_area, degrees = True)
+    ddec = np.diff(dec_grid)[0]
+    dra = np.diff(ra_grid)[0]
     areas = []
     index = []
+                
     for height in adHeights:
-        index_hp = np.array(np.where(log_skymap > height))
-        areas.append(len(index_hp)*dA)
-        index.append(index_hp.T)
+        (i_ra,i_dec,) = np.where(self.log_skymap>=height)
+        areas.append(np.sum([dra*np.cos(dec_grid[i_dec])*ddec for i_dec in index_dec])*(180.0/np.pi)**2.0)
+
+        index.append(np.array(i_ra, i_dec))
     area_confidence = np.array(areas)
     
     return area_confidence, index, adHeights
