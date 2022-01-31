@@ -2,7 +2,7 @@ import numpy as np
 from itertools import product
 from collections import Counter
 
-from scipy.special import gammaln
+from scipy.special import gammaln, logsumexp
 from scipy.stats import multivariate_normal as mn
 
 import matplotlib.pyplot as plt
@@ -13,6 +13,7 @@ import dill
 
 from online_skyloc.decorators import *
 from online_skyloc.coordinates import celestial_to_cartesian, cartesian_to_celestial, inv_Jacobian_distance
+from online_skyloc.credible_regions import ConfidenceArea
 
 from pathlib import Path
 from distutils.spawn import find_executable
@@ -197,6 +198,7 @@ class mixture:
             ss.w = ss.N/self.n_pts
         self.mixture = np.array(self.mixture)
         self.w = np.array([ss.w for ss in self.mixture])
+        self.log_w = np.log(self.w)
     
     @from_probit
     def sample_from_dpgmm(self, n_samps):
@@ -254,7 +256,8 @@ class VolumeReconstruction(mixture):
                        sigma_max    = 0.05,
                        n_gridpoints = 100,
                        name         = 'skymap',
-                       labels       = ['$\\alpha$', '$\\delta$', '$D\ [Mpc]$']
+                       labels       = ['$\\alpha$', '$\\delta$', '$D\ [Mpc]$'],
+                       levels       = [0.68, 0.90]
                        ):
         
         self.max_dist = max_dist
@@ -264,10 +267,11 @@ class VolumeReconstruction(mixture):
         self.n_gridpoints = n_gridpoints
         self.ra   = np.linspace(0,2*np.pi, n_gridpoints)
         self.dec  = np.linspace(-np.pi/2., np.pi/2., n_gridpoints)
-        self.dist = np.linspace(1e-9, max_dist, n_gridpoints)
+        self.dist = np.linspace(1e-9, max_dist - 1e-9, n_gridpoints)
         self.dD   = max_dist/n_gridpoints
         self.grid = np.array([v for v in product(*(self.ra,self.dec,self.dist))])
         self.ra_2d, self.dec_2d = np.meshgrid(self.ra, self.dec)
+        self.levels = levels
         
         self.out_folder = Path(out_folder).resolve()
         self.skymap_folder = Path(out_folder, 'skymaps')
@@ -298,10 +302,25 @@ class VolumeReconstruction(mixture):
         plt.savefig(Path(self.skymap_folder, 'samples_'+self.name+'.pdf'), bbox_inches = 'tight')
     
     def evaluate_skymap(self):
-        p_vol = super().evaluate_mixture_with_jacobian(celestial_to_cartesian(self.grid)).reshape(len(self.ra), len(self.dec), len(self.dist))
-        inv_J = inv_Jacobian_distance(self.grid).reshape(len(self.ra), len(self.dec), len(self.dist))
-        self.p_skymap = (p_vol*inv_J).sum(axis = -1)
     
+        inv_J     = inv_Jacobian_distance(self.grid).reshape(len(self.ra), len(self.dec), len(self.dist))
+        log_inv_J = np.log(inv_J)
+        
+        p_vol     = super().evaluate_mixture_with_jacobian(celestial_to_cartesian(self.grid)).reshape(len(self.ra), len(self.dec), len(self.dist))
+        log_p_vol = super().evaluate_log_mixture_with_jacobian(celestial_to_cartesian(self.grid)).reshape(len(self.ra), len(self.dec), len(self.dist))
+        
+        self.p_skymap     = (p_vol*inv_J).sum(axis = -1)
+        self.log_p_skymap = np.log(self.p_skymap)
+#        self.log_p_skymap = logsumexp((log_p_vol + log_inv_J), axis = -1)
+        
+        self.areas, self.idx_CR, self.heights = ConfidenceArea(self.log_p_skymap, self.n_gridpoints, adLevels = self.levels)
+        print(self.heights)
+        print(self.idx_CR[0].shape, self.idx_CR[1].shape)
+        self.ind_func_CR = [np.zeros(self.log_p_skymap.shape) for _ in range(len(self.idx_CR))]
+        for I, idx in zip(self.ind_func_CR, self.idx_CR):
+            I[idx] = 1.
+            
+            
     def make_skymap(self, plot = 'contour'): # 'contour' or 'image'
         self.evaluate_skymap()
         fig, ax = plt.subplots()
@@ -309,6 +328,12 @@ class VolumeReconstruction(mixture):
             c = ax.imshow(self.p_skymap.T, extent = (self.ra.min(), self.ra.max(), self.dec.min(), self.dec.max()), origin = 'lower', aspect = 'auto')
         if plot == 'contour':
             c = ax.contourf(self.ra_2d, self.dec_2d, self.p_skymap.T, 990)
+#        for I, level, h in zip(self.ind_func_CR[1:], self.levels[1:], self.heights[1:]):
+#            print(np.where(I>0))
+#            c = ax.imshow(I)
+#            exit()
+#            ax.contour(self.ra_2d, self.dec_2d, self.p_skymap.T, levels = np.array([np.exp(h)]), color = 'white', linewidths = 1.)
+
         ax.set_xlabel('$\\alpha$')
         ax.set_ylabel('$\\delta$')
         plt.colorbar(c, label = '$p(\\alpha,\\delta)$')
