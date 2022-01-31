@@ -125,7 +125,7 @@ class mixture:
                        alpha0     = 1.,
                        sigma_max  = 0.05,
                        ):
-        self.bounds   = bounds
+        self.bounds   = np.array(bounds)
         self.dim      = len(self.bounds)
         if prior_pars is not None:
             self.prior = prior(*prior_pars)
@@ -210,7 +210,15 @@ class mixture:
         return samples[1:]
     
     @probit
-    @jacobian_probit
+    @inv_jacobian_probit
+    def evaluate_mixture_with_jacobian(self, x):
+        self.normalise_mixture()
+        p = np.zeros(len(x))
+        for comp, w in zip(self.mixture, self.w):
+            p += w*mn(comp.mu, comp.sigma).pdf(x)
+        return p
+
+    @probit
     def evaluate_mixture(self, x):
         self.normalise_mixture()
         p = np.zeros(len(x))
@@ -219,7 +227,16 @@ class mixture:
         return p
 
     @probit
-    @jacobian_probit
+    @inv_jacobian_log_probit
+    def evaluate_log_mixture_with_jacobian(self, x):
+        self.normalise_mixture()
+        p = np.ones(len(x)) * -np.inf
+        for comp, w in zip(self.mixture, self.log_w):
+            #FIXME: can be improved
+            p = logsumexp((p, w + mn(comp.mu, comp.sigma).logpdf(x)), axis = 0)
+        return p
+        
+    @probit
     def evaluate_log_mixture(self, x):
         self.normalise_mixture()
         p = np.ones(len(x)) * -np.inf
@@ -281,7 +298,7 @@ class VolumeReconstruction(mixture):
         plt.savefig(Path(self.skymap_folder, 'samples_'+self.name+'.pdf'), bbox_inches = 'tight')
     
     def evaluate_skymap(self):
-        p_vol = super().evaluate_mixture(celestial_to_cartesian(self.grid)).reshape(len(self.ra), len(self.dec), len(self.dist))
+        p_vol = super().evaluate_mixture_with_jacobian(celestial_to_cartesian(self.grid)).reshape(len(self.ra), len(self.dec), len(self.dist))
         inv_J = inv_Jacobian_distance(self.grid).reshape(len(self.ra), len(self.dec), len(self.dist))
         self.p_skymap = (p_vol*inv_J).sum(axis = -1)
     
