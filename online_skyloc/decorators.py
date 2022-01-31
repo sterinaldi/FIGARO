@@ -26,6 +26,24 @@ def jacobian_probit(func):
         return y*np.exp(probit_logJ(x, ref.bounds))
     return f_transf
 
+def jacobian_log_probit(func):
+    def f_transf(ref, x, *args):
+        y = func(ref, x)
+        return y + probit_logJ(x, ref.bounds)
+    return f_transf
+
+def inv_jacobian_probit(func):
+    def f_transf(ref, x, *args):
+        y = func(ref, x)
+        return y*np.exp(-probit_logJ(x, ref.bounds))
+    return f_transf
+
+def inv_jacobian_log_probit(func):
+    def f_transf(ref, x, *args):
+        y = func(ref, x)
+        return y - probit_logJ(x, ref.bounds)
+    return f_transf
+
 def cartesian(func):
     def f_transf(ref, x, *args):
         y = celestial_to_cartesian(x)
