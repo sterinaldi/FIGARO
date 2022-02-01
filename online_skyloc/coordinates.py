@@ -14,8 +14,8 @@ def cartesian_to_spherical(vector):
     """
     r = np.linalg.norm(vector, axis = -1)
     unit = np.array([v/np.linalg.norm(v) for v in vector])
-    theta = np.arccos(unit[:,2])
-    phi = np.arctan2(unit[:,1], unit[:,0])
+    theta = np.arcsin(unit[:,2])
+    phi = np.arctan2(unit[:,0], unit[:,1])
     phi[phi<0] += 2*np.pi
     coord = np.array([r,theta,phi]).T
     return coord
@@ -33,24 +33,22 @@ def spherical_to_cartesian(vector):
     @type cart_vect:        3D array or list
     """
     # Trig alias.
-    sin_theta = np.sin(vector[:,1])
+    cos_theta = np.cos(vector[:,1])
     # The vector.
-    x = vector[:,2] * np.cos(vector[:,0]) * sin_theta
-    y = vector[:,2] * np.sin(vector[:,0]) * sin_theta
-    z = vector[:,2] * np.cos(vector[:,1])
+    x = vector[:,2] * np.sin(vector[:,0]) * cos_theta
+    y = vector[:,2] * np.cos(vector[:,0]) * cos_theta
+    z = vector[:,2] * np.sin(vector[:,1])
     return np.array([x,y,z]).T
     
 def celestial_to_cartesian(celestial_vect):
     """Convert the spherical coordinate vector [r, dec, ra] to the Cartesian vector [x, y, z]."""
     celestial_vect = np.atleast_2d(celestial_vect)
-    celestial_vect[:,1] = np.pi/2. - celestial_vect[:,1]
     return spherical_to_cartesian(celestial_vect)
 
 def cartesian_to_celestial(cartesian_vect):
     """Convert the Cartesian vector [x, y, z] to the celestial coordinate vector [r, dec, ra]."""
     cartesian_vect = np.atleast_2d(cartesian_vect)
     spherical_vect = cartesian_to_spherical(cartesian_vect)
-    spherical_vect[:,1] = np.pi/2. - spherical_vect[:,1]
     D   = spherical_vect[:,0]
     dec = spherical_vect[:,1]
     ra  = spherical_vect[:,2]
