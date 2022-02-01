@@ -12,7 +12,7 @@ from corner import corner
 import dill
 
 from online_skyloc.decorators import *
-from online_skyloc.coordinates import celestial_to_cartesian, cartesian_to_celestial, inv_Jacobian_distance, Jacobian
+from online_skyloc.coordinates import celestial_to_cartesian, cartesian_to_celestial, inv_Jacobian_distance, log_inv_Jacobian_distance
 from online_skyloc.credible_regions import ConfidenceArea
 
 from pathlib import Path
@@ -35,8 +35,8 @@ gammaln_float64 = functype(addr)
 def numba_gammaln(x):
   return gammaln_float64(x)
 
-if find_executable('latex'):
-    rcParams["text.usetex"] = True
+#if find_executable('latex'):
+#    rcParams["text.usetex"] = True
 rcParams["xtick.labelsize"]=14
 rcParams["ytick.labelsize"]=14
 rcParams["xtick.direction"]="in"
@@ -131,7 +131,7 @@ class mixture:
         if prior_pars is not None:
             self.prior = prior(*prior_pars)
         else:
-            self.prior = prior(1, np.identity(self.dim)*0.5, self.dim, np.zeros(self.dim))
+            self.prior = prior(1e-4, np.identity(self.dim)*0.5, self.dim, np.zeros(self.dim))
         self.alpha    = alpha0
         self.mixture  = []
         self.n_cl     = 0
@@ -191,12 +191,8 @@ class mixture:
         self.alpha = update_alpha(self.alpha, self.n_pts, self.n_cl)
     
     def normalise_mixture(self):
-        if self.normalised == True:
-            return
-        self.normalised = True
         for ss in self.mixture:
             ss.w = ss.N/self.n_pts
-        self.mixture = np.array(self.mixture)
         self.w = np.array([ss.w for ss in self.mixture])
         self.log_w = np.log(self.w)
     
@@ -265,14 +261,15 @@ class VolumeReconstruction(mixture):
         super().__init__(bounds, prior_pars, alpha0, sigma_max)
         
         self.n_gridpoints = n_gridpoints
-        self.ra   = np.linspace(0,2*np.pi, n_gridpoints)
-        self.dec  = np.linspace(-np.pi/2., np.pi/2., n_gridpoints)
-        self.dist = np.linspace(1e-9, max_dist - 1e-9, n_gridpoints)
+        self.ra   = np.linspace(0,2*np.pi, 720)#n_gridpoints)
+        self.dec  = np.linspace(-np.pi/2., np.pi/2., 360)# n_gridpoints)
+        self.dist = np.linspace(max_dist*0.01, max_dist*0.99, n_gridpoints)
         self.dD   = max_dist/n_gridpoints
         self.dra  = 2*np.pi/n_gridpoints
         self.ddec = np.pi/n_gridpoints
         self.grid = np.array([v for v in product(*(self.ra,self.dec,self.dist))])
-        self.ra_2d, self.dec_2d = np.meshgrid(self.ra, self.dec)
+        self.grid2d = np.array([v for v in product(*(self.ra,self.dec))])
+        self.ra_2d, self.dec_2d = np.meshgrid(self.ra-np.pi, self.dec)
         self.levels = levels
         
         self.out_folder = Path(out_folder).resolve()
@@ -287,49 +284,55 @@ class VolumeReconstruction(mixture):
         
     def add_sample(self, x):
         cart_x = celestial_to_cartesian(x)
-        super().add_new_point(cart_x)
+        self.add_new_point(cart_x)
+        if self.n_pts % 100000 == 0:
+            self.make_skymap()
     
     def sample_from_volume(self, n_samps):
-        samples = super().sample_from_dpgmm(n_samps)
+        samples = self.sample_from_dpgmm(n_samps)
         return cartesian_to_celestial(samples)
     
     def plot_samples(self, n_samps, initial_samples = None):
         mix_samples = self.sample_from_volume(n_samps)
         if initial_samples is not None:
-            c = corner(initial_samples, color = 'coral', labels = self.labels, hist_kwargs={'density':True, 'label':'$\\textsc{Samples}$'})
-            c = corner(mix_samples, fig = c, color = 'dodgerblue', labels = self.labels, hist_kwargs={'density':True, 'label':'$\\textsc{DPGMM}$'})
+            c = corner(initial_samples, color = 'coral', labels = self.labels, hist_kwargs={'density':True, 'label':'$\mathrm{Samples}$'})
+            c = corner(mix_samples, fig = c, color = 'dodgerblue', labels = self.labels, hist_kwargs={'density':True, 'label':'$\mathrm{DPGMM}$'})
         else:
-            c = corner(mix_samples, fig = c, color = 'dodgerblue', labels = self.labels, hist_kwargs={'density':True, 'label':'$\\textsc{DPGMM}$'})
+            c = corner(mix_samples, fig = c, color = 'dodgerblue', labels = self.labels, hist_kwargs={'density':True, 'label':'$\mathrm{DPGMM}$'})
         plt.legend(loc = 0, frameon = False,fontsize = 15, bbox_to_anchor = (1-0.05, 2.8))
         plt.savefig(Path(self.skymap_folder, 'samples_'+self.name+'.pdf'), bbox_inches = 'tight')
     
     def evaluate_skymap(self):
     
         inv_J     = inv_Jacobian_distance(self.grid).reshape(len(self.ra), len(self.dec), len(self.dist))
-        log_inv_J = np.log(inv_J)
+        log_inv_J = log_inv_Jacobian_distance(self.grid).reshape(len(self.ra), len(self.dec), len(self.dist))
         
-        p_vol     = super().evaluate_mixture_with_jacobian(celestial_to_cartesian(self.grid)).reshape(len(self.ra), len(self.dec), len(self.dist))
-        log_p_vol = super().evaluate_log_mixture_with_jacobian(celestial_to_cartesian(self.grid)).reshape(len(self.ra), len(self.dec), len(self.dist))
+        p_vol     = self.evaluate_mixture_with_jacobian(celestial_to_cartesian(self.grid)).reshape(len(self.ra), len(self.dec), len(self.dist))
+        log_p_vol = self.evaluate_log_mixture_with_jacobian(celestial_to_cartesian(self.grid)).reshape(len(self.ra), len(self.dec), len(self.dist))
+
+        self.p_skymap = (p_vol*inv_J*self.dD).sum(axis = -1)
         
-        self.p_skymap     = (p_vol*inv_J*self.dD).sum(axis = -1)
-        self.log_p_skymap = np.log(self.p_skymap - self.p_skymap.min() + np.finfo(np.float64).eps) #FIXME: temporary
-#        self.log_p_skymap = logsumexp((log_p_vol + log_inv_J), axis = -1)
+        norm_skymap = (self.p_skymap.flatten()*np.cos(self.grid2d[:,1])*self.dra*self.ddec).sum()
+        self.p_skymap = self.p_skymap/norm_skymap
         
+        self.log_p_skymap = np.log(self.p_skymap)
+#        self.log_p_skymap = logsumexp((log_p_vol + log_inv_J + np.log(self.dD)), axis = -1) #FIXME: check
+
         self.areas, self.idx_CR, self.heights = ConfidenceArea(self.log_p_skymap, self.dec, self.ra, adLevels = self.levels)
             
-    def make_skymap(self, plot = 'contour'): # 'contour' or 'image'
+    def make_skymap(self):
         self.evaluate_skymap()
         fig = plt.figure()
-        ax = fig.add_subplot(111)#, projection='aitoff')
-        if plot == 'image':
-            c = ax.imshow(self.p_skymap.T, extent = (self.ra.min(), self.ra.max(), self.dec.min(), self.dec.max()), origin = 'lower', aspect = 'auto')
-        if plot == 'contour':
-            c = ax.contourf(self.ra_2d, self.dec_2d, self.p_skymap.T, 990)
-            c1 = ax.contour(self.ra_2d, self.dec_2d, self.log_p_skymap.T, np.sort(self.heights))
-
+        ax = fig.add_subplot(111)#, projection='mollweide')
+        c = ax.contourf(self.ra_2d, self.dec_2d, self.p_skymap.T, 990, cmap = 'Reds')
+        c1 = ax.contour(self.ra_2d, self.dec_2d, self.log_p_skymap.T, np.sort(self.heights), colors = 'black', linewidths = 0.7)
+        ax.clabel(c1, fmt = {l:'{0}\\%'.format(100*s) for l,s in zip(c1.levels, self.levels[::-1])}, fontsize = 5)
+        for i in range(len(self.areas)):
+            c1.collections[i].set_label('${0:.0f}\\%'.format(100*self.levels[-i])+ '\ \mathrm{CR}:'+'{0:.1f}'.format(self.areas[-i]) + '\ \mathrm{deg}^2$')
         ax.set_xlabel('$\\alpha$')
         ax.set_ylabel('$\\delta$')
-        plt.colorbar(c, label = '$p(\\alpha,\\delta)$')
+        ax.legend(loc = 0, frameon = False, fontsize = 10, handlelength=0, handletextpad=0)
+        plt.colorbar(c, label = '$p(\\alpha,\\delta)$', orientation='horizontal')
         fig.savefig(Path(self.skymap_folder, self.name+'.pdf'), bbox_inches = 'tight')
     
     def save_density(self):
@@ -346,4 +349,4 @@ class VolumeReconstruction(mixture):
         self.save_density()
 
     def evaluate_density(self, x):
-        return super().evaluate_mixture(celestial_to_cartesian(x))
+        return self.evaluate_mixture(celestial_to_cartesian(x))
