@@ -324,11 +324,13 @@ class VolumeReconstruction(mixture):
             
     def make_skymap(self, plot = 'contour'): # 'contour' or 'image'
         self.evaluate_skymap()
-        fig, ax = plt.subplots()
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='aitoff')
         if plot == 'image':
             c = ax.imshow(self.p_skymap.T, extent = (self.ra.min(), self.ra.max(), self.dec.min(), self.dec.max()), origin = 'lower', aspect = 'auto')
         if plot == 'contour':
             c = ax.contourf(self.ra_2d, self.dec_2d, self.p_skymap.T, 990)
+            c1 = ax.contour(self.ra_2d, self.dec_2d, self.log_p_skymap.T, self.heights)
 #        for I, level, h in zip(self.ind_func_CR, self.levels, self.heights):
 #            c = ax.contour(self.ra_2d, self.dec_2d, I.T, levels = np.array([np.exp(h) + self.p_skymap.min()]))#, color = 'white', linewidths = 1.)
 
