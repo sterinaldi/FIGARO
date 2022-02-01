@@ -7,7 +7,7 @@ def FindHeights(args):
 
 def ConfidenceVolume(log_volume_map, distance_grid, dec_grid, ra_grid, adLevels = [0.68, 0.90]):
     # create a normalized cumulative distribution
-    log_volume_map_sorted = np.sort(log_volume_map.flatten())[::-1]
+    log_volume_map_sorted = np.ascontiguousarray(np.sort(log_volume_map.flatten())[::-1])
     log_volume_map_cum = fast_log_cumulative(log_volume_map_sorted)
     
     # find the indeces  corresponding to the given CLs
@@ -33,7 +33,7 @@ def ConfidenceVolume(log_volume_map, distance_grid, dec_grid, ra_grid, adLevels 
 def ConfidenceArea(log_skymap, dec_grid, ra_grid, adLevels = [0.68, 0.90]):
     
     # create a normalized cumulative distribution
-    log_skymap_sorted = np.sort(log_skymap.flatten())[::-1]
+    log_skymap_sorted = np.ascontiguousarray(np.sort(log_skymap.flatten())[::-1])
     log_skymap_cum = fast_log_cumulative(log_skymap_sorted)
     # find the indeces  corresponding to the given CLs
     adLevels = np.ravel([adLevels])

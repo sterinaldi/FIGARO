@@ -316,23 +316,16 @@ class VolumeReconstruction(mixture):
 #        self.log_p_skymap = logsumexp((log_p_vol + log_inv_J), axis = -1)
         
         self.areas, self.idx_CR, self.heights = ConfidenceArea(self.log_p_skymap, self.dec, self.ra, adLevels = self.levels)
-        print(self.idx_CR[0].shape, self.idx_CR[1].shape)
-        self.ind_func_CR = [np.zeros(self.log_p_skymap.shape) for _ in range(len(self.idx_CR))]
-        for I, idx in zip(self.ind_func_CR, self.idx_CR):
-            I[idx] = 1.
-            
             
     def make_skymap(self, plot = 'contour'): # 'contour' or 'image'
         self.evaluate_skymap()
         fig = plt.figure()
-        ax = fig.add_subplot(111, projection='aitoff')
+        ax = fig.add_subplot(111)#, projection='aitoff')
         if plot == 'image':
             c = ax.imshow(self.p_skymap.T, extent = (self.ra.min(), self.ra.max(), self.dec.min(), self.dec.max()), origin = 'lower', aspect = 'auto')
         if plot == 'contour':
             c = ax.contourf(self.ra_2d, self.dec_2d, self.p_skymap.T, 990)
-            c1 = ax.contour(self.ra_2d, self.dec_2d, self.log_p_skymap.T, self.heights)
-#        for I, level, h in zip(self.ind_func_CR, self.levels, self.heights):
-#            c = ax.contour(self.ra_2d, self.dec_2d, I.T, levels = np.array([np.exp(h) + self.p_skymap.min()]))#, color = 'white', linewidths = 1.)
+            c1 = ax.contour(self.ra_2d, self.dec_2d, self.log_p_skymap.T, np.sort(self.heights))
 
         ax.set_xlabel('$\\alpha$')
         ax.set_ylabel('$\\delta$')
