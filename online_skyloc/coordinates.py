@@ -76,3 +76,6 @@ def Jacobian_distance(cartesian_vect):
 
 def inv_Jacobian_distance(celestial_vect):
     return 1/celestial_vect[:,2]
+
+def log_inv_Jacobian_distance(celestial_vect):
+    return -np.log(celestial_vect[:,2])
