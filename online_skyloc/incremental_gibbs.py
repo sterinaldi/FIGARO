@@ -203,7 +203,7 @@ class mixture:
             self.normalise_mixture()
         idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = n_samps)
         ctr = Counter(idx)
-        samples = np.empty(shape = (1,3))
+        samples = np.empty(shape = (1,self.dim))
         for i, n in zip(ctr.keys(), ctr.values()):
             samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n))))
         return samples[1:]
