@@ -56,17 +56,18 @@ def cartesian_to_celestial(cartesian_vect):
 
 def Jacobian(cartesian_vect):
     cartesian_vect = np.atleast_2d(cartesian_vect)
-    d = np.linalg.norm(cartesian_vect, axis = -1)
-    unit = np.array([v/np.linalg.norm(v) for v in cartesian_vect])
-    theta = np.arccos(unit[:,2])
-    return d*d*np.sin(theta)
+    return Jacobian_in_celestial(cartesian_to_celestial(cartesian_vect))
 
 def inv_Jacobian(celestial_vect):
     celestial_vect = np.atleast_2d(celestial_vect)
-    cartesian_vect = celestial_to_cartesian(celestial_vect)
-    detJ = Jacobian(cartesian_vect)
+    detJ = Jacobian_in_celestial(celestial_vect)
     return 1/detJ
     
+def Jacobian_in_celestial(celestial_vect):
+    d = celestial_vect[:,2]
+    theta = celestial_vect[:,1]
+    return d*d*np.cos(theta)
+
 def Jacobian_distance(cartesian_vect):
     cartesian_vect = np.atleast_2d(cartesian_vect)
     d = np.linalg.norm(cartesian_vect, axis = -1)
