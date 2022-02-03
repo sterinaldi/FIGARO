@@ -5,7 +5,7 @@ def FindHeights(args):
     (sortarr,  cumarr, level) = args
     return sortarr[np.abs(cumarr-np.log(level)).argmin()]
 
-def ConfidenceVolume(log_volume_map, distance_grid, dec_grid, ra_grid, adLevels = [0.68, 0.90]):
+def ConfidenceVolume(log_volume_map, ra_grid, dec_grid, distance_grid, adLevels = [0.68, 0.90]):
     # create a normalized cumulative distribution
     log_volume_map_sorted = np.ascontiguousarray(np.sort(log_volume_map.flatten())[::-1])
     log_volume_map_cum = fast_log_cumulative(log_volume_map_sorted)
@@ -24,13 +24,13 @@ def ConfidenceVolume(log_volume_map, distance_grid, dec_grid, ra_grid, adLevels 
         
         (i_ra, i_dec, i_d,) = np.where(log_volume_map>=height)
         volumes.append(np.sum([distance_grid[i_d]**2. *np.cos(dec_grid[i_dec]) * dd * dra * ddec for i_d,i_dec in zip(i_d,i_dec)]))
-        index.append(np.array(i_ra, i_dec, i_d))
+        index.append(np.array([i_ra, i_dec, i_d]).T)
 
     volume_confidence = np.array(volumes)
     
     return volume_confidence, index, adHeights
 
-def ConfidenceArea(log_skymap, dec_grid, ra_grid, adLevels = [0.68, 0.90]):
+def ConfidenceArea(log_skymap, ra_grid, dec_grid, adLevels = [0.68, 0.90]):
     
     # create a normalized cumulative distribution
     log_skymap_sorted = np.ascontiguousarray(np.sort(log_skymap.flatten())[::-1])
