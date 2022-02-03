@@ -6,6 +6,13 @@ from codecs import open
 from os import path
 from distutils.extension import Extension
 import os
+
+if not("LAL_PREFIX" in os.environ):
+    print("No LAL installation found, please install LAL from source or source your LAL installation")
+    exit()
+else:
+    lal_prefix = os.environ.get("LAL_PREFIX")
+    
 try:
     from Cython.Build import cythonize
 except:
@@ -20,21 +27,36 @@ class build_ext(_build_ext):
         __builtins__.__NUMPY_SETUP__ = False
         self.include_dirs.append(numpy.get_include())
 
+lal_includes = lal_prefix+"/include"
+lal_libs = lal_prefix+"/lib"
+
 ext_modules=[
              Extension("online_skyloc.cumulative",
                        sources=[os.path.join("online_skyloc","cumulative.pyx")],
                        libraries=["m"], # Unix-like specific
                        extra_compile_args=["-O3","-ffast-math"],
                        include_dirs=['online_skyloc', numpy.get_include()]
+                       ),
+              Extension("online_skyloc.cosmology",
+                       sources=[os.path.join("online_skyloc","cosmology.pyx")],
+                       libraries=["m", "lal"], # Unix-like specific
+                       extra_compile_args=["-O3","-ffast-math"],
+                       include_dirs=['online_skyloc', numpy.get_include()]
                        )
              ]
              
-ext_modules = cythonize(ext_modules)
+ext_modules = cythonize(ext_modules, compiler_directives={'language_level' : "3"})
 setup(
       name = 'online_skyloc/cumulative',
       ext_modules = cythonize(ext_modules, language_level = "3"),
       include_dirs=[numpy.get_include()]
       )
+setup(
+      name = 'online_skyloc/cosmology',
+      ext_modules = cythonize(ext_modules, language_level = "3"),
+      include_dirs=[numpy.get_include()]
+      )
+
 
 setup(
     name = 'online_skyloc',
