@@ -317,7 +317,7 @@ class VolumeReconstruction(mixture):
     def density_from_samples(self, samples):
         n_samps = len(samples)
         samples_copy = np.copy(samples)
-        for s in tqdm(samples_copy):
+        for s in tqdm(samples_copy, desc=self.name):
             self.add_sample(s)
         self.plot_samples(n_samps, initial_samples = samples)
         self.make_skymap(final_map = True)
