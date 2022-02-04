@@ -28,7 +28,7 @@ def ConfidenceVolume(log_volume_map, ra_grid, dec_grid, distance_grid, adLevels 
 
     volume_confidence = np.array(volumes)
     
-    return volume_confidence, index, adHeights
+    return volume_confidence, index, np.array(adHeights)
 
 def ConfidenceArea(log_skymap, ra_grid, dec_grid, adLevels = [0.68, 0.90]):
     
@@ -51,7 +51,7 @@ def ConfidenceArea(log_skymap, ra_grid, dec_grid, adLevels = [0.68, 0.90]):
         index.append(np.array([i_ra, i_dec]).T)
     area_confidence = np.array(areas)
     
-    return area_confidence, index, adHeights
+    return area_confidence, index, np.array(adHeights)
 
 def ConfidenceDistance(distance_map, distance_grid, adLevels = [0.68, 0.90]):
     dd = np.diff(distance_grid)[0]
