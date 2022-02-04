@@ -293,13 +293,37 @@ class VolumeReconstruction(mixture):
         ax.text2D(0.05, 0.95, vol_str, transform=ax.transAxes)
         ax.set_xlabel('$\\alpha$')
         ax.set_ylabel('$\\delta$')
-        ax.set_zlabel('$D_L\ [\mathrm{Mpc}]$')
         if final_map:
             fig.savefig(Path(self.volume_folder, self.name+'_all.pdf'), bbox_inches = 'tight')
         else:
             fig.savefig(Path(self.volume_folder, self.name+'_{0}'.format(self.n_pts)+'.pdf'), bbox_inches = 'tight')
         plt.close()
-    
+        
+        # 2D galaxy plot
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        c = ax.scatter(self.cat_to_plot_celestial[:,0], self.cat_to_plot_celestial[:,1], c = self.p_cat_to_plot, marker = '+', cmap = 'coolwarm', linewidths= 1)
+        x_lim = ax.get_xlim()
+        y_lim = ax.get_ylim()
+        c1 = ax.contour(self.ra_2d, self.dec_2d, self.log_p_skymap.T, np.sort(self.skymap_heights), colors = 'black', linewidths = 0.5, linestyles = 'solid')
+        if '170817' in self.name:
+            ax.scatter([3.4460944304210703], [-0.40813554930525175], s=80, facecolors='none', edgecolors='g', label = '$\mathrm{NGC4993}$')
+        for i in range(len(self.areas)):
+            c1.collections[i].set_label('${0:.0f}\\%'.format(100*self.levels[-i])+ '\ \mathrm{CR}:'+'{0:.1f}'.format(self.areas[-i]) + '\ \mathrm{deg}^2$')
+        handles, labels = ax.get_legend_handles_labels()
+        patch = mpatches.Patch(color='grey', label='$N_{\mathrm{gal}} =' +'{0}$'.format(len(self.cat_to_plot_celestial)), alpha = 0)
+        handles.append(patch)
+        ax.set_xlabel('$\\alpha$')
+        ax.set_ylabel('$\\delta$')
+        ax.set_xlim(x_lim)
+        ax.set_ylim(y_lim)
+        ax.legend(handles = handles, loc = 0, frameon = False, fontsize = 10, handlelength=0)
+        if final_map:
+            fig.savefig(Path(self.skymap_folder, 'galaxies_'+self.name+'_all.pdf'), bbox_inches = 'tight')
+        else:
+            fig.savefig(Path(self.skymap_folder, 'galaxies_'+self.name+'_{0}'.format(self.n_pts)+'.pdf'), bbox_inches = 'tight')
+        plt.close()
+        
     def make_gif(self):
         files = [f for f in self.gif_folder.glob(self.name + '*' + '.png')]
         path_files = [str(f) for f in files]
