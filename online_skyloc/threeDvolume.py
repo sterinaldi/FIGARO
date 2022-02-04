@@ -47,20 +47,21 @@ def natural_keys(text):
 
 class VolumeReconstruction(mixture):
     def __init__(self, max_dist,
-                       out_folder   = '.',
-                       prior_pars   = None,
-                       alpha0       = 1,
-                       sigma_max    = 0.05,
-                       n_gridpoints = [720, 360, 100], # RA, dec, DL
-                       name         = 'skymap',
-                       labels       = ['$\\alpha$', '$\\delta$', '$D\ [Mpc]$'],
-                       levels       = [0.50, 0.90],
-                       latex        = False,
-                       incr_plot    = False,
-                       glade_file   = None,
-                       cosmology    = {'h': 0.674, 'om': 0.315, 'ol': 0.685},
+                       out_folder     = '.',
+                       prior_pars     = None,
+                       alpha0         = 1,
+                       sigma_max      = 0.05,
+                       n_gridpoints   = [720, 360, 100], # RA, dec, DL
+                       name           = 'skymap',
+                       labels         = ['$\\alpha$', '$\\delta$', '$D\ [Mpc]$'],
+                       levels         = [0.50, 0.90],
+                       latex          = False,
+                       incr_plot      = False,
+                       glade_file     = None,
+                       cosmology      = {'h': 0.674, 'om': 0.315, 'ol': 0.685},
                        n_gal_to_print = 100,
-                       region_to_plot = 0.5
+                       region_to_plot = 0.5,
+                       cat_bound      = 3000,
                        ):
                 
         self.max_dist = max_dist
@@ -98,16 +99,11 @@ class VolumeReconstruction(mixture):
         # Credible regions levels
         self.levels = np.array(levels)
         
-        # Output
-        self.name       = name
-        self.labels     = labels
-        self.out_folder = Path(out_folder).resolve()
-        self.make_folders()
-        
         # Catalog
         self.cosmology = CosmologicalParameters(cosmology['h'], cosmology['om'], cosmology['ol'], 1, 0)
         self.catalog   = None
-        if glade_file is not None and self.max_dist < 3000:
+        self.cat_bound = cat_bound
+        if glade_file is not None and self.max_dist < self.cat_bound:
             self.catalog = self.load_glade(glade_file)
             self.cartesian_catalog = celestial_to_cartesian(self.catalog)
             self.probit_catalog    = transform_to_probit(self.cartesian_catalog, self.bounds)
@@ -119,6 +115,12 @@ class VolumeReconstruction(mixture):
         else:
             self.region = self.levels[0]
     
+        # Output
+        self.name       = name
+        self.labels     = labels
+        self.out_folder = Path(out_folder).resolve()
+        self.make_folders()
+        
     def load_glade(self, glade_file):
         with h5py.File(glade_file, 'r') as f:
             ra  = np.array(f['ra'])
@@ -140,9 +142,10 @@ class VolumeReconstruction(mixture):
         self.skymap_folder = Path(self.out_folder, 'skymaps', self.name)
         if not self.skymap_folder.exists():
             self.skymap_folder.mkdir()
-        self.volume_folder = Path(self.out_folder, 'volume', self.name)
-        if not self.volume_folder.exists():
-            self.volume_folder.mkdir()
+        if self.max_dist < self.cat_bound and self.catalog is not None:
+            self.volume_folder = Path(self.out_folder, 'volume', self.name)
+            if not self.volume_folder.exists():
+                self.volume_folder.mkdir()
         self.catalog_folder = Path(self.out_folder, 'catalogs', self.name)
         if not self.catalog_folder.exists():
             self.catalog_folder.mkdir()
