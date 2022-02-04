@@ -112,7 +112,7 @@ class mixture:
         if prior_pars is not None:
             self.prior = prior(*prior_pars)
         else:
-            self.prior = prior(1e-4, np.identity(self.dim)*0.5, self.dim, np.zeros(self.dim))
+            self.prior = prior(1e-3, np.identity(self.dim)*0.5, self.dim, np.zeros(self.dim))
         self.alpha    = alpha0
         self.mixture  = []
         self.n_cl     = 0
@@ -203,7 +203,7 @@ class mixture:
     def evaluate_mixture_with_jacobian(self, x):
         self.normalise_mixture()
         p = np.sum([w*mn(comp.mu, comp.sigma).pdf(x) for comp, w in zip(self.mixture, self.w)], axis = 0)
-        return p + np.exp(probit_logJ(x, self.bounds))
+        return p * np.exp(-probit_logJ(x, self.bounds))
 
     def _evaluate_log_mixture_in_probit(self, x):
         self.normalise_mixture()
@@ -220,7 +220,7 @@ class mixture:
     def evaluate_log_mixture_with_jacobian(self, x):
         self.normalise_mixture()
         p = logsumexp(np.array([w + mn(comp.mu, comp.sigma).logpdf(x) for comp, w in zip(self.mixture, self.log_w)]), axis = 0)
-        return p + probit_logJ(x, self.bounds)
+        return p - probit_logJ(x, self.bounds)
 
     def save_density(self):
         with open(Path(self.out_folder, 'mixture.pkl'), 'wb') as dill_file:
