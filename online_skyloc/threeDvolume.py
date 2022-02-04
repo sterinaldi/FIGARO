@@ -97,7 +97,10 @@ class VolumeReconstruction(mixture):
         self.inv_J = np.exp(self.log_inv_J)
         
         # Credible regions levels
-        self.levels = np.array(levels)
+        self.levels    = np.array(levels)
+        self.areas_N   = {cr:[] for cr in self.levels}
+        self.volumes_N = {cr:[] for cr in self.levels}
+        self.N         = []
         
         # Catalog
         self.cosmology = CosmologicalParameters(cosmology['h'], cosmology['om'], cosmology['ol'], 1, 0)
@@ -139,7 +142,12 @@ class VolumeReconstruction(mixture):
             Path(self.out_folder, 'volume').mkdir()
         if not Path(self.out_folder, 'catalogs').exists():
             Path(self.out_folder, 'catalogs').mkdir()
+        if not Path(self.out_folder, 'convergence').exists():
+            Path(self.out_folder, 'convergence').mkdir()
         self.skymap_folder = Path(self.out_folder, 'skymaps', self.name)
+        self.convergence_folder = Path(self.out_folder, 'convergence')
+        if not self.convergence_folder.exists():
+            self.convergence_folder.mkdir()
         if not self.skymap_folder.exists():
             self.skymap_folder.mkdir()
         if self.max_dist < self.cat_bound and self.catalog is not None:
@@ -162,10 +170,10 @@ class VolumeReconstruction(mixture):
         cart_x = celestial_to_cartesian(x)
         self.add_new_point(cart_x)
         if self.n_pts == self.next_plot:
+            self.N.append(self.next_plot)
             self.next_plot = 2*self.next_plot
             self.make_skymap()
-            if self.catalog is not None:
-                self.make_volume_map()
+            self.make_volume_map()
     
     def sample_from_volume(self, n_samps):
         samples = self.sample_from_dpgmm(n_samps)
@@ -210,6 +218,8 @@ class VolumeReconstruction(mixture):
                 self.log_p_skymap = logsumexp(self.log_p_vol + np.log(dD), axis = -1)
 
         self.areas, self.skymap_idx_CR, self.skymap_heights = ConfidenceArea(self.log_p_skymap, self.ra, self.dec, adLevels = self.levels)
+        for cr, area in zip(self.levels, self.areas):
+            self.areas_N[cr].append(area)
     
     def evaluate_volume_map(self):
         if not self.volume_already_evaluated:
@@ -230,6 +240,9 @@ class VolumeReconstruction(mixture):
             self.volume_already_evaluated = True
             
         self.volumes, self.idx_CR, self.volume_heights = ConfidenceVolume(self.log_p_vol, self.ra, self.dec, self.dist, adLevels = self.levels)
+        
+        for cr, vol in zip(self.levels, self.volumes):
+            self.volumes_N[cr].append(vol)
         
     def evaluate_catalog(self):
         log_p_cat                  = self._evaluate_log_mixture_in_probit(self.probit_catalog) + self.log_inv_J_cat - self.log_norm_p_vol
@@ -266,6 +279,9 @@ class VolumeReconstruction(mixture):
     
     def make_volume_map(self, final_map = False):
         self.evaluate_volume_map()
+        if self.catalog is None:
+            return
+            
         self.evaluate_catalog()
         
         # Cartesian plot
@@ -295,8 +311,10 @@ class VolumeReconstruction(mixture):
         ax.set_ylabel('$\\delta$')
         if final_map:
             fig.savefig(Path(self.volume_folder, self.name+'_all.pdf'), bbox_inches = 'tight')
+            fig.savefig(Path(self.gif_folder, '3d_'+self.name+'_all.png'), bbox_inches = 'tight')
         else:
             fig.savefig(Path(self.volume_folder, self.name+'_{0}'.format(self.n_pts)+'.pdf'), bbox_inches = 'tight')
+            fig.savefig(Path(self.gif_folder, '3d_'+self.name+'_{0}'.format(self.n_pts)+'.png'), bbox_inches = 'tight')
         plt.close()
         
         # 2D galaxy plot
@@ -325,6 +343,15 @@ class VolumeReconstruction(mixture):
         plt.close()
         
     def make_gif(self):
+        files = [f for f in self.gif_folder.glob('3d_'+self.name + '*' + '.png')]
+        path_files = [str(f) for f in files]
+        path_files.sort(key = natural_keys)
+        images = []
+        for file in path_files:
+            images.append(imageio.imread(file))
+        imageio.mimsave(Path(self.gif_folder, '3d_'+self.name + '.gif'), images, fps = 1)
+        [f.unlink() for f in files]
+
         files = [f for f in self.gif_folder.glob(self.name + '*' + '.png')]
         path_files = [str(f) for f in files]
         path_files.sort(key = natural_keys)
@@ -333,20 +360,53 @@ class VolumeReconstruction(mixture):
             images.append(imageio.imread(file))
         imageio.mimsave(Path(self.gif_folder, self.name + '.gif'), images, fps = 1)
         [f.unlink() for f in files]
+        #FIXME: 3dplot gif
     
     def save_density(self):
         with open(Path(self.density_folder, self.name + '_density.pkl'), 'wb') as dill_file:
             dill.dump(self, dill_file)
-
+    
+    def volume_N_plot(self):
+        
+        output = [self.N]
+        header = 'N '
+        
+        fig, (ax_a, ax_v) = plt.subplots(2,1, sharex = True)
+        
+        for lev in self.levels:
+            vol = self.volumes_N[lev]
+            a   = self.areas_N[lev]
+            output.append(a)
+            output.append(vol)
+            header = header + 'A_{0:.0f} V_{0:.0f} '.format(lev*100)
+            
+            ax_a.plot(self.N, a/a[-1], marker = 's', ls = '--', label = '${0:.0f}\%\ '.format(lev*100)+'\mathrm{CR}$')
+            ax_v.plot(self.N, vol/vol[-1], marker = 's', ls = '--', label = '${0:.0f}\%\ '.format(lev*100)+'\mathrm{CR}$')
+        ax_v.set_ylabel('$V/V_{f}$')
+        ax_a.set_ylabel('$\Omega/\Omega_{f}$')
+        ax_v.set_xlabel('$N_{\mathrm{samples}}$')
+        ax_a.set_xscale('log')
+        ax_v.set_yscale('log')
+        ax_a.set_yscale('log')
+        ax_a.legend(loc = 0, frameon = False, fontsize = 10)
+        ax_v.legend(loc = 0, frameon = False, fontsize = 10)
+        
+        fig.savefig(Path(self.convergence_folder, self.name + '.pdf'), bbox_inches = 'tight')
+        np.savetxt(Path(self.convergence_folder, self.name + '.txt'), np.array(output).T, header = header)
+        
+        fig.close()
+        
     def density_from_samples(self, samples):
         n_samps = len(samples)
         samples_copy = np.copy(samples)
         for s in tqdm(samples_copy, desc=self.name):
             self.add_sample(s)
+        
+        self.save_density()
+        self.N.append(self.n_pts)
         self.plot_samples(n_samps, initial_samples = samples)
         self.make_skymap(final_map = True)
-        if self.catalog is not None:
-            self.make_volume_map(final_map = True)
+        self.make_volume_map(final_map = True)
         self.make_gif()
-        self.save_density()
+        self.volume_N_plot()
 
