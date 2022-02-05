@@ -258,7 +258,8 @@ class VolumeReconstruction(mixture):
         self.evaluate_skymap()
         fig = plt.figure()
         ax = fig.add_subplot(111)
-        c = ax.contourf(self.ra_2d, self.dec_2d, self.p_skymap.T, 990, cmap = 'Reds')
+        c = ax.contourf(self.ra_2d, self.dec_2d, self.p_skymap.T, 500, cmap = 'Reds')
+        ax.set_rasterization_zorder(-10)
         c1 = ax.contour(self.ra_2d, self.dec_2d, self.log_p_skymap.T, np.sort(self.skymap_heights), colors = 'black', linewidths = 0.5, linestyles = 'dashed')
         ax.clabel(c1, fmt = {l:'{0:.0f}%'.format(100*s) for l,s in zip(c1.levels, self.levels[::-1])}, fontsize = 5)
         for i in range(len(self.areas)):
@@ -394,7 +395,7 @@ class VolumeReconstruction(mixture):
         fig.savefig(Path(self.convergence_folder, self.name + '.pdf'), bbox_inches = 'tight')
         np.savetxt(Path(self.convergence_folder, self.name + '.txt'), np.array(output).T, header = header)
         
-        fig.close()
+        plt.close()
         
     def density_from_samples(self, samples):
         n_samps = len(samples)
