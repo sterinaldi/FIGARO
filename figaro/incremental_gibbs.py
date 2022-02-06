@@ -12,7 +12,7 @@ import cpnest
 
 from figaro.decorators import *
 from figaro.transform import *
-from figaro.integral import integrand
+from figaro.integral import integrand, mixture_cython
 
 from numba import jit, njit
 from numba.extending import get_cython_function_address
@@ -97,16 +97,16 @@ def compute_component_suffstats(x, mean, cov, N, mu, sigma, p_mu, p_k, p_nu, p_L
     return new_mean, new_cov, new_N, new_mu, new_sigma
 
 @jit
-def build_mean_cov(x, dim)
-        mean  = np.atleast_2d(x[:dim])
-        corr  = np.identity(self.dim)/2.
-        corr[np.triu_indices(dim, 1)] = x[2*dim:]
-        corr  = corr + corr.T
-        sigma = np.atleast_2d(x[self.dim:2*dim])
-        logP  = -sigma.sum()
-        sigma = sigma*sigma
-        ss    = np.outer(sigma,sigma)
-        cov_mat = ss@corr
+def build_mean_cov(x, dim):
+    mean  = np.atleast_2d(x[:dim])
+    corr  = np.identity(self.dim)/2.
+    corr[np.triu_indices(dim, 1)] = x[2*dim:]
+    corr  = corr + corr.T
+    sigma = np.atleast_2d(x[self.dim:2*dim])
+    logP  = -sigma.sum()
+    sigma = sigma*sigma
+    ss    = np.outer(sigma,sigma)
+    cov_mat = ss@corr
     return mean, cov_mat, logP
 
 #-------------------#
@@ -131,14 +131,9 @@ class component_h:
         self.mu, self.sigma, logP = build_mean_cov(sample, self.dim)
         self.w      = 0.
     
-class mixture:
+class mixture(mixture_cython):
     def __init__(self, means, covs, w, bounds):
-        
-        self.means   = means
-        self.covs    = covs
-        self.w       = w
-        self.log_w   = np.log(w)
-        self.bounds  = bounds
+        super().__cinit__(means, covs, w, bounds)
     
     @probit
     def evaluate_mixture(self, x):
