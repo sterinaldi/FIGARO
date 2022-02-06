@@ -123,12 +123,12 @@ class component:
         self.w     = 0.
 
 class component_h:
-    def __init__(self, x, sample, logL):
+    def __init__(self, x, sample, logL, dim):
+        self.dim    = dim
         self.N      = 1
         self.events = [x]
         self.logL   = logL
-        self.mu     = 0 #FIXME: check sample structure
-        self.sigma  = 0 #FIXME: check sample structure
+        self.mu, self.sigma, logP = build_mean_cov(sample, self.dim)
         self.w      = 0.
     
 class mixture:
@@ -170,7 +170,7 @@ class Integrator(cpnest.model.Model):
         logP = super(Integrator, self).log_prior(x)
         if not np.isfinite(logP):
             return -np.inf
-        self.mean, self.cov_mat, logP_temp = build_mean_cov(x.values)
+        self.mean, self.cov_mat, logP_temp = build_mean_cov(x.values, self.dim)
         logP += logP_temp
         if not np.linalg.slogdet(self.cov_mat)[0] > 0:
             return -np.inf
@@ -371,7 +371,7 @@ class HDPGMM(DPGMM):
         labels, scores = zip(*scores)
         cid = np.random.choice(labels, p=scores)
         if cid == "new":
-            self.mixture.append(component_h(x, samples[cid], logL[cid]))
+            self.mixture.append(component_h(x, samples[cid], logL[cid], self.dim))
             self.n_cl += 1
         else:
             self.mixture[int(cid)] = self.add_datapoint_to_component(x, samples[cid], logL[cid], self.mixture[int(cid)])
@@ -396,6 +396,6 @@ class HDPGMM(DPGMM):
     def add_datapoint_to_component(self, x, sample, logL, ss):
         ss.events.append(x)
         ss.logL = logL
-        ss.mu, ss.sigma, logP = build_mean_cov(sample)
+        ss.mu, ss.sigma, logP = build_mean_cov(sample, self.dim)
         ss.N += 1
         return ss
