@@ -31,42 +31,52 @@ lal_includes = lal_prefix+"/include"
 lal_libs = lal_prefix+"/lib"
 
 ext_modules=[
-             Extension("online_skyloc.cumulative",
-                       sources=[os.path.join("online_skyloc","cumulative.pyx")],
+             Extension("figaro.cumulative",
+                       sources=[os.path.join("figaro","cumulative.pyx")],
                        libraries=["m"], # Unix-like specific
                        extra_compile_args=["-O3","-ffast-math"],
-                       include_dirs=['online_skyloc', numpy.get_include()]
+                       include_dirs=['figaro', numpy.get_include()]
                        ),
-              Extension("online_skyloc.cosmology",
-                       sources=[os.path.join("online_skyloc","cosmology.pyx")],
+              Extension("figaro.cosmology",
+                       sources=[os.path.join("figaro","cosmology.pyx")],
                        libraries=["m", "lal"], # Unix-like specific
                        extra_compile_args=["-O3","-ffast-math"],
-                       include_dirs=['online_skyloc', numpy.get_include()]
+                       include_dirs=['figaro', numpy.get_include()]
+                       ),
+              Extension("figaro.integral",
+                       sources=[os.path.join("figaro","integral.pyx")],
+                       libraries=["m", "lal"], # Unix-like specific
+                       extra_compile_args=["-O3","-ffast-math"],
+                       include_dirs=['figaro', numpy.get_include()]
                        )
              ]
              
 ext_modules = cythonize(ext_modules, compiler_directives={'language_level' : "3"})
 setup(
-      name = 'online_skyloc/cumulative',
+      name = 'figaro/cumulative',
       ext_modules = cythonize(ext_modules, language_level = "3"),
       include_dirs=[numpy.get_include()]
       )
 setup(
-      name = 'online_skyloc/cosmology',
+      name = 'figaro/cosmology',
+      ext_modules = cythonize(ext_modules, language_level = "3"),
+      include_dirs=[numpy.get_include()]
+      )
+setup(
+      name = 'figaro/integral',
       ext_modules = cythonize(ext_modules, language_level = "3"),
       include_dirs=[numpy.get_include()]
       )
 
-
 setup(
-    name = 'online_skyloc',
+    name = 'figaro',
     use_scm_version=True,
-    description = 'Online sky localisation',
+    description = 'FIGARO: Fast Inference for GW Astronomy, Research & Observations',
     author = 'Walter Del Pozzo, Stefano Rinaldi',
     author_email = 'walter.delpozzo@unipi.it, stefano.rinaldi@phd.unipi.it',
     url = 'https://git.ligo.org/stefano.rinaldi/online-localisation',
     python_requires = '>=3.7',
-    packages = ['online_skyloc'],
+    packages = ['figaro'],
     include_dirs = [numpy.get_include()],
     setup_requires=['numpy', 'cython', 'setuptools_scm'],
     entry_points={},
