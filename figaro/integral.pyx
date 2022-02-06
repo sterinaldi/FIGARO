@@ -11,6 +11,20 @@ cdef double LOGSQRT2 = log(sqrt(2*M_PI))
 cdef inline double log_add(double x, double y) nogil: return x+log(1.0+exp(y-x)) if x >= y else y+log(1.0+exp(x-y))
 cdef inline double _scalar_log_norm(double x, double x0, double s) nogil: return -(x-x0)*(x-x0)/(2*s*s) - LOGSQRT2 - 0.5*log(s)
 
+cdef class mixture_cython:
+    def __cinit__(self, np.ndarray[double, ndim = 2, mode = "c"] means,
+                        np.ndarray[double, ndim = 3, mode = "c"] covs,
+                        np.ndarray[double, ndim = 1, mode = "c"] w,
+                        np.ndarray[double, ndim = 2, mode = "c"] bounds,
+                        ):
+        self.means  = means
+        self.covs   = covs
+        self.w      = w
+        self.log_w  = np.log(w)
+        self.bounds = bounds
+    def __reduce__(self):
+        return (mixture_cython, (self.means, self.covs, self.w, self.bounds))
+
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.nonecheck(False)
@@ -34,7 +48,7 @@ cdef double _log_norm(double[:] x, double[:] mu, double[:,:] cov):
     cdef double lognorm      = LOGSQRT2-0.5*np.linalg.slogdet(inv_cov)[1]
     return -lognorm+exponent
              
-def log_norm(np.ndarray x, np.ndarray x0, np.ndarray sigma):
+def log_norm(np.ndarray[double, ndim = 1, mode = "c"] x, np.ndarray[double, ndim = 1, mode = "c"] x0, np.ndarray[double, ndim = 2, mode = "c"] sigma):
     return _log_norm(x, x0, sigma)
 
 def scalar_log_norm(double x, double x0, double s):
@@ -53,9 +67,8 @@ cdef inline double _log_prob_component(np.ndarray mu, np.ndarray mean, np.ndarra
 @cython.cdivision(True)
 cdef double _log_prob_mixture(np.ndarray mu, np.ndarray sigma, dict ev):
     cdef double logP = -HUGE_VAL
-    cdef dict component
-    for component in ev.values():
-        logP = log_add(logP,_log_prob_component(mu, component['mean'], sigma, component['weight']))
+    for comp_mean, comp_weight in zip(ev.means, ev.w):
+        logP = log_add(logP, _log_prob_component(mu, comp_mean, sigma, comp_weight))
     return logP
 
 @cython.boundscheck(False)
