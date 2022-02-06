@@ -8,11 +8,11 @@ from scipy.stats import invwishart, multivariate_t
 from pathlib import Path
 import dill
 
-import cpnest
+import cpnest.model
 
 from figaro.decorators import *
 from figaro.transform import *
-from figaro.integral import integrand, mixture_cython
+from figaro.integral import integrand
 
 from numba import jit, njit
 from numba.extending import get_cython_function_address
@@ -96,17 +96,14 @@ def compute_component_suffstats(x, mean, cov, N, mu, sigma, p_mu, p_k, p_nu, p_L
     
     return new_mean, new_cov, new_N, new_mu, new_sigma
 
-@jit
 def build_mean_cov(x, dim):
     mean  = np.atleast_2d(x[:dim])
-    corr  = np.identity(self.dim)/2.
+    corr  = np.identity(dim)/2.
     corr[np.triu_indices(dim, 1)] = x[2*dim:]
     corr  = corr + corr.T
-    sigma = np.atleast_2d(x[self.dim:2*dim])
-    logP  = -sigma.sum()
-    sigma = sigma*sigma
-    ss    = np.outer(sigma,sigma)
-    cov_mat = ss@corr
+    sigma = np.identity(dim)*x[dim:2*dim]**2
+    logP  = -(x[dim:2*dim]).sum()
+    cov_mat = sigma@corr
     return mean, cov_mat, logP
 
 #-------------------#
@@ -118,8 +115,8 @@ class component:
         self.N     = 1
         self.mean  = x
         self.cov   = np.identity(x.shape[-1])*0.
-        self.mu    = np.atleast_2d((prior.mu*prior.k + self.N*self.mean)/(prior.k + self.N))[0]
-        self.sigma = np.identity(x.shape[-1])*prior.L
+        self.mu    = np.atleast_2d((prior.mu*prior.k + self.N*self.mean)/(prior.k + self.N)).astype(np.float64)[0]
+        self.sigma = np.identity(x.shape[-1]).astype(np.float64)*prior.L
         self.w     = 0.
 
 class component_h:
@@ -131,9 +128,13 @@ class component_h:
         self.mu, self.sigma, logP = build_mean_cov(sample, self.dim)
         self.w      = 0.
     
-class mixture(mixture_cython):
+class mixture:
     def __init__(self, means, covs, w, bounds):
-        super().__cinit__(means, covs, w, bounds)
+        self.means  = means
+        self.covs   = covs
+        self.w      = w
+        self.log_w  = np.log(w)
+        self.bounds = bounds
     
     @probit
     def evaluate_mixture(self, x):
@@ -154,25 +155,25 @@ class prior:
 
 class Integrator(cpnest.model.Model):
     
-    def __init__(self, bounds, events, dim):
+    def __init__(self, events, dim):
         super(Integrator, self).__init__()
         self.events    = events
         self.dim       = dim
         self.names     = ['m{0}'.format(i+1) for i in range(self.dim)] + ['s{0}'.format(i+1) for i in range(self.dim)] + ['r{0}'.format(j) for j in range(int(self.dim*(self.dim-1)/2.))]
-        self.bounds    = [[-20, 20] for _ in range(self.dim)] + [[0.02, 10] for _ in range(self.dim)] + [[-1,1] for _ in range(int(self.dim*(self.dim-1)/2.))]
+        self.bounds    = [[-20, 20] for _ in range(self.dim)] + [[0, 10] for _ in range(self.dim)] + [[-1,1] for _ in range(int(self.dim*(self.dim-1)/2.))]
     
     def log_prior(self, x):
         logP = super(Integrator, self).log_prior(x)
         if not np.isfinite(logP):
             return -np.inf
         self.mean, self.cov_mat, logP_temp = build_mean_cov(x.values, self.dim)
-        logP += logP_temp
+#        logP += logP_temp
         if not np.linalg.slogdet(self.cov_mat)[0] > 0:
             return -np.inf
         return logP
     
     def log_likelihood(self, x):
-        return integrand(self.mean, self.cov_mat, self.events, self.dim)
+        return integrand(self.mean[0], self.cov_mat, self.events, self.dim)
 
 #-------------------#
 # Inference classes #
@@ -325,15 +326,6 @@ class HDPGMM(DPGMM):
                        out_folder = '.'):
 
         super().__init__(bounds = bounds, prior_pars = None, alpha0 = alpha0, out_folder = out_folder)
-        self.integrator = cpnest.CPNest(Integrator([], self.dim),
-                                        verbose = 0,
-                                        nlive   = 200,
-                                        maxmcmc = 1000,
-                                        nensemble = 1,
-                                        output = Path(self.out_folder, 'int_output'),
-                                        )
-        self.integrator.run()
-        self.logL_prior = self.integrator.logZ
     
     def add_new_point(self, ev):
         self.n_pts += 1
@@ -369,22 +361,31 @@ class HDPGMM(DPGMM):
             self.mixture.append(component_h(x, samples[cid], logL[cid], self.dim))
             self.n_cl += 1
         else:
-            self.mixture[int(cid)] = self.add_datapoint_to_component(x, samples[cid], logL[cid], self.mixture[int(cid)])
+            self.mixture[int(cid)] = self.add_datapoint_to_component(x, samples[int(cid)], logL[int(cid)], self.mixture[int(cid)])
         return
 
     def log_predictive_likelihood(self, x, ss):
         if ss == "new":
             events = []
-            logL_D = self.logL_prior
+            logL_D = 0.
         else:
             events = ss.events
             logL_D = ss.logL
         
-        self.integrator.user.events = events
-        self.integrator.run()
+        events.append(x)
         
-        logL_N = self.integrator.logZ
-        sample = self.integrator.posterior_samples[-1][:-2]
+#        self.integrator.user.events = events
+        integrator = cpnest.CPNest(Integrator(events, self.dim),
+                                        verbose = 0,
+                                        nlive   = 200,
+                                        maxmcmc = 5000,
+                                        nensemble = 1,
+                                        output = Path('.'),
+                                        )
+        integrator.run()
+        
+        logL_N = integrator.logZ
+        sample = np.array(integrator.posterior_samples[-1].tolist())[:-2]
         
         return logL_N - logL_D, logL_N, sample
 
@@ -394,3 +395,7 @@ class HDPGMM(DPGMM):
         ss.mu, ss.sigma, logP = build_mean_cov(sample, self.dim)
         ss.N += 1
         return ss
+
+    def density_from_samples(self, events):
+        for ev in events:
+            self.add_new_point(ev)
