@@ -102,9 +102,8 @@ def build_mean_cov(x, dim):
     corr[np.triu_indices(dim, 1)] = x[2*dim:]
     corr  = corr + corr.T
     sigma = np.identity(dim)*x[dim:2*dim]**2
-    logP  = -(x[dim:2*dim]).sum()
     cov_mat = sigma@corr
-    return mean, cov_mat, logP
+    return mean, cov_mat
 
 #-------------------#
 # Auxiliary classes #
@@ -125,7 +124,7 @@ class component_h:
         self.N      = 1
         self.events = [x]
         self.logL   = logL
-        self.mu, self.sigma, logP = build_mean_cov(sample, self.dim)
+        self.mu, self.sigma = build_mean_cov(sample, self.dim)
         self.w      = 0.
     
 class mixture:
@@ -160,14 +159,13 @@ class Integrator(cpnest.model.Model):
         self.events    = events
         self.dim       = dim
         self.names     = ['m{0}'.format(i+1) for i in range(self.dim)] + ['s{0}'.format(i+1) for i in range(self.dim)] + ['r{0}'.format(j) for j in range(int(self.dim*(self.dim-1)/2.))]
-        self.bounds    = [[-20, 20] for _ in range(self.dim)] + [[0, 10] for _ in range(self.dim)] + [[-1,1] for _ in range(int(self.dim*(self.dim-1)/2.))]
+        self.bounds    = [[-20, 20] for _ in range(self.dim)] + [[0, 1] for _ in range(self.dim)] + [[-1,1] for _ in range(int(self.dim*(self.dim-1)/2.))]
     
     def log_prior(self, x):
         logP = super(Integrator, self).log_prior(x)
         if not np.isfinite(logP):
             return -np.inf
-        self.mean, self.cov_mat, logP_temp = build_mean_cov(x.values, self.dim)
-#        logP += logP_temp
+        self.mean, self.cov_mat = build_mean_cov(np.array(x.values), self.dim)
         if not np.linalg.slogdet(self.cov_mat)[0] > 0:
             return -np.inf
         return logP
@@ -371,10 +369,8 @@ class HDPGMM(DPGMM):
         else:
             events = ss.events
             logL_D = ss.logL
-        
+            
         events.append(x)
-        
-#        self.integrator.user.events = events
         integrator = cpnest.CPNest(Integrator(events, self.dim),
                                         verbose = 0,
                                         nlive   = 200,
@@ -383,7 +379,6 @@ class HDPGMM(DPGMM):
                                         output = Path('.'),
                                         )
         integrator.run()
-        
         logL_N = integrator.logZ
         sample = np.array(integrator.posterior_samples[-1].tolist())[:-2]
         
@@ -392,7 +387,7 @@ class HDPGMM(DPGMM):
     def add_datapoint_to_component(self, x, sample, logL, ss):
         ss.events.append(x)
         ss.logL = logL
-        ss.mu, ss.sigma, logP = build_mean_cov(sample, self.dim)
+        ss.mu, ss.sigma = build_mean_cov(sample, self.dim)
         ss.N += 1
         return ss
 
