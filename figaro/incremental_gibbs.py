@@ -4,6 +4,7 @@ from collections import Counter
 from scipy.special import gammaln, logsumexp
 from scipy.stats import multivariate_normal as mn
 from scipy.stats import invwishart, multivariate_t
+from scipy.integrate import dblquad
 
 from pathlib import Path
 import dill
@@ -12,7 +13,8 @@ import cpnest.model
 
 from figaro.decorators import *
 from figaro.transform import *
-from figaro.integral import integrand
+from figaro.integral import integrand, integrand_1d
+from figaro.metropolis import sample_point
 
 from numba import jit, njit
 from numba.extending import get_cython_function_address
@@ -170,8 +172,9 @@ class Integrator(cpnest.model.Model):
         self.events    = events
         self.dim       = dim
         self.names     = ['m{0}'.format(i+1) for i in range(self.dim)] + ['s{0}'.format(i+1) for i in range(self.dim)] + ['r{0}'.format(j) for j in range(int(self.dim*(self.dim-1)/2.))]
-        self.bounds    = [[-20, 20] for _ in range(self.dim)] + [[0, 5] for _ in range(self.dim)] + [[-1,1] for _ in range(int(self.dim*(self.dim-1)/2.))]
+        self.bounds    = [[-20, 20] for _ in range(self.dim)] + [[0, 1] for _ in range(self.dim)] + [[-1,1] for _ in range(int(self.dim*(self.dim-1)/2.))]
         self.prior     = invwishart(df = df, scale = L)
+        self.mu_prior  = -self.dim*np.log(40)
     
     def log_prior(self, x):
         logP = super(Integrator, self).log_prior(x)
@@ -180,7 +183,7 @@ class Integrator(cpnest.model.Model):
         self.mean, self.cov_mat = build_mean_cov(np.array(x.values), self.dim)
         if not np.linalg.slogdet(self.cov_mat)[0] > 0:
             return -np.inf
-        logP = self.prior.logpdf(self.cov_mat)
+        logP = self.prior.logpdf(self.cov_mat) + self.mu_prior
         return logP
     
     def log_likelihood(self, x):
@@ -382,18 +385,22 @@ class HDPGMM(DPGMM):
         else:
             events = ss.events
             logL_D = ss.logL
-            
         events.append(x)
-        integrator = cpnest.CPNest(Integrator(events, self.dim, self.prior.nu, self.prior.L),
-                                        verbose = 0,
-                                        nlive   = 200,
-                                        maxmcmc = 5000,
-                                        nensemble = 1,
-                                        output = Path('.'),
-                                        )
-        integrator.run()
-        logL_N = integrator.logZ
-        sample = np.array(integrator.posterior_samples[-1].tolist())[:-2]
+        
+        if self.dim > 1:
+            integrator = cpnest.CPNest(Integrator(events, self.dim, self.prior.nu, self.prior.L),
+                                            verbose = 0,
+                                            nlive   = 200,
+                                            maxmcmc = 5000,
+                                            nensemble = 1,
+                                            output = Path('.'),
+                                            )
+            integrator.run()
+            logL_N = integrator.logZ
+            sample = np.array(integrator.posterior_samples[-1].tolist())[:-2]
+        else:
+            logL_N, dI = dblquad(integrand_1d, -20, 20, gfun = 0.005, hfun = 1, args = [events, 2, self.prior.L[0,0]]) #FIXME: invgamma
+            sample = sample_point(events, a = 2, b = self.prior.L[0,0])
         
         return logL_N - logL_D, logL_N, sample
 
