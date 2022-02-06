@@ -128,13 +128,15 @@ class component_h:
         self.w      = 0.
     
 class mixture:
-    def __init__(self, means, covs, w, bounds):
+    def __init__(self, means, covs, w, bounds, dim, n_cl):
         self.means  = means
         self.covs   = covs
         self.w      = w
         self.log_w  = np.log(w)
         self.bounds = bounds
-    
+        self.dim    = dim
+        self.n_cl   = n_cl
+
     @probit
     def evaluate_mixture(self, x):
         p = np.sum(np.array([w*mn(mean, cov).pdf(x) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
@@ -145,6 +147,15 @@ class mixture:
         p = logsumexp(np.array([w + mn(mean, cov).logpdf(x) for mean, cov, w in zip(self.means, self.covs, self.log_w)]), axis = 0)
         return p - probit_logJ(x, self.bounds)
 
+    @from_probit
+    def sample_from_dpgmm(self, n_samps):
+        idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = n_samps)
+        ctr = Counter(idx)
+        samples = np.empty(shape = (1,self.dim))
+        for i, n in zip(ctr.keys(), ctr.values()):
+            samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n))))
+        return samples[1:]
+
 class prior:
     def __init__(self, k, L, nu, mu):
         self.k = k
@@ -154,12 +165,13 @@ class prior:
 
 class Integrator(cpnest.model.Model):
     
-    def __init__(self, events, dim):
+    def __init__(self, events, dim, df, L):
         super(Integrator, self).__init__()
         self.events    = events
         self.dim       = dim
         self.names     = ['m{0}'.format(i+1) for i in range(self.dim)] + ['s{0}'.format(i+1) for i in range(self.dim)] + ['r{0}'.format(j) for j in range(int(self.dim*(self.dim-1)/2.))]
-        self.bounds    = [[-20, 20] for _ in range(self.dim)] + [[0, 1] for _ in range(self.dim)] + [[-1,1] for _ in range(int(self.dim*(self.dim-1)/2.))]
+        self.bounds    = [[-20, 20] for _ in range(self.dim)] + [[0, 5] for _ in range(self.dim)] + [[-1,1] for _ in range(int(self.dim*(self.dim-1)/2.))]
+        self.prior     = invwishart(df = df, scale = L)
     
     def log_prior(self, x):
         logP = super(Integrator, self).log_prior(x)
@@ -168,6 +180,7 @@ class Integrator(cpnest.model.Model):
         self.mean, self.cov_mat = build_mean_cov(np.array(x.values), self.dim)
         if not np.linalg.slogdet(self.cov_mat)[0] > 0:
             return -np.inf
+        logP = self.prior.logpdf(self.cov_mat)
         return logP
     
     def log_likelihood(self, x):
@@ -188,7 +201,7 @@ class DPGMM:
         if prior_pars is not None:
             self.prior = prior(*prior_pars)
         else:
-            self.prior = prior(1e-3, np.identity(self.dim)*0.5, self.dim, np.zeros(self.dim))
+            self.prior = prior(1e-3, np.identity(self.dim)*0.3, self.dim, np.zeros(self.dim))
         self.alpha      = alpha0
         self.alpha_0    = alpha0
         self.mixture    = []
@@ -314,7 +327,7 @@ class DPGMM:
         
     def draw_sample(self):
         self.normalise_mixture()
-        return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds)
+        return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl)
 
 
 class HDPGMM(DPGMM):
@@ -371,7 +384,7 @@ class HDPGMM(DPGMM):
             logL_D = ss.logL
             
         events.append(x)
-        integrator = cpnest.CPNest(Integrator(events, self.dim),
+        integrator = cpnest.CPNest(Integrator(events, self.dim, self.prior.nu, self.prior.L),
                                         verbose = 0,
                                         nlive   = 200,
                                         maxmcmc = 5000,
