@@ -269,7 +269,7 @@ class VolumeReconstruction(DPGMM):
         for i in range(len(self.areas)):
             c1.collections[i].set_label('${0:.0f}\\%'.format(100*self.levels[-i])+ '\ \mathrm{CR}:'+'{0:.1f}'.format(self.areas[-i]) + '\ \mathrm{deg}^2$')
         handles, labels = ax.get_legend_handles_labels()
-        patch = mpatches.Patch(color='grey', label='${0}'.format(self.n_pts)+'\ \mathrm{samples}}', alpha = 0)
+        patch = mpatches.Patch(color='grey', label='${0}'.format(self.n_pts)+'\ \mathrm{samples}$', alpha = 0)
         handles.append(patch)
         ax.set_xlabel('$\\alpha$')
         ax.set_ylabel('$\\delta$')
