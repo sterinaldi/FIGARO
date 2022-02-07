@@ -40,12 +40,13 @@ ext_modules=[
               Extension("figaro.cosmology",
                        sources=[os.path.join("figaro","cosmology.pyx")],
                        libraries=["m", "lal"], # Unix-like specific
+                       library_dirs = [lal_libs],
                        extra_compile_args=["-O3","-ffast-math"],
-                       include_dirs=['figaro', numpy.get_include()]
+                       include_dirs=['figaro', lal_includes, numpy.get_include()]
                        ),
               Extension("figaro.integral",
                        sources=[os.path.join("figaro","integral.pyx")],
-                       libraries=["m", "lal"], # Unix-like specific
+                       libraries=["m"], # Unix-like specific
                        extra_compile_args=["-O3","-ffast-math"],
                        include_dirs=['figaro', numpy.get_include()]
                        )
