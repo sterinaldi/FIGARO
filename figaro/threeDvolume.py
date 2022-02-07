@@ -74,10 +74,11 @@ class VolumeReconstruction(DPGMM):
             self.next_plot = 20
         else:
             self.next_plot = np.inf
-
+            
         if latex:
             if find_executable('latex'):
                 rcParams["text.usetex"] = True
+        self.latex = latex
         
         # Grid
         self.ra   = np.linspace(0,2*np.pi, n_gridpoints[0])
@@ -261,11 +262,14 @@ class VolumeReconstruction(DPGMM):
         c = ax.contourf(self.ra_2d, self.dec_2d, self.p_skymap.T, 500, cmap = 'Reds')
         ax.set_rasterization_zorder(-10)
         c1 = ax.contour(self.ra_2d, self.dec_2d, self.log_p_skymap.T, np.sort(self.skymap_heights), colors = 'black', linewidths = 0.5, linestyles = 'dashed')
-        ax.clabel(c1, fmt = {l:'{0:.0f}%'.format(100*s) for l,s in zip(c1.levels, self.levels[::-1])}, fontsize = 5)
+        if self.latex:
+            ax.clabel(c1, fmt = {l:'{0:.0f}\\%'.format(100*s) for l,s in zip(c1.levels, self.levels[::-1])}, fontsize = 5)
+        else:
+            ax.clabel(c1, fmt = {l:'{0:.0f}%'.format(100*s) for l,s in zip(c1.levels, self.levels[::-1])}, fontsize = 5)
         for i in range(len(self.areas)):
             c1.collections[i].set_label('${0:.0f}\\%'.format(100*self.levels[-i])+ '\ \mathrm{CR}:'+'{0:.1f}'.format(self.areas[-i]) + '\ \mathrm{deg}^2$')
         handles, labels = ax.get_legend_handles_labels()
-        patch = mpatches.Patch(color='grey', label='$N_{\mathrm{samples}} =' +'{0}$'.format(self.n_pts), alpha = 0)
+        patch = mpatches.Patch(color='grey', label='${0}'.format(self.n_pts)+'\ \mathrm{samples}}', alpha = 0)
         handles.append(patch)
         ax.set_xlabel('$\\alpha$')
         ax.set_ylabel('$\\delta$')
