@@ -12,7 +12,7 @@ import imageio
 
 import dill
 
-from figaro.incremental_gibbs import DPGMM
+from figaro.mixture import DPGMM
 from figaro.transform import *
 from figaro.coordinates import celestial_to_cartesian, cartesian_to_celestial, inv_Jacobian
 from figaro.credible_regions import ConfidenceArea, ConfidenceVolume
