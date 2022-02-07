@@ -243,7 +243,7 @@ class DPGMM:
             else:
                 ss = self.mixture[i]
             scores[i] = self.log_predictive_likelihood(x, ss)
-            if ss is "new":
+            if ss == "new":
                 scores[i] += np.log(self.alpha)
             else:
                 scores[i] += np.log(ss.N)
@@ -356,7 +356,7 @@ class HDPGMM(DPGMM):
             else:
                 ss = self.mixture[i]
             scores[i], denominators[i], samples[i],  = self.log_predictive_likelihood(x, ss)
-            if ss is "new":
+            if ss == "new":
                 scores[i] += np.log(self.alpha)
             else:
                 scores[i] += np.log(ss.N)
