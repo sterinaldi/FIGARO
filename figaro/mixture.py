@@ -334,7 +334,6 @@ class DPGMM:
 
 
 class HDPGMM(DPGMM):
-
     def __init__(self, bounds,
                        alpha0     = 1.,
                        out_folder = '.'):
@@ -399,7 +398,7 @@ class HDPGMM(DPGMM):
             logL_N = integrator.logZ
             sample = np.array(integrator.posterior_samples[-1].tolist())[:-2]
         else:
-            logL_N, dI = dblquad(integrand_1d, -20, 20, gfun = 0.005, hfun = 1, args = [events, 2, self.prior.L[0,0]]) #FIXME: invgamma
+            logL_N, dI = dblquad(integrand_1d, -20, 20, gfun = 0.005, hfun = 1, args = [events, 2, self.prior.L[0,0]])
             sample = sample_point(events, a = 2, b = self.prior.L[0,0])
         
         return logL_N - logL_D, logL_N, sample
