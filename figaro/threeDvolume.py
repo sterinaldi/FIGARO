@@ -405,7 +405,7 @@ class VolumeReconstruction(DPGMM):
         
         self.save_density()
         self.N.append(self.n_pts)
-        self.plot_samples(n_samps, initial_samples = samples)
+        self.plot_samples(self.n_pts, initial_samples = samples)
         self.make_skymap(final_map = True)
         self.make_volume_map(final_map = True)
         self.make_gif()
