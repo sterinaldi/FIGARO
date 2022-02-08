@@ -369,8 +369,9 @@ class VolumeReconstruction(DPGMM):
         #FIXME: 3dplot gif
     
     def save_density(self):
+        density = self.draw_sample()
         with open(Path(self.density_folder, self.name + '_density.pkl'), 'wb') as dill_file:
-            dill.dump(self, dill_file)
+            dill.dump(density, dill_file)
     
     def volume_N_plot(self):
         
