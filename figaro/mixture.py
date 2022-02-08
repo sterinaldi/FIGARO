@@ -97,6 +97,7 @@ def compute_component_suffstats(x, mean, cov, N, mu, sigma, p_mu, p_k, p_nu, p_L
     
     return new_mean, new_cov, new_N, new_mu, new_sigma
 
+#FIXME: jit
 def compute_t_pars_array(k, mu, nu, L, samples, N, dim):
     # Compute hyperparameters
     k_n, mu_n, nu_n, L_n = compute_hyperpars_array(k, mu, nu, L, samples, N)
@@ -106,26 +107,27 @@ def compute_t_pars_array(k, mu, nu, L, samples, N, dim):
     return t_df, t_shape, mu_n
     
 def compute_hyperpars_array(k, mu, nu, L, samples, N):
-    n_draws = samples.shape[1]
-    k_n  = np.empty(n_draws, dtype = np.float64)
-    nu_n = np.empty(n_draws, dtype = np.float64)
-    mu_n = np.empty(n_draws, dtype = np.ndarray)
-    L_n  = np.empty(n_draws, dtype = np.ndarray)
+    n_draws = samples.shape[0]
+    means = np.mean(samples, axis = 1)
+    if samples.shape[1] > 1:
+        covs  = np.array([np.atleast_2d(np.cov(s, rowvar = False)) for s in samples]) #FIXME: is there a faster way?
+    else:
+        covs  = np.zeros(shape = (n_draws, samples.shape[2], samples.shape[2])) # 1 event: can't estimate covariance
+    return _hyperpars_vect(k, mu, nu, L, means, covs, N, n_draws)
 
-    for i in range(n_draws):
-        mean    = np.mean(samples[:,i,:], axis = 0)
-        S       = np.identity(len(mean))*0.
-        if N > 1:
-            S   = np.cov(samples[:,i,:], rowvar = False)
-        k_n[i], mu_n[i], nu_n[i], L_n[i] = compute_hyperpars(k, mu, nu, L, mean, S, N)
-        mu_n[i] = np.atleast_2d(mu_n[i])
-        
+@jit
+def _hyperpars_vect(k, mu, nu, L, means, covs, N, n_draws):
+    k_n  = (k + N)
+    nu_n = (nu + N)
+    mu_n = (np.atleast_2d(mu)*k + N*means)/k_n
+    L_n  = L*k + covs*N + k*N*((means - mu).T@(means - mu))/k_n
     return k_n, mu_n, nu_n, L_n
-
+    
+#FIXME: jit
 def student_t_array(df, t, mu, sigma, dim, len_t):
     logP = np.zeros(len_t)
     for i in range(len_t):
-        logP[i] = student_t(df = df[0], t = np.atleast_2d(t[i]), mu = mu[i], sigma = sigma[i], dim = dim)
+        logP[i] = student_t(df = df, t = np.atleast_2d(t[i]), mu = np.atleast_2d(mu[i]), sigma = sigma[i], dim = dim)
     return logP
 
 def build_mean_cov(x, dim):
@@ -196,12 +198,10 @@ class mixture:
         ctr = Counter(idx)
         if self.dim > 1:
             samples = np.empty(shape = (1,self.dim))
-            for i, n in zip(ctr.keys(), ctr.values()):
-                samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i]).rvs(size = n))))
         else:
             samples = np.array([np.zeros(1)])
-            for i, n in zip(ctr.keys(), ctr.values()):
-                samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i]).rvs(size = n)).T))
+        for i, n in zip(ctr.keys(), ctr.values()):
+            samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i]).rvs(size = n)).T))
         return np.array(samples[1:])
 
     def _sample_from_dpgmm_probit(self, n_samps):
@@ -209,12 +209,10 @@ class mixture:
         ctr = Counter(idx)
         if self.dim > 1:
             samples = np.empty(shape = (1,self.dim))
-            for i, n in zip(ctr.keys(), ctr.values()):
-                samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i]).rvs(size = n))))
         else:
             samples = np.array([np.zeros(1)])
-            for i, n in zip(ctr.keys(), ctr.values()):
-                samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i]).rvs(size = n)).T))
+        for i, n in zip(ctr.keys(), ctr.values()):
+            samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i]).rvs(size = n)).T))
         return np.array(samples[1:])
 
 class prior:
@@ -397,7 +395,7 @@ class HDPGMM(DPGMM):
                        alpha0     = 1.,
                        out_folder = '.',
                        prior_pars = None,
-                       MC_draws   = 1e4,
+                       MC_draws   = 1e3,
                        ):
         dim = len(bounds)
         if prior_pars == None:
@@ -447,18 +445,18 @@ class HDPGMM(DPGMM):
         else:
             events = ss.events
 
-        samples = [] # np.empty(len(events), dtype = np.ndarray)
-        for i, ev in enumerate(events):
-            s = ev._sample_from_dpgmm_probit(self.MC_draws)
-            samples.append(s)
-            
-        samples = np.array(samples)
-        x_samples = x._sample_from_dpgmm_probit(self.MC_draws)
-
         if ss.N == 0:
-            samples = np.zeros(shape = (2, self.MC_draws, self.dim))
-#        else: #FIXME: check samples shape (I need rows with one sample per event)
-#            samples = np.transpose(samples, (0,2,1)) # each row contains one point per event
+            samples = np.zeros(shape = (self.MC_draws, 1, self.dim))
+        else: #FIXME: check samples shape (I need rows with one sample per event)
+            samples = [] # np.empty(len(events), dtype = np.ndarray)
+            for i, ev in enumerate(events):
+                s = ev._sample_from_dpgmm_probit(self.MC_draws)
+                samples.append(s)
+            samples = np.array(samples)
+            samples = np.transpose(samples, (1,0,2)) # each row contains one point per event
+
+        x_samples = x._sample_from_dpgmm_probit(self.MC_draws)
+        
         t_df, t_shape, mu_n = compute_t_pars_array(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, samples, ss.N, self.dim)
 
         logL = student_t_array(df = t_df, t = x_samples, mu = mu_n, sigma = t_shape, dim = self.dim, len_t = self.MC_draws)
