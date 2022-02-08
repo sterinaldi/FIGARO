@@ -124,8 +124,9 @@ def _hyperpars_vect(k, mu, nu, L, means, covs, N, n_draws):
     return k_n, mu_n, nu_n, L_n
     
 #FIXME: jit
+@jit
 def student_t_array(df, t, mu, sigma, dim, len_t):
-    logP = np.zeros(len_t)
+    logP = np.zeros(len_t, dtype = np.float64)
     for i in range(len_t):
         logP[i] = student_t(df = df, t = np.atleast_2d(t[i]), mu = np.atleast_2d(mu[i]), sigma = sigma[i], dim = dim)
     return logP
@@ -170,7 +171,7 @@ class component_h:
             integrator.run()
             sample = np.array(integrator.posterior_samples[-1].tolist())[:-2]
         self.mu, self.sigma = build_mean_cov(sample, self.dim)
-        self.w      = 0.
+        self.w = 0.
     
 class mixture:
     def __init__(self, means, covs, w, bounds, dim, n_cl):
@@ -198,10 +199,12 @@ class mixture:
         ctr = Counter(idx)
         if self.dim > 1:
             samples = np.empty(shape = (1,self.dim))
+            for i, n in zip(ctr.keys(), ctr.values()):
+                samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i]).rvs(size = n))))
         else:
             samples = np.array([np.zeros(1)])
-        for i, n in zip(ctr.keys(), ctr.values()):
-            samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i]).rvs(size = n)).T))
+            for i, n in zip(ctr.keys(), ctr.values()):
+                samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i]).rvs(size = n)).T))
         return np.array(samples[1:])
 
     def _sample_from_dpgmm_probit(self, n_samps):
@@ -209,10 +212,12 @@ class mixture:
         ctr = Counter(idx)
         if self.dim > 1:
             samples = np.empty(shape = (1,self.dim))
+            for i, n in zip(ctr.keys(), ctr.values()):
+                samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i]).rvs(size = n))))
         else:
             samples = np.array([np.zeros(1)])
-        for i, n in zip(ctr.keys(), ctr.values()):
-            samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i]).rvs(size = n)).T))
+            for i, n in zip(ctr.keys(), ctr.values()):
+                samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i]).rvs(size = n)).T))
         return np.array(samples[1:])
 
 class prior:
@@ -399,7 +404,7 @@ class HDPGMM(DPGMM):
                        ):
         dim = len(bounds)
         if prior_pars == None:
-            prior_pars = (1e-3, np.identity(dim)*0.1, dim, np.zeros(dim))
+            prior_pars = (1e-1, np.identity(dim)*0.05, dim, np.zeros(dim))
         super().__init__(bounds = bounds, prior_pars = prior_pars, alpha0 = alpha0, out_folder = out_folder)
         self.MC_draws = int(MC_draws)
     
