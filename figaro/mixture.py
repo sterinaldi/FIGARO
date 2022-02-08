@@ -13,7 +13,6 @@ import cpnest.model
 
 from figaro.decorators import *
 from figaro.transform import *
-from figaro.integral import integrand, integrand_1d
 from figaro.metropolis import sample_point
 
 from numba import jit, njit
@@ -98,6 +97,37 @@ def compute_component_suffstats(x, mean, cov, N, mu, sigma, p_mu, p_k, p_nu, p_L
     
     return new_mean, new_cov, new_N, new_mu, new_sigma
 
+def compute_t_pars_array(k, mu, nu, L, samples, N, dim):
+    # Compute hyperparameters
+    k_n, mu_n, nu_n, L_n = compute_hyperpars_array(k, mu, nu, L, samples, N)
+    # Update t-parameters
+    t_df    = nu_n - dim + 1
+    t_shape = L_n*(k_n+1)/(k_n*t_df)
+    return t_df, t_shape, mu_n
+    
+def compute_hyperpars_array(k, mu, nu, L, samples, N):
+    n_draws = samples.shape[1]
+    k_n  = np.empty(n_draws, dtype = np.float64)
+    nu_n = np.empty(n_draws, dtype = np.float64)
+    mu_n = np.empty(n_draws, dtype = np.ndarray)
+    L_n  = np.empty(n_draws, dtype = np.ndarray)
+
+    for i in range(n_draws):
+        mean    = np.mean(samples[:,i,:], axis = 0)
+        S       = np.identity(len(mean))*0.
+        if N > 1:
+            S   = np.cov(samples[:,i,:], rowvar = False)
+        k_n[i], mu_n[i], nu_n[i], L_n[i] = compute_hyperpars(k, mu, nu, L, mean, S, N)
+        mu_n[i] = np.atleast_2d(mu_n[i])
+        
+    return k_n, mu_n, nu_n, L_n
+
+def student_t_array(df, t, mu, sigma, dim, len_t):
+    logP = np.zeros(len_t)
+    for i in range(len_t):
+        logP[i] = student_t(df = df[0], t = np.atleast_2d(t[i]), mu = mu[i], sigma = sigma[i], dim = dim)
+    return logP
+
 def build_mean_cov(x, dim):
     mean  = np.atleast_2d(x[:dim])
     corr  = np.identity(dim)/2.
@@ -121,11 +151,22 @@ class component:
         self.w     = 0.
 
 class component_h:
-    def __init__(self, x, sample, logL, dim):
+    def __init__(self, x, dim, prior):
         self.dim    = dim
         self.N      = 1
         self.events = [x]
-        self.logL   = logL
+        if self.dim == 1:
+            sample = sample_point(self.events, a = 2, b = prior.L[0,0])
+        else:
+            integrator = cpnest.CPNest(Integrator(self.events, self.dim, prior.nu, prior.L),
+                                            verbose = 0,
+                                            nlive   = 200,
+                                            maxmcmc = 5000,
+                                            nensemble = 1,
+                                            output = Path('.'),
+                                            )
+            integrator.run()
+            sample = np.array(integrator.posterior_samples[-1].tolist())[:-2]
         self.mu, self.sigma = build_mean_cov(sample, self.dim)
         self.w      = 0.
     
@@ -153,10 +194,28 @@ class mixture:
     def sample_from_dpgmm(self, n_samps):
         idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = n_samps)
         ctr = Counter(idx)
-        samples = np.atleast_2d(np.empty(shape = (1,self.dim)))
-        for i, n in zip(ctr.keys(), ctr.values()):
-            samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i]).rvs(size = n))))
-        return samples[1:]
+        if self.dim > 1:
+            samples = np.empty(shape = (1,self.dim))
+            for i, n in zip(ctr.keys(), ctr.values()):
+                samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i]).rvs(size = n))))
+        else:
+            samples = np.array([np.zeros(1)])
+            for i, n in zip(ctr.keys(), ctr.values()):
+                samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i]).rvs(size = n)).T))
+        return np.array(samples[1:])
+
+    def _sample_from_dpgmm_probit(self, n_samps):
+        idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = n_samps)
+        ctr = Counter(idx)
+        if self.dim > 1:
+            samples = np.empty(shape = (1,self.dim))
+            for i, n in zip(ctr.keys(), ctr.values()):
+                samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i]).rvs(size = n))))
+        else:
+            samples = np.array([np.zeros(1)])
+            for i, n in zip(ctr.keys(), ctr.values()):
+                samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i]).rvs(size = n)).T))
+        return np.array(samples[1:])
 
 class prior:
     def __init__(self, k, L, nu, mu):
@@ -336,9 +395,15 @@ class DPGMM:
 class HDPGMM(DPGMM):
     def __init__(self, bounds,
                        alpha0     = 1.,
-                       out_folder = '.'):
-
-        super().__init__(bounds = bounds, prior_pars = None, alpha0 = alpha0, out_folder = out_folder)
+                       out_folder = '.',
+                       prior_pars = None,
+                       MC_draws   = 1e4,
+                       ):
+        dim = len(bounds)
+        if prior_pars == None:
+            prior_pars = (1e-3, np.identity(dim)*0.1, dim, np.zeros(dim))
+        super().__init__(bounds = bounds, prior_pars = prior_pars, alpha0 = alpha0, out_folder = out_folder)
+        self.MC_draws = int(MC_draws)
     
     def add_new_point(self, ev):
         self.n_pts += 1
@@ -348,14 +413,12 @@ class HDPGMM(DPGMM):
 
     def cluster_assignment_distribution(self, x):
         scores       = {}
-        samples      = {}
-        denominators = {}
         for i in list(np.arange(self.n_cl)) + ["new"]:
             if i == "new":
                 ss = "new"
             else:
                 ss = self.mixture[i]
-            scores[i], denominators[i], samples[i],  = self.log_predictive_likelihood(x, ss)
+            scores[i] = self.log_predictive_likelihood(x, ss)
             if ss == "new":
                 scores[i] += np.log(self.alpha)
             else:
@@ -363,31 +426,52 @@ class HDPGMM(DPGMM):
         scores = {cid: np.exp(score) for cid, score in scores.items()}
         normalization = 1/sum(scores.values())
         scores = {cid: score*normalization for cid, score in scores.items()}
-        return scores, samples, denominators
+        return scores
 
     def assign_to_cluster(self, x):
-        scores, samples, logL = self.cluster_assignment_distribution(x)
-        scores = scores.items()
+        scores = self.cluster_assignment_distribution(x).items()
         labels, scores = zip(*scores)
         cid = np.random.choice(labels, p=scores)
         if cid == "new":
-            self.mixture.append(component_h(x, samples[cid], logL[cid], self.dim))
+            self.mixture.append(component_h(x, self.dim, self.prior))
             self.n_cl += 1
         else:
-            self.mixture[int(cid)] = self.add_datapoint_to_component(x, samples[int(cid)], logL[int(cid)], self.mixture[int(cid)])
+            self.mixture[int(cid)] = self.add_datapoint_to_component(x, self.mixture[int(cid)])
         return
 
     def log_predictive_likelihood(self, x, ss):
         if ss == "new":
+            ss = component(np.zeros(self.dim), prior = self.prior)
             events = []
-            logL_D = 0.
+            ss.N = 0.
         else:
             events = ss.events
-            logL_D = ss.logL
-        events.append(x)
+
+        samples = [] # np.empty(len(events), dtype = np.ndarray)
+        for i, ev in enumerate(events):
+            s = ev._sample_from_dpgmm_probit(self.MC_draws)
+            samples.append(s)
+            
+        samples = np.array(samples)
+        x_samples = x._sample_from_dpgmm_probit(self.MC_draws)
+
+        if ss.N == 0:
+            samples = np.zeros(shape = (2, self.MC_draws, self.dim))
+#        else: #FIXME: check samples shape (I need rows with one sample per event)
+#            samples = np.transpose(samples, (0,2,1)) # each row contains one point per event
+        t_df, t_shape, mu_n = compute_t_pars_array(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, samples, ss.N, self.dim)
+
+        logL = student_t_array(df = t_df, t = x_samples, mu = mu_n, sigma = t_shape, dim = self.dim, len_t = self.MC_draws)
+        logL = logsumexp(logL) - np.log(self.MC_draws)
         
-        if self.dim > 1:
-            integrator = cpnest.CPNest(Integrator(events, self.dim, self.prior.nu, self.prior.L),
+        return logL
+
+    def add_datapoint_to_component(self, x, ss):
+        ss.events.append(x)
+        if self.dim == 1:
+            sample = sample_point(ss.events, a = 2, b = self.prior.L[0,0])
+        else:
+            integrator = cpnest.CPNest(Integrator(ss.events, self.dim, self.prior.nu, self.prior.L),
                                             verbose = 0,
                                             nlive   = 200,
                                             maxmcmc = 5000,
@@ -395,17 +479,8 @@ class HDPGMM(DPGMM):
                                             output = Path('.'),
                                             )
             integrator.run()
-            logL_N = integrator.logZ
             sample = np.array(integrator.posterior_samples[-1].tolist())[:-2]
-        else:
-            logL_N, dI = dblquad(integrand_1d, -20, 20, gfun = 0.005, hfun = 1, args = [events, 2, self.prior.L[0,0]])
-            sample = sample_point(events, a = 2, b = self.prior.L[0,0])
-        
-        return logL_N - logL_D, logL_N, sample
 
-    def add_datapoint_to_component(self, x, sample, logL, ss):
-        ss.events.append(x)
-        ss.logL = logL
         ss.mu, ss.sigma = build_mean_cov(sample, self.dim)
         ss.N += 1
         return ss
