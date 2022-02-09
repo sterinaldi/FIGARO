@@ -55,8 +55,8 @@ cdef double _log_prob_component(np.ndarray[double, ndim = 1, mode = "c"] mu, np.
 @cython.cdivision(True)
 cdef double _log_prob_mixture(np.ndarray[double, ndim = 1, mode = "c"] mu, np.ndarray[double, ndim = 2, mode = "c"] sigma, object ev):
     cdef double logP = -HUGE_VAL
-    for comp_mean, comp_weight in zip(ev.means, ev.w):
-        logP = log_add(logP, _log_prob_component(mu, comp_mean, sigma, comp_weight))
+    for comp_mean, comp_cov, comp_weight in zip(ev.means, ev.covs, ev.w):
+        logP = log_add(logP, _log_prob_component(mu, comp_mean, sigma + comp_cov, comp_weight))
     return logP
 
 @cython.boundscheck(False)
@@ -91,8 +91,8 @@ cdef double _log_prob_component_1d(double mu, double mean, double sigma, double 
 @cython.cdivision(True)
 cdef double _log_prob_mixture_1d(double mu, double var, object ev):
     cdef double logP = -HUGE_VAL
-    for comp_mean, comp_weight in zip(ev.means, ev.w):
-        logP = log_add(logP, _log_prob_component_1d(mu, comp_mean[0], var, comp_weight))
+    for comp_mean, comp_cov, comp_weight in zip(ev.means, ev.covs, ev.w):
+        logP = log_add(logP, _log_prob_component_1d(mu, comp_mean[0], np.sqrt(var**2 + comp_cov[0,0]), comp_weight))
     return logP
 
 @cython.boundscheck(False)
@@ -113,5 +113,9 @@ def integrand_1d(double var, double mean, list events, double a, double b):
 def log_integrand_1d(double mean, double var, list events, double a, double b):
     return _integrand_1d(mean, var, events, a, b)
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.nonecheck(False)
+@cython.cdivision(True)
 cdef double _log_invgamma(double var, double a, double b):
     return a*np.log(b) - (a+1)*np.log(var**2) - b/var**2 - gammaln(a)
