@@ -3,8 +3,7 @@ from collections import Counter
 
 from scipy.special import gammaln, logsumexp
 from scipy.stats import multivariate_normal as mn
-from scipy.stats import invwishart, multivariate_t
-from scipy.integrate import dblquad
+from scipy.stats import invwishart
 
 from pathlib import Path
 import dill
@@ -30,6 +29,13 @@ gammaln_float64 = functype(addr)
 #-----------#
 # Functions #
 #-----------#
+
+@jit
+def log_add(x, y):
+     if x >= y:
+        return x+np.log1p(np.exp(y-x))
+     else:
+        return y+np.log1p(np.exp(x-y))
 
 @njit
 def numba_gammaln(x):
@@ -123,12 +129,11 @@ def _hyperpars_vect(k, mu, nu, L, means, covs, N, n_draws):
     L_n  = L*k + covs*N + k*N*((means - mu).T@(means - mu))/k_n
     return k_n, mu_n, nu_n, L_n
     
-#FIXME: jit
 @jit
 def student_t_array(df, t, mu, sigma, dim, len_t):
-    logP = np.zeros(len_t, dtype = np.float64)
+    logP = -np.inf
     for i in range(len_t):
-        logP[i] = student_t(df = df, t = np.atleast_2d(t[i]), mu = np.atleast_2d(mu[i]), sigma = sigma[i], dim = dim)
+        logP = log_add(logP, student_t(df = df, t = np.atleast_2d(t[i]), mu = np.atleast_2d(mu[i]), sigma = sigma[i], dim = dim))
     return logP
 
 def build_mean_cov(x, dim):
@@ -464,8 +469,7 @@ class HDPGMM(DPGMM):
         
         t_df, t_shape, mu_n = compute_t_pars_array(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, samples, ss.N, self.dim)
 
-        logL = student_t_array(df = t_df, t = x_samples, mu = mu_n, sigma = t_shape, dim = self.dim, len_t = self.MC_draws)
-        logL = logsumexp(logL) - np.log(self.MC_draws)
+        logL = student_t_array(df = t_df, t = x_samples, mu = mu_n, sigma = t_shape, dim = self.dim, len_t = self.MC_draws) - np.log(self.MC_draws)
         
         return logL
 
