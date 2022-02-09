@@ -349,25 +349,24 @@ class VolumeReconstruction(DPGMM):
         
     def make_gif(self):
         files = [f for f in self.gif_folder.glob('3d_'+self.name + '*' + '.png')]
-        if len(files) > 0:
+        if len(files) > 1:
             path_files = [str(f) for f in files]
             path_files.sort(key = natural_keys)
             images = []
             for file in path_files:
                 images.append(imageio.imread(file))
             imageio.mimsave(Path(self.gif_folder, '3d_'+self.name + '.gif'), images, fps = 1)
-            [f.unlink() for f in files]
-
-        files = [f for f in self.gif_folder.glob(self.name + '*' + '.png')]
-        path_files = [str(f) for f in files]
-        path_files.sort(key = natural_keys)
-        images = []
-        for file in path_files:
-            images.append(imageio.imread(file))
-        imageio.mimsave(Path(self.gif_folder, self.name + '.gif'), images, fps = 1)
         [f.unlink() for f in files]
-        #FIXME: 3dplot gif
-    
+        if len(files) > 1:
+            files = [f for f in self.gif_folder.glob(self.name + '*' + '.png')]
+            path_files = [str(f) for f in files]
+            path_files.sort(key = natural_keys)
+            images = []
+            for file in path_files:
+                images.append(imageio.imread(file))
+            imageio.mimsave(Path(self.gif_folder, self.name + '.gif'), images, fps = 1)
+        [f.unlink() for f in files]
+        
     def save_density(self):
         density = self.draw_sample()
         with open(Path(self.density_folder, self.name + '_density.pkl'), 'wb') as dill_file:
