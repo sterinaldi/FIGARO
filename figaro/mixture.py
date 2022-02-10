@@ -276,14 +276,13 @@ class DPGMM:
         self.N_list     = []
         self.n_cl       = 0
         self.n_pts      = 0
-        self.normalised = False
     
     def initialise(self):
         self.alpha = self.alpha_0
         self.mixture  = []
+        self.N_list   = []
         self.n_cl     = 0
         self.n_pts    = 0
-        self.normalised = False
         
     def add_datapoint_to_component(self, x, ss):
         new_mean, new_cov, new_N, new_mu, new_sigma = compute_component_suffstats(x, ss.mean, ss.cov, ss.N, ss.mu, ss.sigma, self.prior.mu, self.prior.k, self.prior.nu, self.prior.L)
