@@ -17,6 +17,6 @@ def sample_point(events, m_min = -20, m_max = 20, s_min = 0, s_max = 1, burnin =
         else:
             log_new = log_integrand_1d(new_point[0], new_point[1], events, a, b)
             log_old = log_integrand_1d(old_point[0], old_point[1], events, a, b)
-        if log_new > log_old:
+        if log_new - log_old > np.log(uniform()):
             old_point = new_point
     return np.array([old_point[0], old_point[1]])
