@@ -341,7 +341,7 @@ class DPGMM:
     @probit
     def add_new_point(self, x):
         self.n_pts += 1
-        self.assign_to_cluster(x)
+        self.assign_to_cluster(np.atleast_2d(x))
         self.alpha = update_alpha(self.alpha, self.n_pts, self.n_cl)
     
     @from_probit
