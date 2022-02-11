@@ -14,7 +14,7 @@ from figaro.decorators import *
 from figaro.transform import *
 from figaro.metropolis import sample_point
 
-from numba import jit, njit
+from numba import jit, njit, prange
 from numba.extending import get_cython_function_address
 import ctypes
 
@@ -41,18 +41,38 @@ def log_add(x, y):
 def numba_gammaln(x):
     return gammaln_float64(x)
 
+@njit
+def inv_jit(M):
+  return np.linalg.inv(M)
+
+@njit
+def logdet_jit(M):
+    return np.log(np.linalg.det(M))
+
+@njit
+def triple_product(v, M, n):
+    res = np.zeros(1, dtype = np.float64)
+    for i in prange(n):
+        for j in prange(n):
+            res = res + M[i,j]*v[i]*v[j]
+    return res
+
 @jit
 def student_t(df, t, mu, sigma, dim):
     """
     http://gregorygundersen.com/blog/2020/01/20/multivariate-t/
     """
-    vals, vecs = np.linalg.eigh(sigma)
-    logdet     = np.log(vals).sum()
-    valsinv    = np.array([1./v for v in vals])
-    U          = vecs * np.sqrt(valsinv)
-    dev        = t - mu
-    maha       = np.square(np.dot(dev, U)).sum(axis=-1)
+#    vals, vecs = np.linalg.eigh(sigma)
+#    logdet     = np.log(vals).sum()
+#    valsinv    = np.array([1./v for v in vals])
+#    U          = vecs * np.sqrt(valsinv)
+#    dev        = t - mu
+#    maha       = np.square(np.dot(dev, U)).sum(axis=-1)
 
+    inv = inv_jit(sigma)
+    logdet = logdet_jit(sigma)
+    maha = triple_product(t-mu, inv, dim)
+    
     x = 0.5 * (df + dim)
     A = numba_gammaln(x)
     B = numba_gammaln(0.5 * df)
@@ -63,10 +83,10 @@ def student_t(df, t, mu, sigma, dim):
     return (A - B - C - D + E)[0]
 
 @jit
-def update_alpha(alpha, n, K, burnin = 100):
+def update_alpha(alpha, n, K, burnin = 1000):
     a_old = alpha
     n_draws = burnin+np.random.randint(100)
-    for i in range(n_draws):
+    for i in prange(n_draws):
         a_new = a_old + (np.random.random() - 0.5)
         if a_new > 0.:
             logP_old = numba_gammaln(a_old) - numba_gammaln(a_old + n) + K * np.log(a_old) - 1./a_old
@@ -132,7 +152,7 @@ def _hyperpars_vect(k, mu, nu, L, means, covs, N, n_draws):
 @jit
 def student_t_array(df, t, mu, sigma, dim, len_t):
     logP = -np.inf
-    for i in range(len_t):
+    for i in prange(len_t):
         logP = log_add(logP, student_t(df = df, t = np.atleast_2d(t[i]), mu = np.atleast_2d(mu[i]), sigma = sigma[i], dim = dim))
     return logP
 
