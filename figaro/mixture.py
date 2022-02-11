@@ -62,13 +62,6 @@ def student_t(df, t, mu, sigma, dim):
     """
     http://gregorygundersen.com/blog/2020/01/20/multivariate-t/
     """
-#    vals, vecs = np.linalg.eigh(sigma)
-#    logdet     = np.log(vals).sum()
-#    valsinv    = np.array([1./v for v in vals])
-#    U          = vecs * np.sqrt(valsinv)
-#    dev        = t - mu
-#    maha       = np.square(np.dot(dev, U)).sum(axis=-1)
-
     inv = inv_jit(sigma)
     logdet = logdet_jit(sigma)
     maha = triple_product(t-mu, inv, dim)
@@ -178,14 +171,22 @@ class component:
         self.sigma = np.identity(x.shape[-1]).astype(np.float64)*prior.L
 
 class component_h:
-    def __init__(self, x, dim, prior):
+    def __init__(self, x, dim, prior, MC_draws):
         self.dim    = dim
         self.N      = 1
         self.events = [x]
+                
+        draws = []
+        for i, ev in enumerate(self.events):
+            s = ev._sample_from_dpgmm_probit(MC_draws)
+            draws.append(s)
+        draws = np.array(draws)
+        draws = np.transpose(draws, (1,0,2))
+        
         if self.dim == 1:
-            sample = sample_point(self.events, a = 2, b = prior.L[0,0])
+            sample = sample_point(draws, a = 2, b = prior.L[0,0])
         else:
-            integrator = cpnest.CPNest(Integrator(self.events, self.dim, prior.nu, prior.L),
+            integrator = cpnest.CPNest(Integrator(self.events, draws, self.dim, prior.nu, prior.L),
                                             verbose = 0,
                                             nlive   = 200,
                                             maxmcmc = 5000,
@@ -215,6 +216,14 @@ class mixture:
     def evaluate_log_mixture(self, x):
         p = logsumexp(np.array([w + mn(mean, cov).logpdf(x) for mean, cov, w in zip(self.means, self.covs, self.log_w)]), axis = 0)
         return p - probit_logJ(x, self.bounds)
+        
+    def _evaluate_mixture_in_probit(self, x):
+        p = np.sum(np.array([w*mn(mean, cov).pdf(x) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
+        return p
+
+    def _evaluate_log_mixture_in_probit(self, x):
+        p = logsumexp(np.array([w + mn(mean, cov).logpdf(x) for mean, cov, w in zip(self.means, self.covs, self.log_w)]), axis = 0)
+        return p
 
     @from_probit
     def sample_from_dpgmm(self, n_samps):
@@ -450,7 +459,7 @@ class HDPGMM(DPGMM):
         labels, scores = zip(*scores)
         cid = np.random.choice(labels, p=scores)
         if cid == "new":
-            self.mixture.append(component_h(x, self.dim, self.prior))
+            self.mixture.append(component_h(x, self.dim, self.prior, self.MC_draws))
             self.N_list.append(1.)
             self.n_cl += 1
         else:
@@ -491,10 +500,18 @@ class HDPGMM(DPGMM):
 
     def add_datapoint_to_component(self, x, ss):
         ss.events.append(x)
+        
+        draws = []
+        for i, ev in enumerate(ss.events):
+            s = ev._sample_from_dpgmm_probit(self.MC_draws)
+            draws.append(s)
+        draws = np.array(draws)
+        draws = np.transpose(draws, (1,0,2))
+        
         if self.dim == 1:
-            sample = sample_point(ss.events, a = 2, b = self.prior.L[0,0])
+            sample = sample_point(draws, a = 2, b = self.prior.L[0,0])
         else:
-            integrator = cpnest.CPNest(Integrator(ss.events, self.dim, self.prior.nu, self.prior.L),
+            integrator = cpnest.CPNest(Integrator(ss.events, draws, self.dim, self.prior.nu, self.prior.L),
                                             verbose = 0,
                                             nlive   = 200,
                                             maxmcmc = 5000,
