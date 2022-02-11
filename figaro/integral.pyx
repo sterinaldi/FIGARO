@@ -11,7 +11,7 @@ from scipy.special import gammaln
 cdef double LOGSQRT2 = log(sqrt(2*M_PI))
 
 cdef inline double log_add(double x, double y) nogil: return x+log(1.0+exp(y-x)) if x >= y else y+log(1.0+exp(x-y))
-cdef inline double _scalar_log_norm(double x, double x0, double s): return -(x-x0)*(x-x0)/(2*s*s) - LOGSQRT2 - 0.5*log(s)
+cdef inline double _scalar_log_norm(double x, double x0, double s): return -(x-x0)*(x-x0)/(2*s) - LOGSQRT2 - 0.5*log(s)
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
