@@ -12,7 +12,7 @@ import cpnest.model
 
 from figaro.decorators import *
 from figaro.transform import *
-from figaro.metropolis import sample_point
+from figaro.metropolis import sample_point, Integrator
 
 from numba import jit, njit, prange
 from numba.extending import get_cython_function_address
@@ -260,31 +260,7 @@ class prior:
         self.L = L
         self.mu = mu
         self.nu = nu
-
-class Integrator(cpnest.model.Model):
-    
-    def __init__(self, events, dim, df, L):
-        super(Integrator, self).__init__()
-        self.events    = events
-        self.dim       = dim
-        self.names     = ['m{0}'.format(i+1) for i in range(self.dim)] + ['s{0}'.format(i+1) for i in range(self.dim)] + ['r{0}'.format(j) for j in range(int(self.dim*(self.dim-1)/2.))]
-        self.bounds    = [[-20, 20] for _ in range(self.dim)] + [[0, 1] for _ in range(self.dim)] + [[-1,1] for _ in range(int(self.dim*(self.dim-1)/2.))]
-        self.prior     = invwishart(df = df, scale = L)
-        self.mu_prior  = -self.dim*np.log(40)
-    
-    def log_prior(self, x):
-        logP = super(Integrator, self).log_prior(x)
-        if not np.isfinite(logP):
-            return -np.inf
-        self.mean, self.cov_mat = build_mean_cov(np.array(x.values), self.dim)
-        if not np.linalg.slogdet(self.cov_mat)[0] > 0:
-            return -np.inf
-        logP = self.prior.logpdf(self.cov_mat) + self.mu_prior
-        return logP
-    
-    def log_likelihood(self, x):
-        return integrand(self.mean[0], self.cov_mat, self.events, self.dim)
-
+        
 #-------------------#
 # Inference classes #
 #-------------------#
@@ -516,7 +492,7 @@ class HDPGMM(DPGMM):
         if self.dim == 1:
             sample = sample_point(means, sigmas, a = 2, b = self.prior.L[0,0])
         else:
-            integrator = cpnest.CPNest(Integrator(ss.events, draws, self.dim, self.prior.nu, self.prior.L),
+            integrator = cpnest.CPNest(Integrator(means, sigmas, self.dim, self.prior.nu, self.prior.L),
                                             verbose = 0,
                                             nlive   = 200,
                                             maxmcmc = 5000,
