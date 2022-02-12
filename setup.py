@@ -44,12 +44,6 @@ ext_modules=[
                        extra_compile_args=["-O3","-ffast-math"],
                        include_dirs=['figaro', lal_includes, numpy.get_include()]
                        ),
-              Extension("figaro.integral",
-                       sources=[os.path.join("figaro","integral.pyx")],
-                       libraries=["m"], # Unix-like specific
-                       extra_compile_args=["-O3","-ffast-math"],
-                       include_dirs=['figaro', numpy.get_include()]
-                       )
              ]
              
 ext_modules = cythonize(ext_modules, compiler_directives={'language_level' : "3"})
@@ -60,11 +54,6 @@ setup(
       )
 setup(
       name = 'figaro/cosmology',
-      ext_modules = cythonize(ext_modules, language_level = "3"),
-      include_dirs=[numpy.get_include()]
-      )
-setup(
-      name = 'figaro/integral',
       ext_modules = cythonize(ext_modules, language_level = "3"),
       include_dirs=[numpy.get_include()]
       )
