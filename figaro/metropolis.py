@@ -29,7 +29,8 @@ def propose_point(old_point, dm, ds):
     s = old_point[1] + (np.random.rand() - 0.5)*2*ds
     return np.array([m,s])
 
-def sample_point(samples, m_min = -20, m_max = 20, s_min = 0, s_max = 1, burnin = 500, dm = 1, ds = 0.05, a = 1, b = 0.2):
+@jit
+def sample_point(means, sigmas, m_min = -20, m_max = 20, s_min = 0, s_max = 1, burnin = 1000, dm = 1, ds = 0.05, a = 1, b = 0.2):
     old_point = np.array([m_min + np.random.rand()*m_max, s_min + np.random.rand()*s_max])
     for i in range(burnin):
         new_point = propose_point(old_point, dm, ds)
@@ -37,19 +38,18 @@ def sample_point(samples, m_min = -20, m_max = 20, s_min = 0, s_max = 1, burnin 
             log_new = -np.inf
             log_old = 0.
         else:
-            log_new = log_integrand_1d(new_point[0], new_point[1], samples, a, b)
-            log_old = log_integrand_1d(old_point[0], old_point[1], samples, a, b)
-        if log_new > log_old:# > np.log(np.random.rand()):
+            log_new = log_integrand_1d(new_point[0], new_point[1], means, sigmas, a, b)
+            log_old = log_integrand_1d(old_point[0], old_point[1], means, sigmas, a, b)
+        if log_new > log_old:
             old_point = new_point
-    return np.array(old_point)
+    return old_point
 
 @jit
-def log_integrand_1d(mu, sigma, samples, a, b):
+def log_integrand_1d(mu, sigma, means, sigmas, a, b):
     logP = -np.inf
-    for i in prange(len(samples)):
-        ss = samples[i].flatten()
-        logP = log_add(logP, log_norm(ss, mu, sigma).sum())
-    return logP  - np.log(len(samples)) + log_invgamma(sigma, a, b)
+    for i in prange(len(means)):
+        logP = log_add(logP, log_norm(means[i][0], mu, np.sqrt(sigmas[i] + sigma**2)))
+    return logP + log_invgamma(sigma, a, b)
 
 @jit
 def log_invgamma(var, a, b):

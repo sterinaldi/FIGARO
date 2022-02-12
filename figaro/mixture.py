@@ -176,15 +176,17 @@ class component_h:
         self.N      = 1
         self.events = [x]
                 
-        draws = []
+        means  = []
+        sigmas = []
         for i, ev in enumerate(self.events):
             s = ev._sample_from_dpgmm_probit(MC_draws)
-            draws.append(s)
-        draws = np.array(draws)
-        draws = np.transpose(draws, (1,0,2))
+            means.append(s.mean(axis = 0))
+            sigmas.append(np.cov(s, rowvar = False))
+        means = np.array(means)
+        sigmas = np.array(sigmas)
         
         if self.dim == 1:
-            sample = sample_point(draws, a = 2, b = prior.L[0,0])
+            sample = sample_point(means, sigmas, a = 2, b = prior.L[0,0])
         else:
             integrator = cpnest.CPNest(Integrator(self.events, draws, self.dim, prior.nu, prior.L),
                                             verbose = 0,
@@ -501,15 +503,18 @@ class HDPGMM(DPGMM):
     def add_datapoint_to_component(self, x, ss):
         ss.events.append(x)
         
-        draws = []
+        means  = []
+        sigmas = []
         for i, ev in enumerate(ss.events):
             s = ev._sample_from_dpgmm_probit(self.MC_draws)
-            draws.append(s)
-        draws = np.array(draws)
-        draws = np.transpose(draws, (1,0,2))
+            means.append(s.mean(axis = 0))
+            sigmas.append(np.cov(s, rowvar = False))
+        means = np.array(means)
+        sigmas = np.array(sigmas)
+        
         
         if self.dim == 1:
-            sample = sample_point(draws, a = 2, b = self.prior.L[0,0])
+            sample = sample_point(means, sigmas, a = 2, b = self.prior.L[0,0])
         else:
             integrator = cpnest.CPNest(Integrator(ss.events, draws, self.dim, self.prior.nu, self.prior.L),
                                             verbose = 0,
