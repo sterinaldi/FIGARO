@@ -120,5 +120,5 @@ def log_norm(x, mu, cov):
 def log_integrand(mu, cov, means, sigmas):
     logP = -np.inf
     for i in prange(len(means)):
-        logP = log_add(logP, log_norm(means[i], mu, sigmas[i] + cov)))
+        logP = log_add(logP, log_norm(means[i], mu, sigmas[i] + cov))
     return logP
