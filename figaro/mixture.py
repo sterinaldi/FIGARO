@@ -175,7 +175,10 @@ class component_h:
         self.dim    = dim
         self.N      = 1
         self.events = [x]
-                
+        self.means  = [x.means]
+        self.covs   = [x.covs]
+        self.log_w  = [x.log_w]
+        
 #        means  = []
 #        sigmas = []
 #        for i, ev in enumerate(self.events):
@@ -186,7 +189,7 @@ class component_h:
 #        sigmas = np.array(sigmas)
 #        
         if self.dim == 1:
-            sample = sample_point(self.events, a = 2, b = prior.L[0,0], p_mu = prior.mu, k = prior.k)
+            sample = sample_point(self.means, self.covs, self.log_w, a = 2, b = prior.L[0,0], p_mu = prior.mu, k = prior.k)
         else:
             integrator = cpnest.CPNest(Integrator(self.events, draws, self.dim, prior.nu, prior.L),
                                             verbose = 0,
@@ -478,6 +481,9 @@ class HDPGMM(DPGMM):
 
     def add_datapoint_to_component(self, x, ss):
         ss.events.append(x)
+        ss.means.append(x.means)
+        ss.covs.append(x.covs)
+        ss.log_w.append(x.log_w)
 #
 #        means  = []
 #        sigmas = []
@@ -490,7 +496,7 @@ class HDPGMM(DPGMM):
 #
         
         if self.dim == 1:
-            sample = sample_point(ss.events, a = 2, b = self.prior.L[0,0], p_mu = self.prior.mu, k = self.prior.k)
+            sample = sample_point(ss.means, ss.covs, ss.log_w, a = 2, b = self.prior.L[0,0], p_mu = self.prior.mu, k = self.prior.k)
         else:
             integrator = cpnest.CPNest(Integrator(means, sigmas, self.dim, self.prior.nu, self.prior.L),
                                             verbose = 0,

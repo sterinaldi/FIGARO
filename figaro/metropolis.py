@@ -15,9 +15,9 @@ gammaln_float64 = functype(addr)
 @jit
 def log_add(x, y):
      if x >= y:
-        return x+np.log(1+np.exp(y-x))
+        return x+np.log1p(np.exp(y-x))
      else:
-        return y+np.log(1+np.exp(x-y))
+        return y+np.log1p(np.exp(x-y))
 
 @njit
 def numba_gammaln(x):
@@ -30,7 +30,7 @@ def propose_point(old_point, dm, ds):
     return np.array([m,s])
 
 #@jit
-def sample_point(events, m_min = -20, m_max = 20, s_min = 0, s_max = 1, burnin = 1000, dm = 1, ds = 0.05, a = 2, b = 0.2, p_mu = 0, k = 1):
+def sample_point(means, covs, log_w, m_min = -20, m_max = 20, s_min = 0, s_max = 1, burnin = 1000, dm = 1, ds = 0.05, a = 2, b = 0.2, p_mu = 0, k = 1):
     old_point = np.array([0, 0.02])
     for i in range(burnin):
         new_point = propose_point(old_point, dm, ds)
@@ -38,17 +38,17 @@ def sample_point(events, m_min = -20, m_max = 20, s_min = 0, s_max = 1, burnin =
             log_new = -np.inf
             log_old = 0.
         else:
-            log_new = log_integrand_1d(new_point[0], new_point[1], events, a, b, p_mu, k)
-            log_old = log_integrand_1d(old_point[0], old_point[1], events, a, b, p_mu, k)
+            log_new = log_integrand_1d(new_point[0], new_point[1], means, covs, log_w, a, b, p_mu, k)
+            log_old = log_integrand_1d(old_point[0], old_point[1], means, covs, log_w, a, b, p_mu, k)
         if log_new > log_old:
             old_point = new_point
     return old_point
 
 #@jit
-def log_integrand_1d(mu, sigma, events, a, b, p_mu, k):
+def log_integrand_1d(mu, sigma, means, covs, log_w, a, b, p_mu, k):
     logP = 0
-    for i in range(len(events)):
-        logP += log_prob_mixture(mu, sigma, events[i])
+    for i in range(len(means)):
+        logP += log_prob_mixture(mu, sigma, log_w[i], means[i], covs[i])
     return logP + log_invgamma(sigma, a, b)
 
 @jit
@@ -59,11 +59,11 @@ def log_invgamma(var, a, b):
 def log_norm_1d(x, m, s):
     return -(x-m)**2/(2*s) - 0.5*np.log(2*np.pi) - 0.5*np.log(s)
 
-#@jit
-def log_prob_mixture(mu, sigma, ev):
+@jit
+def log_prob_mixture(mu, sigma, log_w, means, covs):
     logP = -np.inf
-    for i in range(len(ev.means)):
-        logP = log_add(logP, ev.log_w[i] + log_norm_1d(ev.means[i][0], mu, sigma**2 + ev.covs[i][0,0] + (ev.means[i][0] - mu)**2))
+    for i in prange(len(means)):
+        logP = log_add(logP, log_w[i] + log_norm_1d(means[i][0], mu, sigma**2 + covs[i][0,0] + (means[i][0] - mu)**2))
     return logP
 
 class Integrator(cpnest.model.Model):
