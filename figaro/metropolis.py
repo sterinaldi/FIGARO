@@ -3,6 +3,7 @@ import cpnest.model
 from numba import jit, njit, prange
 from numba.extending import get_cython_function_address
 import ctypes
+from scipy.stats import invgamma, invwishart
 
 _PTR = ctypes.POINTER
 _dble = ctypes.c_double
@@ -30,7 +31,7 @@ def propose_point(old_point, dm, ds):
     return np.array([m,s])
 
 #@jit
-def sample_point(means, covs, log_w, m_min = -20, m_max = 20, s_min = 0, s_max = 1, burnin = 1000, dm = 1, ds = 0.05, a = 2, b = 0.2, p_mu = 0, k = 1):
+def sample_point(means, covs, log_w, m_min = -20, m_max = 20, s_min = 0, s_max = 1, burnin = 1000, dm = 1, ds = 0.05, a = 2, b = 0.2):
     old_point = np.array([0, 0.02])
     for i in range(burnin):
         new_point = propose_point(old_point, dm, ds)
@@ -38,17 +39,17 @@ def sample_point(means, covs, log_w, m_min = -20, m_max = 20, s_min = 0, s_max =
             log_new = -np.inf
             log_old = 0.
         else:
-            log_new = log_integrand_1d(new_point[0], new_point[1], means, covs, log_w, a, b, p_mu, k)
-            log_old = log_integrand_1d(old_point[0], old_point[1], means, covs, log_w, a, b, p_mu, k)
+            log_new = log_integrand_1d(new_point[0], new_point[1], means, covs, log_w, a, b)
+            log_old = log_integrand_1d(old_point[0], old_point[1], means, covs, log_w, a, b)
         if log_new > log_old:
             old_point = new_point
     return old_point
 
 #@jit
-def log_integrand_1d(mu, sigma, means, covs, log_w, a, b, p_mu, k):
+def log_integrand_1d(mu, sigma, means, covs, log_w, a, b):
     logP = 0
     for i in range(len(means)):
-        logP += log_prob_mixture(mu, sigma, log_w[i], means[i], covs[i])
+        logP += log_prob_mixture_1d(mu, sigma, log_w[i], means[i], covs[i])
     return logP + log_invgamma(sigma, a, b)
 
 @jit
@@ -59,8 +60,8 @@ def log_invgamma(var, a, b):
 def log_norm_1d(x, m, s):
     return -(x-m)**2/(2*s) - 0.5*np.log(2*np.pi) - 0.5*np.log(s)
 
-@jit
-def log_prob_mixture(mu, sigma, log_w, means, covs):
+#@jit
+def log_prob_mixture_1d(mu, sigma, log_w, means, covs):
     logP = -np.inf
     for i in prange(len(means)):
         logP = log_add(logP, log_w[i] + log_norm_1d(means[i][0], mu, sigma**2 + covs[i][0,0] + (means[i][0] - mu)**2))
@@ -129,3 +130,17 @@ def log_integrand(mu, cov, means, sigmas):
     for i in prange(len(means)):
         logP = log_add(logP, log_norm(means[i], mu, sigmas[i] + cov))
     return logP
+
+def MC_predictive_1d(events, n_samps = 1000, m_min = -5, m_max = 5, a = 2, b = 0.2):
+    means = np.random.uniform(m_min, m_max, size = n_samps)
+    variances = np.sqrt(invgamma(a, b).rvs(size = n_samps))
+    logP = -np.inf
+    for m, s in zip(means, variances):
+        logP_draw = 0.
+        for ev in events:
+            logP_draw += log_prob_mixture_1d(m, s, ev.log_w, ev.means, ev.covs)
+        logP = log_add(logP, logP_draw)
+    return logP - np.log(n_samps)
+
+def MC_predictive(events, n_samps):
+    pass

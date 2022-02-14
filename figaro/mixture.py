@@ -12,7 +12,7 @@ import cpnest.model
 
 from figaro.decorators import *
 from figaro.transform import *
-from figaro.metropolis import sample_point, Integrator
+from figaro.metropolis import sample_point, Integrator, MC_predictive_1d, MC_predictive
 
 from numba import jit, njit, prange
 from numba.extending import get_cython_function_address
@@ -171,13 +171,14 @@ class component:
         self.sigma = np.identity(x.shape[-1]).astype(np.float64)*prior.L
 
 class component_h:
-    def __init__(self, x, dim, prior, MC_draws):
+    def __init__(self, x, dim, prior, MC_draws, logL_D):
         self.dim    = dim
         self.N      = 1
         self.events = [x]
         self.means  = [x.means]
         self.covs   = [x.covs]
         self.log_w  = [x.log_w]
+        self.logL_D = logL_D
         
 #        means  = []
 #        sigmas = []
@@ -189,7 +190,7 @@ class component_h:
 #        sigmas = np.array(sigmas)
 #        
         if self.dim == 1:
-            sample = sample_point(self.means, self.covs, self.log_w, a = 2, b = prior.L[0,0], p_mu = prior.mu, k = prior.k)
+            sample = sample_point(self.means, self.covs, self.log_w, a = 2, b = prior.L[0,0])
         else:
             integrator = cpnest.CPNest(Integrator(self.events, draws, self.dim, prior.nu, prior.L),
                                             verbose = 0,
@@ -411,6 +412,10 @@ class HDPGMM(DPGMM):
             prior_pars = (1e-1, np.identity(dim)*0.05, dim, np.zeros(dim))
         super().__init__(bounds = bounds, prior_pars = prior_pars, alpha0 = alpha0, out_folder = out_folder)
         self.MC_draws = int(MC_draws)
+#        if self.dim == 1:
+#            self.logL_D_prior = MC_predictive_1d([], n_samps = self.MC_draws)
+#        else:
+#            self.logL_D_prior = MC_predictive([], n_samps = self.MC_draws)
     
     def add_new_point(self, ev):
         self.n_pts += 1
@@ -419,13 +424,14 @@ class HDPGMM(DPGMM):
         self.alpha = update_alpha(self.alpha, self.n_pts, self.n_cl)
 
     def cluster_assignment_distribution(self, x):
-        scores       = {}
+        scores = {}
+        logL_N = {}
         for i in list(np.arange(self.n_cl)) + ["new"]:
             if i == "new":
                 ss = "new"
             else:
                 ss = self.mixture[i]
-            scores[i] = self.log_predictive_likelihood(x, ss)
+            scores[i], logL_N[i] = self.log_predictive_likelihood(x, ss)
             if ss == "new":
                 scores[i] += np.log(self.alpha)
             else:
@@ -433,18 +439,19 @@ class HDPGMM(DPGMM):
         scores = {cid: np.exp(score) for cid, score in scores.items()}
         normalization = 1/sum(scores.values())
         scores = {cid: score*normalization for cid, score in scores.items()}
-        return scores
+        return scores, logL_N
 
     def assign_to_cluster(self, x):
-        scores = self.cluster_assignment_distribution(x).items()
+        scores, logL_N = self.cluster_assignment_distribution(x)
+        scores = scores.items()
         labels, scores = zip(*scores)
         cid = np.random.choice(labels, p=scores)
         if cid == "new":
-            self.mixture.append(component_h(x, self.dim, self.prior, self.MC_draws))
+            self.mixture.append(component_h(x, self.dim, self.prior, self.MC_draws, logL_N[cid]))
             self.N_list.append(1.)
             self.n_cl += 1
         else:
-            self.mixture[int(cid)] = self.add_datapoint_to_component(x, self.mixture[int(cid)])
+            self.mixture[int(cid)] = self.add_datapoint_to_component(x, self.mixture[int(cid)], logL_N[int(cid)])
             self.N_list[int(cid)] += 1
             
         # Update weights
@@ -458,45 +465,28 @@ class HDPGMM(DPGMM):
             ss = component(np.zeros(self.dim), prior = self.prior)
             events = []
             ss.N = 0.
+            logL_D = 0.
         else:
             events = ss.events
-
-        if ss.N == 0:
-            samples = np.zeros(shape = (self.MC_draws, 1, self.dim))
-        else: #FIXME: check samples shape (I need rows with one sample per event)
-            samples = []
-            for i, ev in enumerate(events):
-                s = ev._sample_from_dpgmm_probit(self.MC_draws)
-                samples.append(s)
-            samples = np.array(samples)
-            samples = np.transpose(samples, (1,0,2)) # each row contains one point per event
-
-        x_samples = x._sample_from_dpgmm_probit(self.MC_draws)
+            logL_D = ss.logL_D
+            
+        events.append(x)
         
-        t_df, t_shape, mu_n = compute_t_pars_array(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, samples, ss.N, self.dim)
+        if self.dim == 1:
+            logL_N = MC_predictive_1d(events, n_samps = self.MC_draws)
+        else:
+            logL_N = MC_predictive(events, n_samps = self.MC_draws)
+        return logL_N - logL_D, logL_N
 
-        logL = student_t_array(df = t_df, t = x_samples, mu = mu_n, sigma = t_shape, dim = self.dim, len_t = self.MC_draws) - np.log(self.MC_draws)
-        
-        return logL
-
-    def add_datapoint_to_component(self, x, ss):
+    def add_datapoint_to_component(self, x, ss, logL_D):
         ss.events.append(x)
         ss.means.append(x.means)
         ss.covs.append(x.covs)
         ss.log_w.append(x.log_w)
-#
-#        means  = []
-#        sigmas = []
-#        for i, ev in enumerate(ss.events):
-#            s = ev._sample_from_dpgmm_probit(self.MC_draws)
-#            means.append(s.mean(axis = 0))
-#            sigmas.append(np.cov(s, rowvar = False))
-#        means = np.array(means)
-#        sigmas = np.array(sigmas)
-#
+        ss.logL_D = logL_D
         
         if self.dim == 1:
-            sample = sample_point(ss.means, ss.covs, ss.log_w, a = 2, b = self.prior.L[0,0], p_mu = self.prior.mu, k = self.prior.k)
+            sample = sample_point(ss.means, ss.covs, ss.log_w, a = 2, b = self.prior.L[0,0])
         else:
             integrator = cpnest.CPNest(Integrator(means, sigmas, self.dim, self.prior.nu, self.prior.L),
                                             verbose = 0,
