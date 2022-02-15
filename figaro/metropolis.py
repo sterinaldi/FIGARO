@@ -148,9 +148,9 @@ def MC_predictive_1d(events, n_samps = 1000, m_min = -5, m_max = 5, a = 2, b = 0
     logP = logsumexp(logP)
     return logP - np.log(n_samps)
 
-#@jit
+@jit
 def log_prob_mixture_MC(mu, sigma, log_w, means, covs):
-    logP = -np.ones(len(mu))*np.inf
+    logP = -np.ones(len(mu), dtype = np.float64)*np.inf
     for i in prange(len(means)):
         logP = log_add_array(logP, log_w[i] + log_norm_1d(means[i][0], mu, sigma**2 + covs[i][0,0] + (means[i][0] - mu)**2))
     return logP
