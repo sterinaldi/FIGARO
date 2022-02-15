@@ -4,6 +4,7 @@ from numba import jit, njit, prange
 from numba.extending import get_cython_function_address
 import ctypes
 from scipy.stats import invgamma, invwishart
+from scipy.special import logsumexp
 
 _PTR = ctypes.POINTER
 _dble = ctypes.c_double
@@ -20,6 +21,13 @@ def log_add(x, y):
      else:
         return y+np.log1p(np.exp(x-y))
 
+@jit
+def log_add_array(x,y):
+    res = np.zeros(len(x), dtype = np.float64)
+    for i in prange(len(x)):
+        res[i] = log_add(x[i],y[i])
+    return res
+    
 @njit
 def numba_gammaln(x):
     return gammaln_float64(x)
@@ -128,19 +136,32 @@ def log_norm(x, mu, cov):
 def log_integrand(mu, cov, means, sigmas):
     logP = -np.inf
     for i in prange(len(means)):
-        logP = log_add(logP, log_norm(means[i], mu, sigmas[i] + cov))
+        logP = log_add(logP, log_norm(means[i], mu, sigmas[i] + cov + (means[i] - mu).T@(means[i].mu)))
     return logP
 
 def MC_predictive_1d(events, n_samps = 1000, m_min = -5, m_max = 5, a = 2, b = 0.2):
     means = np.random.uniform(m_min, m_max, size = n_samps)
     variances = np.sqrt(invgamma(a, b).rvs(size = n_samps))
+    logP = np.zeros(n_samps, dtype = np.float64)
+    for ev in events:
+        logP += log_prob_mixture_MC(means, variances, ev.log_w, ev.means, ev.covs)
+    logP = logsumexp(logP)
+    return logP - np.log(n_samps)
+
+#@jit
+def log_prob_mixture_MC(mu, sigma, log_w, means, covs):
+    logP = -np.ones(len(mu))*np.inf
+    for i in prange(len(means)):
+        logP = log_add_array(logP, log_w[i] + log_norm_1d(means[i][0], mu, sigma**2 + covs[i][0,0] + (means[i][0] - mu)**2))
+    return logP
+
+def MC_predictive(events, n_samps):
+    means = np.random.uniform(m_min, m_max, size = n_samps)
+    variances = invwishart(a, b).rvs(size = n_samps)
     logP = -np.inf
     for m, s in zip(means, variances):
         logP_draw = 0.
         for ev in events:
-            logP_draw += log_prob_mixture_1d(m, s, ev.log_w, ev.means, ev.covs)
+            logP_draw += log_integrand(m, s, ev.log_w, ev.means, ev.covs)
         logP = log_add(logP, logP_draw)
     return logP - np.log(n_samps)
-
-def MC_predictive(events, n_samps):
-    pass
