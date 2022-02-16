@@ -384,10 +384,11 @@ class DPGMM:
         return p - probit_logJ(x, self.bounds)
 
     def save_density(self):
+        mixture = self.build_mixture()
         with open(Path(self.out_folder, 'mixture.pkl'), 'wb') as dill_file:
-            dill.dump(self, dill_file)
+            dill.dump(mixture, dill_file)
         
-    def draw_sample(self):
+    def build_mixture(self):
         return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl)
 
 
@@ -460,9 +461,9 @@ class HDPGMM(DPGMM):
         events.append(x)
         
         if self.dim == 1:
-            logL_N = MC_predictive_1d(events, n_samps = self.MC_draws)
+            logL_N = MC_predictive_1d(events, n_samps = self.MC_draws, a = 2, b = self.prior.L[0,0])
         else:
-            logL_N = MC_predictive(events, n_samps = self.MC_draws)
+            logL_N = MC_predictive(events, self.dim, n_samps = self.MC_draws, a = self.prior.nu, b = self.prior.L)
         return logL_N - logL_D, logL_N
 
     def add_datapoint_to_component(self, x, ss, logL_D):

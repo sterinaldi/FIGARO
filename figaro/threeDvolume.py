@@ -368,7 +368,7 @@ class VolumeReconstruction(DPGMM):
         [f.unlink() for f in files]
         
     def save_density(self):
-        density = self.draw_sample()
+        density = self.build_mixture()
         with open(Path(self.density_folder, self.name + '_density.pkl'), 'wb') as dill_file:
             dill.dump(density, dill_file)
     
