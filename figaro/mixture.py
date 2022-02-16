@@ -180,15 +180,6 @@ class component_h:
         self.log_w  = [x.log_w]
         self.logL_D = logL_D
         
-#        means  = []
-#        sigmas = []
-#        for i, ev in enumerate(self.events):
-#            s = ev._sample_from_dpgmm_probit(MC_draws)
-#            means.append(s.mean(axis = 0))
-#            sigmas.append(np.cov(s, rowvar = False))
-#        means = np.array(means)
-#        sigmas = np.array(sigmas)
-#        
         if self.dim == 1:
             sample = sample_point(self.means, self.covs, self.log_w, a = 2, b = prior.L[0,0])
         else:
@@ -412,10 +403,6 @@ class HDPGMM(DPGMM):
             prior_pars = (1e-1, np.identity(dim)*0.05, dim, np.zeros(dim))
         super().__init__(bounds = bounds, prior_pars = prior_pars, alpha0 = alpha0, out_folder = out_folder)
         self.MC_draws = int(MC_draws)
-#        if self.dim == 1:
-#            self.logL_D_prior = MC_predictive_1d([], n_samps = self.MC_draws)
-#        else:
-#            self.logL_D_prior = MC_predictive([], n_samps = self.MC_draws)
     
     def add_new_point(self, ev):
         self.n_pts += 1
