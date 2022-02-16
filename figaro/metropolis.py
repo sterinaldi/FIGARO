@@ -144,6 +144,24 @@ def MC_predictive_1d(events, n_samps = 1000, m_min = -5, m_max = 5, a = 2, b = 0
     variances = np.sqrt(invgamma(a, b).rvs(size = n_samps))
     logP = np.zeros(n_samps, dtype = np.float64)
     for ev in events:
+        logP += log_prob_mixture_1d_MC(means, variances, ev.log_w, ev.means, ev.covs)
+    logP = logsumexp(logP)
+    return logP - np.log(n_samps)
+
+@jit
+def log_prob_mixture_1d_MC(mu, sigma, log_w, means, covs):
+    logP = -np.ones(len(mu), dtype = np.float64)*np.inf
+    for i in prange(len(means)):
+        logP = log_add_array(logP, log_w[i] + log_norm_1d(means[i][0], mu, sigma**2 + covs[i][0,0] + (means[i][0] - mu)**2))
+    return logP
+
+
+def MC_predictive(events, n_samps):
+    means = np.random.uniform(m_min, m_max, size = n_samps)
+    variances = invwishart(a, b).rvs(size = n_samps)
+    logP = -np.inf
+    logP = np.zeros(n_samps, dtype = np.float64)
+    for ev in events:
         logP += log_prob_mixture_MC(means, variances, ev.log_w, ev.means, ev.covs)
     logP = logsumexp(logP)
     return logP - np.log(n_samps)
@@ -152,16 +170,5 @@ def MC_predictive_1d(events, n_samps = 1000, m_min = -5, m_max = 5, a = 2, b = 0
 def log_prob_mixture_MC(mu, sigma, log_w, means, covs):
     logP = -np.ones(len(mu), dtype = np.float64)*np.inf
     for i in prange(len(means)):
-        logP = log_add_array(logP, log_w[i] + log_norm_1d(means[i][0], mu, sigma**2 + covs[i][0,0] + (means[i][0] - mu)**2))
+        logP = log_add_array(logP, log_w[i] + log_norm(means[i], mu, sigmas[i] + cov + (means[i] - mu).T@(means[i].mu)))
     return logP
-
-def MC_predictive(events, n_samps):
-    means = np.random.uniform(m_min, m_max, size = n_samps)
-    variances = invwishart(a, b).rvs(size = n_samps)
-    logP = -np.inf
-    for m, s in zip(means, variances):
-        logP_draw = 0.
-        for ev in events:
-            logP_draw += log_integrand(m, s, ev.log_w, ev.means, ev.covs)
-        logP = log_add(logP, logP_draw)
-    return logP - np.log(n_samps)
