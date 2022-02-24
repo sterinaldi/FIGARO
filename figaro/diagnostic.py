@@ -19,7 +19,7 @@ def compute_autocorrelation(draws, mean, dx):
     return taumax, autocorrelation
 
 def compute_entropy_single_draw(mixture, n_draws = 1e3):
-    samples = mixture._sample_from_dpgmm_probit(n_draws)
+    samples = mixture._sample_from_dpgmm_probit(int(n_draws))
     logP    = mixture._evaluate_log_mixture_in_probit(samples)
     entropy = np.sum(-logP)/n_draws
     return entropy
@@ -27,7 +27,7 @@ def compute_entropy_single_draw(mixture, n_draws = 1e3):
 def compute_entropy(draws, n_draws = 1e3):
     S = np.zeros(len(draws))
     for i, d in enumerate(draws):
-        S[i] = compute_entropy_single_draw(d)
+        S[i] = compute_entropy_single_draw(d, int(n_draws))
     return S
 
 def autocorrelation(draws, xmin, xmax, out_folder, n_points = 1000):
@@ -49,7 +49,7 @@ def autocorrelation(draws, xmin, xmax, out_folder, n_points = 1000):
     plt.close()
 
 def entropy(draws, out_folder, n_draws = 1e3):
-    S = compute_entropy(draws, n_draws)
+    S = compute_entropy(draws, int(n_draws))
     fig, ax = plt.subplots()
     ax.plot(np.arange(1, len(draws)+1), S, ls = '--', marker = '', lw = 0.7)
     ax.set_xlabel('$t$')
