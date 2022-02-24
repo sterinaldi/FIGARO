@@ -116,38 +116,6 @@ def compute_component_suffstats(x, mean, cov, N, mu, sigma, p_mu, p_k, p_nu, p_L
     
     return new_mean, new_cov, new_N, new_mu, new_sigma
 
-#FIXME: jit
-def compute_t_pars_array(k, mu, nu, L, samples, N, dim):
-    # Compute hyperparameters
-    k_n, mu_n, nu_n, L_n = compute_hyperpars_array(k, mu, nu, L, samples, N)
-    # Update t-parameters
-    t_df    = nu_n - dim + 1
-    t_shape = L_n*(k_n+1)/(k_n*t_df)
-    return t_df, t_shape, mu_n
-    
-def compute_hyperpars_array(k, mu, nu, L, samples, N):
-    n_draws = samples.shape[0]
-    means = np.mean(samples, axis = 1)
-    if samples.shape[1] > 1:
-        covs  = np.array([np.atleast_2d(np.cov(s, rowvar = False)) for s in samples]) #FIXME: is there a faster way?
-    else:
-        covs  = np.zeros(shape = (n_draws, samples.shape[2], samples.shape[2])) # 1 event: can't estimate covariance
-    return _hyperpars_vect(k, mu, nu, L, means, covs, N, n_draws)
-
-@jit
-def _hyperpars_vect(k, mu, nu, L, means, covs, N, n_draws):
-    k_n  = (k + N)
-    nu_n = (nu + N)
-    mu_n = (np.atleast_2d(mu)*k + N*means)/k_n
-    L_n  = L*k + covs*N + k*N*((means - mu).T@(means - mu))/k_n
-    return k_n, mu_n, nu_n, L_n
-    
-@jit
-def student_t_array(df, t, mu, sigma, dim, len_t):
-    logP = -np.inf
-    for i in prange(len_t):
-        logP = log_add(logP, student_t(df = df, t = np.atleast_2d(t[i]), mu = np.atleast_2d(mu[i]), sigma = sigma[i], dim = dim))
-    return logP
 
 def build_mean_cov(x, dim):
     mean  = np.atleast_2d(x[:dim])
@@ -279,12 +247,14 @@ class DPGMM:
         self.n_cl       = 0
         self.n_pts      = 0
     
-    def initialise(self):
+    def initialise(self, prior_pars = None):
         self.alpha = self.alpha_0
         self.mixture  = []
         self.N_list   = []
         self.n_cl     = 0
         self.n_pts    = 0
+        if prior_pars is not None:
+            self.prior = prior(*prior_pars)
         
     def add_datapoint_to_component(self, x, ss):
         new_mean, new_cov, new_N, new_mu, new_sigma = compute_component_suffstats(x, ss.mean, ss.cov, ss.N, ss.mu, ss.sigma, self.prior.mu, self.prior.k, self.prior.nu, self.prior.L)
