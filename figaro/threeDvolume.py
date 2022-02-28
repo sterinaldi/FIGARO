@@ -50,7 +50,6 @@ class VolumeReconstruction(DPGMM):
                        out_folder     = '.',
                        prior_pars     = None,
                        alpha0         = 1,
-                       sigma_max      = 0.05,
                        n_gridpoints   = [720, 360, 100], # RA, dec, DL
                        name           = 'skymap',
                        labels         = ['$\\alpha$', '$\\delta$', '$D\ [Mpc]$'],
@@ -68,7 +67,7 @@ class VolumeReconstruction(DPGMM):
         bounds = np.array([[-max_dist, max_dist] for _ in range(3)])
         self.volume_already_evaluated = False
         
-        super().__init__(bounds, prior_pars, alpha0, sigma_max)
+        super().__init__(bounds, prior_pars, alpha0)
         
         if incr_plot:
             self.next_plot = 20
@@ -357,8 +356,8 @@ class VolumeReconstruction(DPGMM):
                 images.append(imageio.imread(file))
             imageio.mimsave(Path(self.gif_folder, '3d_'+self.name + '.gif'), images, fps = 1)
         [f.unlink() for f in files]
+        files = [f for f in self.gif_folder.glob(self.name + '*' + '.png')]
         if len(files) > 1:
-            files = [f for f in self.gif_folder.glob(self.name + '*' + '.png')]
             path_files = [str(f) for f in files]
             path_files.sort(key = natural_keys)
             images = []
