@@ -62,10 +62,13 @@ def student_t(df, t, mu, sigma, dim):
     """
     http://gregorygundersen.com/blog/2020/01/20/multivariate-t/
     """
-    inv = inv_jit(sigma)
-    logdet = logdet_jit(sigma)
-    maha = triple_product(t-mu, inv, dim)
-    
+    vals, vecs = np.linalg.eigh(sigma)
+    logdet     = np.log(vals).sum()
+    valsinv    = np.array([1./v for v in vals])
+    U          = vecs * np.sqrt(valsinv)
+    dev        = t - mu
+    maha       = np.square(np.dot(dev, U)).sum(axis=-1)
+
     x = 0.5 * (df + dim)
     A = numba_gammaln(x)
     B = numba_gammaln(0.5 * df)
