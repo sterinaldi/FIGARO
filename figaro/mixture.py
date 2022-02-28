@@ -169,19 +169,20 @@ class mixture:
         self.w      = w
         self.log_w  = np.log(w)
         self.bounds = bounds
+        self.volume = np.prod(np.diff(self.bounds))
         self.dim    = dim
         self.n_cl   = n_cl
         self.norm   = 1.
         self.norm   = self._compute_norm_const()
+        self.log_norm = np.log(self.norm)
     
-    def _compute_norm_const(self, n_draws = 100000):
-        ss = np.random.uniform(self.bounds[:,0], self.bounds[:,1], size = n_draws)
-        volume = np.prod(np.diff(self.bounds))
-        return np.sum(self.evaluate_mixture(np.atleast_2d(ss))*volume)/n_draws
+    def _compute_norm_const(self, n_draws = 1000):
+        ss = np.random.uniform(self.bounds[:,0], self.bounds[:,1], size = (n_draws, self.dim))
+        return self.evaluate_mixture(np.atleast_2d(ss)).sum()*self.volume/n_draws
         
     @probit
     def evaluate_mixture(self, x):
-        p = np.sum(np.array([w*mn(mean, cov).pdf(x)*self.norm for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
+        p = np.sum(np.array([w*mn(mean, cov).pdf(x)/self.norm for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
         return p * np.exp(-probit_logJ(x, self.bounds))
 
     @probit
