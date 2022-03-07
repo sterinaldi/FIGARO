@@ -173,7 +173,7 @@ class VolumeReconstruction(DPGMM):
             self.N.append(self.next_plot)
             self.next_plot = 2*self.next_plot
             self.make_skymap()
-            self.make_volume_map()
+            self.make_volume_map(n_gals = self.n_gal_to_print)
     
     def sample_from_volume(self, n_samps):
         samples = self.sample_from_dpgmm(n_samps)
@@ -251,8 +251,9 @@ class VolumeReconstruction(DPGMM):
         self.cat_to_plot_celestial = self.catalog[np.where(log_p_cat > self.volume_heights[np.where(self.levels == self.region)])]
         self.cat_to_plot_cartesian = self.cartesian_catalog[np.where(log_p_cat > self.volume_heights[np.where(self.levels == self.region)])]
         
-        sorted_cat = np.c_[self.cat_to_plot_celestial[np.argsort(self.log_p_cat_to_plot)], np.sort(self.log_p_cat_to_plot)][::-1]
-        np.savetxt(Path(self.catalog_folder, self.name+'_{0}'.format(self.n_pts)+'.txt'), sorted_cat, header = 'ra dec dist logp')
+        self.sorted_cat = np.c_[self.cat_to_plot_celestial[np.argsort(self.log_p_cat_to_plot)], np.sort(self.log_p_cat_to_plot)][::-1]
+        self.sorted_p_cat_to_plot = np.sort(self.p_cat_to_plot)[::-1]
+        np.savetxt(Path(self.catalog_folder, self.name+'_{0}'.format(self.n_pts)+'.txt'), self.sorted_cat[:self.n_gal_to_print], header = 'ra dec dist logp')
     
     def make_skymap(self, final_map = False):
         self.evaluate_skymap()
@@ -281,7 +282,7 @@ class VolumeReconstruction(DPGMM):
             fig.savefig(Path(self.gif_folder, self.name+'_{0}'.format(self.n_pts)+'.png'), bbox_inches = 'tight')
         plt.close()
     
-    def make_volume_map(self, final_map = False):
+    def make_volume_map(self, final_map = False, n_gals = 100):
         self.evaluate_volume_map()
         if self.catalog is None:
             return
@@ -309,7 +310,7 @@ class VolumeReconstruction(DPGMM):
         ax = fig.add_subplot(111, projection = '3d')
         ax.scatter(self.cat_to_plot_celestial[:,0], self.cat_to_plot_celestial[:,1], self.cat_to_plot_celestial[:,2], c = self.p_cat_to_plot, marker = '.', alpha = 0.7, s = 0.5, cmap = 'Reds')
         vol_str = ['${0:.0f}\\%'.format(100*self.levels[-i])+ '\ \mathrm{CR}:'+'{0:.0f}'.format(self.volumes[-i]) + '\ \mathrm{Mpc}^3$' for i in range(len(self.volumes))]
-        vol_str = '\n'.join(vol_str + ['$N_{\mathrm{gal}}\ \mathrm{in}\ '+'{0:.0f}\\%'.format(100*self.levels[np.where(self.levels == self.region)][0])+ '\ \mathrm{CR}:'+'{0}$'.format(len(self.cat_to_plot_celestial))])
+        vol_str = '\n'.join(vol_str + ['$\mathrm{Galaxies}\ \mathrm{in}\ '+'{0:.0f}\\%'.format(100*self.levels[np.where(self.levels == self.region)][0])+ '\ \mathrm{CR}:'+'{0}$'.format(len(self.cat_to_plot_celestial))])
         ax.text2D(0.05, 0.95, vol_str, transform=ax.transAxes)
         ax.set_xlabel('$\\alpha$')
         ax.set_ylabel('$\\delta$')
@@ -324,7 +325,7 @@ class VolumeReconstruction(DPGMM):
         # 2D galaxy plot
         fig = plt.figure()
         ax = fig.add_subplot(111)
-        c = ax.scatter(self.cat_to_plot_celestial[:,0], self.cat_to_plot_celestial[:,1], c = self.p_cat_to_plot, marker = '+', cmap = 'coolwarm', linewidths= 1)
+        c = ax.scatter(self.sorted_cat[:,0][:-int(n_gals):-1], self.sorted_cat[:,1][:-int(n_gals):-1], c = self.sorted_p_cat_to_plot[:-int(n_gals):-1], marker = '+', cmap = 'coolwarm', linewidths= 1)
         x_lim = ax.get_xlim()
         y_lim = ax.get_ylim()
         c1 = ax.contour(self.ra_2d, self.dec_2d, self.log_p_skymap.T, np.sort(self.skymap_heights), colors = 'black', linewidths = 0.5, linestyles = 'solid')
@@ -333,7 +334,7 @@ class VolumeReconstruction(DPGMM):
         for i in range(len(self.areas)):
             c1.collections[i].set_label('${0:.0f}\\%'.format(100*self.levels[-i])+ '\ \mathrm{CR}:'+'{0:.1f}'.format(self.areas[-i]) + '\ \mathrm{deg}^2$')
         handles, labels = ax.get_legend_handles_labels()
-        patch = mpatches.Patch(color='grey', label='$N_{\mathrm{gal}} =' +'{0}$'.format(len(self.cat_to_plot_celestial)), alpha = 0)
+        patch = mpatches.Patch(color='grey', label='${0}'.format(len(self.cat_to_plot_celestial))+'\ \mathrm{galaxies}$', alpha = 0)
         handles.append(patch)
         ax.set_xlabel('$\\alpha$')
         ax.set_ylabel('$\\delta$')
@@ -410,7 +411,7 @@ class VolumeReconstruction(DPGMM):
         self.N.append(self.n_pts)
         self.plot_samples(self.n_pts, initial_samples = samples)
         self.make_skymap(final_map = True)
-        self.make_volume_map(final_map = True)
+        self.make_volume_map(final_map = True, n_gals = self.n_gal_to_print)
         self.make_gif()
         self.volume_N_plot()
 
