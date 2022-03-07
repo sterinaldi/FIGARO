@@ -15,8 +15,9 @@ import dill
 from figaro.mixture import DPGMM
 from figaro.transform import *
 from figaro.coordinates import celestial_to_cartesian, cartesian_to_celestial, inv_Jacobian
-from figaro.credible_regions import ConfidenceArea, ConfidenceVolume
+from figaro.credible_regions import ConfidenceArea, ConfidenceVolume, FindNearest, FindLevelForHeight
 from figaro.cosmology import CosmologicalParameters
+from figaro.diagnostic import entropy as entropy_function
 
 from pathlib import Path
 from distutils.spawn import find_executable
@@ -61,6 +62,9 @@ class VolumeReconstruction(DPGMM):
                        n_gal_to_print = 100,
                        region_to_plot = 0.5,
                        cat_bound      = 3000,
+                       entropy        = False,
+                       step_entropy   = 100,
+                       true_host      = None
                        ):
                 
         self.max_dist = max_dist
@@ -96,6 +100,12 @@ class VolumeReconstruction(DPGMM):
         self.log_inv_J = -np.log(inv_Jacobian(self.grid)) - probit_logJ(self.probit_grid, self.bounds)
         self.inv_J = np.exp(self.log_inv_J)
         
+        # True host
+        self.true_host = true_host
+        if self.true_host is not None:
+            self.pixel_idx  = FindNearest(self.ra, self.dec, self.dist, self.true_host)
+            self.true_pixel = np.array([self.ra[self.pixel_idx[0]], self.dec[self.pixel_idx[1]], self.dist[self.pixel_idx[2]]])
+        
         # Credible regions levels
         self.levels    = np.array(levels)
         self.areas_N   = {cr:[] for cr in self.levels}
@@ -117,12 +127,25 @@ class VolumeReconstruction(DPGMM):
             self.region = region_to_plot
         else:
             self.region = self.levels[0]
-    
+        
+        # Entropy
+        self.entropy      = entropy
+        self.step_entropy = step_entropy
+        self.mixtures     = []
+        
         # Output
         self.name       = name
         self.labels     = labels
         self.out_folder = Path(out_folder).resolve()
         self.make_folders()
+    
+    def initialise(self, true_host = None):
+        self.volume_already_evaluated = False
+        super().initialise()
+        self.true_host = true_host
+        if self.true_host is not None:
+            self.pixel_idx  = FindNearest(self.ra, self.dec, self.dist, self.true_host)
+            self.true_pixel = np.array([self.ra[self.pixel_idx[0]], self.dec[self.pixel_idx[1]], self.dist[self.pixel_idx[2]]])
         
     def load_glade(self, glade_file):
         with h5py.File(glade_file, 'r') as f:
@@ -243,7 +266,15 @@ class VolumeReconstruction(DPGMM):
         
         for cr, vol in zip(self.levels, self.volumes):
             self.volumes_N[cr].append(vol)
+    
+    def compute_credible_regions(self):
+        self.log_p_vol_host    = self.log_p_vol[self.pixel_idx[0],self.pixel_idx[1],self.pixel_idx[2]]
+        self.log_p_skymap_host = self.log_p_skymap[self.pixel_idx[0], self.pixel_idx[1]]
         
+        self.CR_host           = FindLevelForHeight(self.log_p_skymap, self.log_p_skymap_host)
+        self.CV_host           = FindLevelForHeight(self.log_p_vol, self.log_p_vol_host)
+        
+    
     def evaluate_catalog(self):
         log_p_cat                  = self._evaluate_log_mixture_in_probit(self.probit_catalog) + self.log_inv_J_cat - self.log_norm_p_vol
         self.log_p_cat_to_plot     = log_p_cat[np.where(log_p_cat > self.volume_heights[np.where(self.levels == self.region)])]
@@ -329,8 +360,8 @@ class VolumeReconstruction(DPGMM):
         x_lim = ax.get_xlim()
         y_lim = ax.get_ylim()
         c1 = ax.contour(self.ra_2d, self.dec_2d, self.log_p_skymap.T, np.sort(self.skymap_heights), colors = 'black', linewidths = 0.5, linestyles = 'solid')
-        if '170817' in self.name:
-            ax.scatter([3.4460944304210703], [-0.40813554930525175], s=80, facecolors='none', edgecolors='g', label = '$\mathrm{NGC4993}$')
+        if self.true_host is not None:
+            ax.scatter([self.true_pixel[0]], [self.true_pixel[1]], s=80, facecolors='none', edgecolors='g', label = '$\mathrm{Host}$')
         for i in range(len(self.areas)):
             c1.collections[i].set_label('${0:.0f}\\%'.format(100*self.levels[-i])+ '\ \mathrm{CR}:'+'{0:.1f}'.format(self.areas[-i]) + '\ \mathrm{deg}^2$')
         handles, labels = ax.get_legend_handles_labels()
@@ -403,9 +434,11 @@ class VolumeReconstruction(DPGMM):
         plt.close()
         
     def density_from_samples(self, samples):
-        samples_copy = np.copy(samples)
-        for s in tqdm(samples_copy, desc=self.name):
-            self.add_sample(s)
+        for i in tqdm(range(len(samples)), desc=self.name):
+            self.add_sample(samples[i])
+            if self.entropy:
+                if i%self.step_entropy == 0:
+                    self.mixtures.append(self.build_mixture())
         
         self.save_density()
         self.N.append(self.n_pts)
@@ -414,4 +447,7 @@ class VolumeReconstruction(DPGMM):
         self.make_volume_map(final_map = True, n_gals = self.n_gal_to_print)
         self.make_gif()
         self.volume_N_plot()
-
+        if self.entropy:
+            entropy_function(self.mixtures, self.convergence_folder, self.name, step = self.step_entropy, n_draws = 10000)
+        if self.true_host is not None:
+            self.compute_credible_regions()
