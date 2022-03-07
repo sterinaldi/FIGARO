@@ -166,7 +166,7 @@ class component_h:
         self.mu, self.sigma = build_mean_cov(sample, self.dim)
     
 class mixture:
-    def __init__(self, means, covs, w, bounds, dim, n_cl):
+    def __init__(self, means, covs, w, bounds, dim, n_cl, n_draws = 1000):
         self.means  = means
         self.covs   = covs
         self.w      = w
@@ -176,10 +176,10 @@ class mixture:
         self.dim    = dim
         self.n_cl   = n_cl
         self.norm   = 1.
-        self.norm   = self._compute_norm_const()
+        self.norm   = self._compute_norm_const(n_draws)
         self.log_norm = np.log(self.norm)
     
-    def _compute_norm_const(self, n_draws = 1000):
+    def _compute_norm_const(self, n_draws):
         ss = np.random.uniform(self.bounds[:,0], self.bounds[:,1], size = (n_draws, self.dim))
         return self.evaluate_mixture(np.atleast_2d(ss)).sum()*self.volume/n_draws
         
@@ -243,7 +243,8 @@ class DPGMM:
     def __init__(self, bounds,
                        prior_pars = None,
                        alpha0     = 1.,
-                       out_folder = '.'
+                       out_folder = '.',
+                       n_draws_norm = 1000,
                        ):
         self.bounds   = np.array(bounds)
         self.dim      = len(self.bounds)
@@ -257,6 +258,7 @@ class DPGMM:
         self.N_list     = []
         self.n_cl       = 0
         self.n_pts      = 0
+        self.n_draws_norm = n_draws_norm
     
     def initialise(self, prior_pars = None):
         self.alpha = self.alpha_0
@@ -370,7 +372,7 @@ class DPGMM:
             dill.dump(mixture, dill_file)
         
     def build_mixture(self):
-        return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl)
+        return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, n_draws = self.n_draws_norm)
 
 
 class HDPGMM(DPGMM):
@@ -379,11 +381,12 @@ class HDPGMM(DPGMM):
                        out_folder = '.',
                        prior_pars = None,
                        MC_draws   = 1e3,
+                       n_draws_norm = 1000
                        ):
         dim = len(bounds)
         if prior_pars == None:
             prior_pars = (1e-1, np.identity(dim)*0.05, dim, np.zeros(dim))
-        super().__init__(bounds = bounds, prior_pars = prior_pars, alpha0 = alpha0, out_folder = out_folder)
+        super().__init__(bounds = bounds, prior_pars = prior_pars, alpha0 = alpha0, out_folder = out_folder, n_draws_norm = n_draws_norm)
         self.MC_draws = int(MC_draws)
     
     def add_new_point(self, ev):
