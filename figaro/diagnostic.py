@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from numba import jit, prange
+from pathlib import Path
 
 @jit
 def compute_autocorrelation(draws, mean, dx):
