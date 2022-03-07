@@ -31,7 +31,7 @@ def compute_entropy(draws, n_draws = 1e3):
         S[i] = compute_entropy_single_draw(d, int(n_draws))
     return S
 
-def autocorrelation(draws, xmin, xmax, out_folder, n_points = 1000):
+def autocorrelation(draws, xmin, xmax, out_folder, name = 'event', n_points = 1000):
     # 1-d only
     x  = np.linspace(xmin, xmax, n_points)
     dx = x[1] - x[0]
@@ -46,20 +46,20 @@ def autocorrelation(draws, xmin, xmax, out_folder, n_points = 1000):
     ax.set_xlabel('$\tau$')
     ax.set_ylabel('$C(\tau)$')
     ax.grid()
-    fig.savefig(Path(out_folder, 'autocorrelation.pdf'), bbox_inches = 'tight')
+    fig.savefig(Path(out_folder, name+'_autocorrelation.pdf'), bbox_inches = 'tight')
     plt.close()
 
-def entropy(draws, out_folder, n_draws = 1e3):
-    S = compute_entropy(draws, int(n_draws))
+def entropy(draws, out_folder, name = 'event', n_draws = 1e3, step = 1, dim = 1):
+    S = compute_entropy(draws, int(n_draws**dim))
     fig, ax = plt.subplots()
-    ax.plot(np.arange(1, len(draws)+1), S, ls = '--', marker = '', lw = 0.7)
+    ax.plot(np.arange(1, len(draws)+1)*step, S, ls = '--', marker = '', lw = 0.7)
     ax.set_xlabel('$t$')
     ax.set_ylabel('$S(t)$')
     ax.grid()
-    fig.savefig(Path(out_folder, 'entropy.pdf'), bbox_inches = 'tight')
+    fig.savefig(Path(out_folder, name+'_entropy.pdf'), bbox_inches = 'tight')
     plt.close()
 
-def plot_n_clusters_alpha(n_cl, alpha, out_folder):
+def plot_n_clusters_alpha(n_cl, alpha, out_folder, name = 'event'):
     
     fig, ax = plt.subplots()
     ax1 = ax.twinx()
@@ -69,5 +69,5 @@ def plot_n_clusters_alpha(n_cl, alpha, out_folder):
     ax.set_ylabel('$N_{\mathrm{cl}}(t)$', color = 'k')
     ax1.set_ylabel('$\alpha(t)$', color = 'r')
     ax.grid()
-    fig.savefig(Path(out_folder, 'n_cl_alpha.pdf'), bbox_inches = 'tight')
+    fig.savefig(Path(out_folder, name+'_n_cl_alpha.pdf'), bbox_inches = 'tight')
     plt.close()
