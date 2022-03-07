@@ -10,6 +10,7 @@ from matplotlib.lines import Line2D
 from corner import corner
 import imageio
 
+from scipy.special import logsumexp
 import dill
 
 from figaro.mixture import DPGMM
