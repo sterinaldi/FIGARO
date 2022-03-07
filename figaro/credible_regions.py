@@ -1,9 +1,42 @@
 import numpy as np
 from figaro.cumulative import fast_log_cumulative
+from scipy.special import logsumexp
+
+# -----------------------
+# confidence calculations
+# -----------------------
+def FindNearest(ra, dec, dist, value):
+    idx = np.zeros(3, dtype = int)
+    for i, (d, v) in enumerate(zip([ra, dec, dist], value)):
+        idx[i] = int(np.abs(d-v).argmin())
+    return idx
 
 def FindHeights(args):
-    (sortarr,  cumarr, level) = args
+    (sortarr,cumarr,level) = args
     return sortarr[np.abs(cumarr-np.log(level)).argmin()]
+
+def FindHeightForLevel(inLogArr, adLevels):
+    # flatten and create reversed sorted list
+    adSorted = np.ascontiguousarray(np.sort(inLogArr.flatten())[::-1])
+    # create a normalized cumulative distribution
+    adCum = fast_log_cumulative(adSorted)
+    # find values closest to levels
+    adHeights = []
+    adLevels = np.ravel([adLevels])
+    for level in adLevels:
+        idx = (np.abs(adCum-np.log(level))).argmin()
+        adHeights.append(adSorted[idx])
+    adHeights = np.array(adHeights)
+    return adHeights
+
+def FindLevelForHeight(inLogArr, logvalue):
+    # flatten and create reversed sorted list
+    adSorted = np.ascontiguousarray(np.sort(inLogArr.flatten())[::-1])
+    # create a normalized cumulative distribution
+    adCum = fast_log_cumulative(adSorted)
+    # find index closest to value
+    idx = (np.abs(adSorted-logvalue)).argmin()
+    return np.exp(adCum[idx])
 
 def ConfidenceVolume(log_volume_map, ra_grid, dec_grid, distance_grid, adLevels = [0.68, 0.90]):
     # create a normalized cumulative distribution
@@ -65,3 +98,4 @@ def ConfidenceDistance(distance_map, distance_grid, adLevels = [0.68, 0.90]):
     distance_confidence = np.array(distances)
 
     return distance_confidence, index
+
