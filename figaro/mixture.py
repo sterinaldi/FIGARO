@@ -251,7 +251,7 @@ class DPGMM:
         if prior_pars is not None:
             self.prior = prior(*prior_pars)
         else:
-            self.prior = prior(1e-3, np.identity(self.dim)*0.3, self.dim, np.zeros(self.dim))
+            self.prior = prior(1e-3, np.identity(self.dim)*0.1, self.dim, np.zeros(self.dim))
         self.alpha      = alpha0
         self.alpha_0    = alpha0
         self.mixture    = []
