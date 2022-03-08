@@ -251,7 +251,7 @@ class DPGMM:
         if prior_pars is not None:
             self.prior = prior(*prior_pars)
         else:
-            self.prior = prior(1e-3, np.identity(self.dim)*0.1, self.dim, np.zeros(self.dim))
+            self.prior = prior(1e-3, np.identity(self.dim)*0.2**2, self.dim, np.zeros(self.dim))
         self.alpha      = alpha0
         self.alpha_0    = alpha0
         self.mixture    = []
@@ -385,7 +385,7 @@ class HDPGMM(DPGMM):
                        ):
         dim = len(bounds)
         if prior_pars == None:
-            prior_pars = (1e-1, np.identity(dim)*0.05, dim, np.zeros(dim))
+            prior_pars = (1e-3, np.identity(dim)*0.2**2, dim, np.zeros(dim))
         super().__init__(bounds = bounds, prior_pars = prior_pars, alpha0 = alpha0, out_folder = out_folder, n_draws_norm = n_draws_norm)
         self.MC_draws = int(MC_draws)
     
