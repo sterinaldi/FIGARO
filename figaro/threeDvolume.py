@@ -65,7 +65,7 @@ class VolumeReconstruction(DPGMM):
                        cat_bound      = 3000,
                        entropy        = False,
                        step_entropy   = 100,
-                       true_host      = None
+                       true_host      = None,
                        ):
                 
         self.max_dist = max_dist
@@ -206,7 +206,7 @@ class VolumeReconstruction(DPGMM):
     def plot_samples(self, n_samps, initial_samples = None):
         mix_samples = self.sample_from_volume(n_samps)
         if initial_samples is not None:
-            c = corner(initial_samples, color = 'coral', labels = self.labels, hist_kwargs={'density':True, 'label':'$\mathrm{Samples}$'})
+            c = corner(initial_samples, color = 'coral', labels = self.labels, truths = self.true_host, hist_kwargs={'density':True, 'label':'$\mathrm{Samples}$'})
             c = corner(mix_samples, fig = c, color = 'dodgerblue', labels = self.labels, hist_kwargs={'density':True, 'label':'$\mathrm{DPGMM}$'})
         else:
             c = corner(mix_samples, fig = c, color = 'dodgerblue', labels = self.labels, hist_kwargs={'density':True, 'label':'$\mathrm{DPGMM}$'})
@@ -239,7 +239,7 @@ class VolumeReconstruction(DPGMM):
             try:
                 self.log_p_skymap = np.log(self.p_skymap)
             except FloatingPointError:
-                self.log_p_skymap = logsumexp(self.log_p_vol + np.log(dD), axis = -1)
+                self.log_p_skymap = logsumexp(self.log_p_vol + np.log(self.dD), axis = -1)
 
         self.areas, self.skymap_idx_CR, self.skymap_heights = ConfidenceArea(self.log_p_skymap, self.ra, self.dec, adLevels = self.levels)
         for cr, area in zip(self.levels, self.areas):
