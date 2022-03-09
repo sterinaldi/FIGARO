@@ -339,9 +339,9 @@ class DPGMM:
         return samples[1:]
 
     def _evaluate_mixture_in_probit(self, x):
-        p = np.zeros(shape = x.shape)
-        for comp, w in zip(self.mixture, self.w):
-            p += w*mn(comp.mu, comp.sigma).pdf(x)
+        p = np.zeros(len(x))
+        for comp, wi in zip(self.mixture, self.w):
+            p += wi*mn(comp.mu, comp.sigma).pdf(x)
 #        p = np.sum(np.array([w*mn(comp.mu, comp.sigma).pdf(x) for comp, w in zip(self.mixture, self.w)]), axis = 0)
         return p
 
