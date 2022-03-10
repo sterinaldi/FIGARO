@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from numba import jit, prange
 from pathlib import Path
+from figaro.cumulative import fast_cumulative
+import ligo.skymap.plot
 
 @jit
 def compute_autocorrelation(draws, mean, dx):
@@ -53,8 +55,8 @@ def entropy(draws, out_folder, name = 'event', n_draws = 1e3, step = 1, dim = 1)
     S = compute_entropy(draws, int(n_draws**dim))
     fig, ax = plt.subplots()
     ax.plot(np.arange(1, len(draws)+1)*step, S, ls = '--', marker = '', lw = 0.7)
-    ax.set_xlabel('$t$')
-    ax.set_ylabel('$S(t)$')
+    ax.set_xlabel('$N$')
+    ax.set_ylabel('$S(N)$')
     ax.grid()
     fig.savefig(Path(out_folder, name+'_entropy.pdf'), bbox_inches = 'tight')
     plt.close()
@@ -70,4 +72,45 @@ def plot_n_clusters_alpha(n_cl, alpha, out_folder, name = 'event'):
     ax1.set_ylabel('$\alpha(t)$', color = 'r')
     ax.grid()
     fig.savefig(Path(out_folder, name+'_n_cl_alpha.pdf'), bbox_inches = 'tight')
+    plt.close()
+
+def compute_entropy_rate_single_draw(mixture, n_draws = 1e3):
+    samples = mixture._sample_from_dpgmm_probit(int(n_draws))
+    logP    = mixture._evaluate_log_mixture_in_probit(samples)
+    entropy = np.sum(-logP)/(n_draws*mixture.n_pts)
+    return entropy
+
+def compute_entropy_rate(draws, n_draws = 1e3):
+    S = np.zeros(len(draws))
+    for i, d in enumerate(draws):
+        S[i] = compute_entropy_rate_single_draw(d, int(n_draws))
+    return S
+
+def entropy_rate(draws, out_folder, name = 'event', n_draws = 1e3, step = 1, dim = 1):
+    S = compute_entropy(draws, int(n_draws**dim))
+    fig, ax = plt.subplots()
+    ax.plot(np.arange(1, len(draws)+1)*step, S, ls = '--', marker = '', lw = 0.7)
+    ax.set_xlabel('$N$')
+    ax.set_ylabel('$R_S(N)$')
+    ax.grid()
+    fig.savefig(Path(out_folder, name+'_entropy.pdf'), bbox_inches = 'tight')
+    plt.close()
+
+def pp_plot(draws, injection, out_folder, name = 'event'):
+    median        = np.percentile(draws.T, 50, axis = 1)
+    cdf_draws     = np.array([fast_cumulative(d) for d in draws])
+    cdf_median    = fast_cumulative(median)
+    cdf_injection = fast_cumulative(injection)
+    
+    fig= plt.figure()
+    ax = fig.add_subplot(111, projection = 'pp_plot')
+    ax.add_confidence_band(len(cdf_median), alpha=0.95, color = 'paleturquoise')
+    ax.add_diagonal()
+    for cdf in cdf_draws:
+        ax.plot(cdf_injection, cdf, lw = 0.5, alpha = 0.5, color = 'darkturquoise')
+    ax.plot(cdf_injection, cdf, color = 'steelblue', lw = 0.7)
+    ax.set_xlabel('$\mathrm{Injected}$')
+    ax.set_ylabel('$\mathrm{FIGARO}$')
+    ax.grid()
+    fig.savefig(Path(out_folder, name+'_ppplot.pdf'), bbox_inches = 'tight')
     plt.close()
