@@ -25,10 +25,23 @@ cdef np.ndarray[double, ndim=1, mode="c"] _fast_log_cumulative(np.ndarray[double
     h[0] = f[0]
     for i in range(1,n):
         h[i] = log_add(h[i-1],f[i])
-    
     cdef double hmax = h[n-1]
-    
     for i in range(n):
         h[i] = h[i] - hmax
         
+    return h
+
+def fast_cumulative(np.ndarray[double, ndim=1, mode="c"]  f):
+    return _fast_cumulative(f)
+
+cdef np.ndarray[double, ndim=1, mode="c"] _fast_cumulative(np.ndarray[double, ndim=1, mode="c"] f):
+
+    cdef unsigned int n = f.shape[0]
+    cdef np.ndarray[double, ndim=1, mode="c"] h = np.zeros(n, dtype = np.double)
+    h[0] = f[0]
+    for i in range(1,n):
+        h[i] = h[i-1] + f[i]
+    cdef double hmax = h[n-1]
+    for i in range(n):
+        h[i] = h[i]/hmax
     return h
