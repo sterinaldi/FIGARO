@@ -166,22 +166,26 @@ class component_h:
         self.mu, self.sigma = build_mean_cov(sample, self.dim)
     
 class mixture:
-    def __init__(self, means, covs, w, bounds, dim, n_cl, n_draws = 1000):
+    def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, n_draws = 1000):
         self.means  = means
         self.covs   = covs
         self.w      = w
         self.log_w  = np.log(w)
         self.bounds = bounds
-        self.volume = np.prod(np.diff(self.bounds))
         self.dim    = dim
         self.n_cl   = n_cl
+        self.n_pts  = n_pts
         self.norm   = 1.
         self.norm   = self._compute_norm_const(n_draws)
         self.log_norm = np.log(self.norm)
     
     def _compute_norm_const(self, n_draws):
-        ss = np.random.uniform(self.bounds[:,0], self.bounds[:,1], size = (n_draws, self.dim))
-        return self.evaluate_mixture(np.atleast_2d(ss)).sum()*self.volume/n_draws
+        p_ss     = self.sample_from_dpgmm(n_draws)
+        min_vals = np.atleast_1d(p_ss.min(axis = 0))
+        max_vals = np.atleast_1d(p_ss.max(axis = 0))
+        volume   = np.prod(np.diff(np.array([min_vals, max_vals]).T))
+        ss       = np.random.uniform(min_vals, max_vals, size = (n_draws, self.dim))
+        return self.evaluate_mixture(np.atleast_2d(ss)).sum()*volume/n_draws
         
     @probit
     def evaluate_mixture(self, x):
@@ -203,7 +207,7 @@ class mixture:
 
     @from_probit
     def sample_from_dpgmm(self, n_samps):
-        idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = n_samps)
+        idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = int(n_samps))
         ctr = Counter(idx)
         if self.dim > 1:
             samples = np.empty(shape = (1,self.dim))
@@ -337,6 +341,14 @@ class DPGMM:
         for i, n in zip(ctr.keys(), ctr.values()):
             samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n))))
         return samples[1:]
+    
+    def _sample_from_dpgmm_probit(self, n_samps):
+        idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = n_samps)
+        ctr = Counter(idx)
+        samples = np.empty(shape = (1,self.dim))
+        for i, n in zip(ctr.keys(), ctr.values()):
+            samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n))))
+        return samples[1:]
 
     def _evaluate_mixture_in_probit(self, x):
         p = np.zeros(len(x))
@@ -375,7 +387,7 @@ class DPGMM:
             dill.dump(mixture, dill_file)
         
     def build_mixture(self):
-        return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, n_draws = self.n_draws_norm)
+        return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, self.n_pts, n_draws = self.n_draws_norm)
 
 
 class HDPGMM(DPGMM):
