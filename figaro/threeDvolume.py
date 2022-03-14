@@ -410,11 +410,24 @@ class VolumeReconstruction(DPGMM):
     def make_entropy_plot(self):
         fig, ax = plt.subplots()
         ax.axhline(self.entropy_rate_threshold, lw = 0.5, ls = '--', color = 'r')
-        ax.plot(np.arange(len(self.R_S))*self.entropy_rate_step, self.R_S, color = 'steelblue', lw = 0.7)
+        ax.plot(np.arange(len(self.R_S))*self.entropy_rate_step, np.abs(self.R_S), color = 'steelblue', lw = 0.7)
         ax.set_ylabel('$R_S(N)\ [\mathrm{bits/sample}]$')
         ax.set_xlabel('$N$')
         
         fig.savefig(Path(self.entropy_rate_folder, self.name + '.pdf'), bbox_inches = 'tight')
+        plt.close()
+        
+        fig, ax = plt.subplots()
+        ax.axhline(self.entropy_rate_threshold, lw = 0.5, ls = '--', color = 'r')
+        ax.plot(np.arange(len(self.R_S))*self.entropy_rate_step, np.abs(self.R_S), color = 'steelblue', lw = 0.7)
+        ax.set_ylabel('$R_S(N)\ [\mathrm{bits/sample}]$')
+        ax.set_xlabel('$N$')
+        
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+        
+        fig.savefig(Path(self.entropy_rate_folder, 'log_'+self.name + '.pdf'), bbox_inches = 'tight')
+        plt.close()
     
     def save_density(self):
         density = self.build_mixture()
