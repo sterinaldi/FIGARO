@@ -5,6 +5,8 @@ from pathlib import Path
 from figaro.cumulative import fast_cumulative
 import ligo.skymap.plot
 
+log2e = np.log2(np.e)
+
 @jit
 def compute_autocorrelation(draws, mean, dx):
     taumax          = draws.shape[0]//2
@@ -24,7 +26,7 @@ def compute_autocorrelation(draws, mean, dx):
 def compute_entropy_single_draw(mixture, n_draws = 1e3):
     samples = mixture.sample_from_dpgmm(int(n_draws))
     logP    = mixture.evaluate_log_mixture(samples)
-    entropy = np.sum(-logP)/n_draws
+    entropy = np.sum(-logP)/(n_draws*log2e)
     return entropy
 
 def compute_entropy(draws, n_draws = 1e3):
@@ -56,7 +58,7 @@ def entropy(draws, out_folder, name = 'event', n_draws = 1e3, step = 1, dim = 1)
     fig, ax = plt.subplots()
     ax.plot(np.arange(1, len(draws)+1)*step, S, ls = '--', marker = '', lw = 0.7)
     ax.set_xlabel('$N$')
-    ax.set_ylabel('$S(N)$')
+    ax.set_ylabel('$S(N)\ [\mathrm{bits}]$')
     ax.grid()
     fig.savefig(Path(out_folder, name+'_entropy.pdf'), bbox_inches = 'tight')
     plt.close()
@@ -77,7 +79,7 @@ def plot_n_clusters_alpha(n_cl, alpha, out_folder, name = 'event'):
 def compute_entropy_rate_single_draw(mixture, n_draws = 1e3):
     samples = mixture._sample_from_dpgmm_probit(int(n_draws))
     logP    = mixture._evaluate_log_mixture_in_probit(samples)
-    entropy = np.sum(-logP)/(n_draws*mixture.n_pts)
+    entropy = np.sum(-logP)/(n_draws*mixture.n_pts*log2e)
     return entropy
 
 def compute_entropy_rate(draws, n_draws = 1e3):
@@ -91,7 +93,7 @@ def entropy_rate(draws, out_folder, name = 'event', n_draws = 1e3, step = 1, dim
     fig, ax = plt.subplots()
     ax.plot(np.arange(1, len(draws)+1)*step, S, ls = '--', marker = '', lw = 0.7)
     ax.set_xlabel('$N$')
-    ax.set_ylabel('$R_S(N)$')
+    ax.set_ylabel('$R_S(N)\ [\mathrm{bits/sample}]$')
     ax.grid()
     fig.savefig(Path(out_folder, name+'_entropy.pdf'), bbox_inches = 'tight')
     plt.close()
