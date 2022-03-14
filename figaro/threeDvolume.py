@@ -458,7 +458,7 @@ class VolumeReconstruction(DPGMM):
                 if i%self.entropy_rate_step == 0:
                     R_S = compute_entropy_rate_single_draw(self)
                     self.R_S.append(R_S)
-                    if np.abs(R_S) < self.entropy_rate_threshold:
+                    if self.flag_skymap == False and np.abs(R_S) < self.entropy_rate_threshold:
                         self.flag_skymap = True
                         self.N.append(self.n_pts)
                         self.make_skymap()
