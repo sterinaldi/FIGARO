@@ -201,7 +201,7 @@ class VolumeReconstruction(DPGMM):
         self.volume_already_evaluated = False
         cart_x = celestial_to_cartesian(x)
         self.add_new_point(cart_x)
-        if self.flag_skymap and self.n_pts == (self.next_plot + 1):
+        if self.flag_skymap and self.n_pts == self.next_plot:
             self.N.append(self.next_plot)
             self.next_plot = 2*self.next_plot
             self.make_skymap()
@@ -455,13 +455,16 @@ class VolumeReconstruction(DPGMM):
         for i in tqdm(range(len(samples)), desc=self.name):
             self.add_sample(samples[i])
             if self.entropy_rate:
-                if i%self.step_entropy == 0:
+                if i%self.entropy_rate_step == 0:
                     R_S = compute_entropy_rate_single_draw(self)
                     self.R_S.append(R_S)
                     if np.abs(R_S) < self.entropy_rate_threshold:
                         self.flag_skymap = True
+                        self.N.append(self.n_pts)
+                        self.make_skymap()
+                        self.make_volume_map(n_gals = self.n_gal_to_print)
                         if self.next_plot < np.inf:
-                            self.next_plot = self.n_pts
+                            self.next_plot = self.n_pts*2
         
         self.save_density()
         self.N.append(self.n_pts)
