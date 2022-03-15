@@ -149,6 +149,13 @@ class VolumeReconstruction(DPGMM):
         self.volume_already_evaluated = False
         super().initialise()
         self.true_host = true_host
+        self.R_S       = []
+        self.areas_N     = {cr:[] for cr in self.levels}
+        self.volumes_N   = {cr:[] for cr in self.levels}
+        self.N           = []
+        self.flag_skymap = True
+        if entropy_rate == True:
+            self.flag_skymap = False
         if self.true_host is not None:
             self.pixel_idx  = FindNearest(self.ra, self.dec, self.dist, self.true_host)
             self.true_pixel = np.array([self.ra[self.pixel_idx[0]], self.dec[self.pixel_idx[1]], self.dist[self.pixel_idx[2]]])
