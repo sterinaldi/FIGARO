@@ -488,16 +488,15 @@ class VolumeReconstruction(DPGMM):
                                     self.ac_cntr = self.ac_cntr - 1
                             except IndexError: #Empty list
                                 pass
-                            
                             if self.ac_cntr < 1:
                                 self.flag_skymap = True
+                                self.N.append(self.n_pts)
+                                self.make_skymap()
+                                self.make_volume_map(n_gals = self.n_gal_to_print)
+                                if self.next_plot < np.inf:
+                                    self.next_plot = self.n_pts*2
                         self.ac.append(ac)
-                        if self.flag_skymap == True:
-                            self.N.append(self.n_pts)
-                            self.make_skymap()
-                            self.make_volume_map(n_gals = self.n_gal_to_print)
-                            if self.next_plot < np.inf:
-                                self.next_plot = self.n_pts*2
+                        
         self.save_density()
         self.N.append(self.n_pts)
         self.plot_samples(self.n_pts, initial_samples = samples)
