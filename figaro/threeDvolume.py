@@ -24,6 +24,8 @@ from pathlib import Path
 from distutils.spawn import find_executable
 from tqdm import tqdm
 
+from scipy.signal import savgol_filter
+
 rcParams["xtick.labelsize"]=14
 rcParams["ytick.labelsize"]=14
 rcParams["xtick.direction"]="in"
@@ -66,8 +68,8 @@ class VolumeReconstruction(DPGMM):
                        entropy           = False,
                        true_host         = None,
                        entropy_step      = 1,
-                       entropy_ac_step   = 100,
-                       n_sign_changes    = 3,
+                       entropy_ac_step   = 500,
+                       n_sign_changes    = 5,
                        ):
                 
         self.max_dist = max_dist
@@ -431,7 +433,7 @@ class VolumeReconstruction(DPGMM):
         fig, ax = plt.subplots()
         ax.axhline(0, lw = 0.5, ls = '--', color = 'r')
         ax.plot(np.arange(len(self.ac))*self.entropy_step + self.entropy_ac_step, self.ac, color = 'steelblue', lw = 0.7)
-        ax.set_ylabel('$a(N)$')
+        ax.set_ylabel('$\\frac{dS(N)}{dN}$')
         ax.set_xlabel('$N$')
         
         fig.savefig(Path(self.entropy_folder, 'ang_coeff_'+self.name + '.pdf'), bbox_inches = 'tight')
