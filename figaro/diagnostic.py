@@ -7,6 +7,16 @@ import ligo.skymap.plot
 
 log2e = np.log2(np.e)
 
+def angular_coefficient(x, y):
+    return np.sum((x - np.mean(x))*(y - np.mean(y)))/np.sum((x - np.mean(x))**2)
+    
+def compute_angular_coefficients(x, step = 500):
+    logN = np.arange(len(x))+1
+    a    = np.zeros(len(x) - int(step), dtype = np.float64)
+    for i in range(len(a)):
+        a[i] = angular_coefficient(N[i:i+step], x[i:i+step])
+    return a
+
 @jit
 def compute_autocorrelation(draws, mean, dx):
     taumax          = draws.shape[0]//2
