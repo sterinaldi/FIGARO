@@ -18,7 +18,7 @@ from figaro.transform import *
 from figaro.coordinates import celestial_to_cartesian, cartesian_to_celestial, inv_Jacobian
 from figaro.credible_regions import ConfidenceArea, ConfidenceVolume, FindNearest, FindLevelForHeight
 from figaro.cosmology import CosmologicalParameters
-from figaro.diagnostic import compute_entropy_rate_single_draw
+from figaro.diagnostic import compute_entropy_single_draw, angular_coefficient
 
 from pathlib import Path
 from distutils.spawn import find_executable
@@ -49,24 +49,25 @@ def natural_keys(text):
 
 class VolumeReconstruction(DPGMM):
     def __init__(self, max_dist,
-                       out_folder             = '.',
-                       prior_pars             = None,
-                       alpha0                 = 1,
-                       n_gridpoints           = [720, 360, 100], # RA, dec, DL
-                       name                   = 'skymap',
-                       labels                 = ['$\\alpha$', '$\\delta$', '$D\ [Mpc]$'],
-                       levels                 = [0.50, 0.90],
-                       latex                  = False,
-                       incr_plot              = False,
-                       glade_file             = None,
-                       cosmology              = {'h': 0.674, 'om': 0.315, 'ol': 0.685},
-                       n_gal_to_print         = 100,
-                       region_to_plot         = 0.5,
-                       cat_bound              = 3000,
-                       entropy_rate           = False,
-                       true_host              = None,
-                       entropy_rate_threshold = 1e-2,
-                       entropy_rate_step      = 10,
+                       out_folder        = '.',
+                       prior_pars        = None,
+                       alpha0            = 1,
+                       n_gridpoints      = [720, 360, 100], # RA, dec, DL
+                       name              = 'skymap',
+                       labels            = ['$\\alpha$', '$\\delta$', '$D\ [Mpc]$'],
+                       levels            = [0.50, 0.90],
+                       latex             = False,
+                       incr_plot         = False,
+                       glade_file        = None,
+                       cosmology         = {'h': 0.674, 'om': 0.315, 'ol': 0.685},
+                       n_gal_to_print    = 100,
+                       region_to_plot    = 0.5,
+                       cat_bound         = 3000,
+                       entropy           = False,
+                       true_host         = None,
+                       entropy_step      = 1,
+                       entropy_ac_step   = 100,
+                       n_sign_changes    = 3,
                        ):
                 
         self.max_dist = max_dist
@@ -114,7 +115,7 @@ class VolumeReconstruction(DPGMM):
         self.volumes_N   = {cr:[] for cr in self.levels}
         self.N           = []
         self.flag_skymap = True
-        if entropy_rate == True:
+        if entropy == True:
             self.flag_skymap = False
         
         # Catalog
@@ -134,10 +135,13 @@ class VolumeReconstruction(DPGMM):
             self.region = self.levels[0]
         
         # Entropy
-        self.entropy_rate           = entropy_rate
-        self.entropy_rate_step      = entropy_rate_step
-        self.entropy_rate_threshold = entropy_rate_threshold
-        self.R_S                    = []
+        self.entropy         = entropy
+        self.entropy_step    = entropy_step
+        self.entropy_ac_step = entropy_ac_step
+        self.N_for_ac        = np.arange(self.entropy_ac_step)*self.entropy_step
+        self.R_S             = []
+        self.ac              = []
+        self.n_sign_changes  = n_sign_changes
         
         # Output
         self.name       = name
@@ -150,11 +154,12 @@ class VolumeReconstruction(DPGMM):
         super().initialise()
         self.true_host   = true_host
         self.R_S         = []
+        self.ac          = []
         self.areas_N     = {cr:[] for cr in self.levels}
         self.volumes_N   = {cr:[] for cr in self.levels}
         self.N           = []
         self.flag_skymap = True
-        if self.entropy_rate == True:
+        if self.entropy == True:
             self.flag_skymap = False
         if self.true_host is not None:
             self.pixel_idx  = FindNearest(self.ra, self.dec, self.dist, self.true_host)
@@ -199,9 +204,9 @@ class VolumeReconstruction(DPGMM):
         self.gif_folder = Path(self.out_folder, 'gif')
         if not self.gif_folder.exists():
             self.gif_folder.mkdir()
-        self.entropy_rate_folder = Path(self.out_folder, 'entropy_rate')
-        if not self.entropy_rate_folder.exists():
-            self.entropy_rate_folder.mkdir()
+        self.entropy_folder = Path(self.out_folder, 'entropy')
+        if not self.entropy_folder.exists():
+            self.entropy_folder.mkdir()
 
 
     def add_sample(self, x):
@@ -416,24 +421,20 @@ class VolumeReconstruction(DPGMM):
     
     def make_entropy_plot(self):
         fig, ax = plt.subplots()
-        ax.axhline(self.entropy_rate_threshold, lw = 0.5, ls = '--', color = 'r')
-        ax.plot(np.arange(len(self.R_S))*self.entropy_rate_step, np.abs(self.R_S), color = 'steelblue', lw = 0.7)
-        ax.set_ylabel('$R_S(N)\ [\mathrm{bits/sample}]$')
+        ax.plot(np.arange(len(self.R_S))*self.entropy_step, np.abs(self.R_S), color = 'steelblue', lw = 0.7)
+        ax.set_ylabel('$S(N)\ [\mathrm{bits}]$')
         ax.set_xlabel('$N$')
         
-        fig.savefig(Path(self.entropy_rate_folder, self.name + '.pdf'), bbox_inches = 'tight')
+        fig.savefig(Path(self.entropy_folder, self.name + '.pdf'), bbox_inches = 'tight')
         plt.close()
-        
+
         fig, ax = plt.subplots()
-        ax.axhline(self.entropy_rate_threshold, lw = 0.5, ls = '--', color = 'r')
-        ax.plot(np.arange(len(self.R_S))*self.entropy_rate_step, np.abs(self.R_S), color = 'steelblue', lw = 0.7)
-        ax.set_ylabel('$R_S(N)\ [\mathrm{bits/sample}]$')
+        ax.axhline(0, lw = 0.5, ls = '--', color = 'r')
+        ax.plot(np.arange(len(self.ac))*self.entropy_step + self.entropy_ac_step, self.ac, color = 'steelblue', lw = 0.7)
+        ax.set_ylabel('$a(N)$')
         ax.set_xlabel('$N$')
         
-        ax.set_xscale('log')
-        ax.set_yscale('log')
-        
-        fig.savefig(Path(self.entropy_rate_folder, 'log_'+self.name + '.pdf'), bbox_inches = 'tight')
+        fig.savefig(Path(self.entropy_folder, 'ang_coeff_'+self.name + '.pdf'), bbox_inches = 'tight')
         plt.close()
     
     def save_density(self):
@@ -472,20 +473,31 @@ class VolumeReconstruction(DPGMM):
         plt.close()
         
     def density_from_samples(self, samples):
+        self.ac_cntr = self.n_sign_changes
         for i in tqdm(range(len(samples)), desc=self.name):
             self.add_sample(samples[i])
-            if self.entropy_rate:
-                if i%self.entropy_rate_step == 0:
-                    R_S = compute_entropy_rate_single_draw(self)
+            if self.entropy:
+                if i%self.entropy_step == 0:
+                    R_S = compute_entropy_single_draw(self)
                     self.R_S.append(R_S)
-                    if self.flag_skymap == False and np.abs(R_S) < self.entropy_rate_threshold:
-                        self.flag_skymap = True
-                        self.N.append(self.n_pts)
-                        self.make_skymap()
-                        self.make_volume_map(n_gals = self.n_gal_to_print)
-                        if self.next_plot < np.inf:
-                            self.next_plot = self.n_pts*2
-        
+                    if self.n_pts//self.entropy_ac_step >= 1:
+                        ac = angular_coefficient(self.N_for_ac + self.n_pts, self.R_S[-self.entropy_ac_step:])
+                        if self.flag_skymap == False:
+                            try:
+                                if ac*self.ac[-1] < 0:
+                                    self.ac_cntr = self.ac_cntr - 1
+                            except IndexError: #Empty list
+                                pass
+                            
+                            if self.ac_cntr < 1:
+                                self.flag_skymap = True
+                        self.ac.append(ac)
+                        if self.flag_skymap == True:
+                            self.N.append(self.n_pts)
+                            self.make_skymap()
+                            self.make_volume_map(n_gals = self.n_gal_to_print)
+                            if self.next_plot < np.inf:
+                                self.next_plot = self.n_pts*2
         self.save_density()
         self.N.append(self.n_pts)
         self.plot_samples(self.n_pts, initial_samples = samples)
@@ -493,7 +505,7 @@ class VolumeReconstruction(DPGMM):
         self.make_volume_map(final_map = True, n_gals = self.n_gal_to_print)
         self.make_gif()
         self.volume_N_plot()
-        if self.entropy_rate:
+        if self.entropy:
             self.make_entropy_plot()
         if self.true_host is not None:
             self.compute_credible_regions()
