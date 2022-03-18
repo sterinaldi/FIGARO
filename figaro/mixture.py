@@ -1,18 +1,20 @@
 import numpy as np
+import sys
+import dill
+
 from collections import Counter
+from pathlib import Path
 
 from scipy.special import gammaln, logsumexp
 from scipy.stats import multivariate_normal as mn
 from scipy.stats import invwishart
-
-from pathlib import Path
-import dill
 
 import cpnest.model
 
 from figaro.decorators import *
 from figaro.transform import *
 from figaro.metropolis import sample_point, Integrator, MC_predictive_1d, MC_predictive
+from figaro.exceptions import except_hook
 
 from numba import jit, njit, prange
 from numba.extending import get_cython_function_address
@@ -22,14 +24,7 @@ import ctypes
 # Utilities #
 #-----------#
 
-import sys
-def my_except_hook(exctype, value, traceback):
-    if exctype == ValueError:
-        sys.__excepthook__(exctype, value, traceback)
-        print("Invalid probability value. You might have a sample that falls outside the given boundaries.")
-    else:
-        sys.__excepthook__(exctype, value, traceback)
-sys.excepthook = my_except_hook
+sys.excepthook = except_hook
 
 _PTR = ctypes.POINTER
 _dble = ctypes.c_double
