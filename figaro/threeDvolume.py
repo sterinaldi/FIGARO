@@ -210,6 +210,12 @@ class VolumeReconstruction(DPGMM):
         if not self.entropy_folder.exists():
             self.entropy_folder.mkdir()
 
+    # Overwrites parent method to avoid memory issues in 3D grid evaluation
+    def _evaluate_mixture_in_probit(self, x):
+        p = np.zeros(len(x))
+        for comp, wi in zip(self.mixture, self.w):
+            p += wi*mn(comp.mu, comp.sigma).pdf(x)
+        return p
 
     def add_sample(self, x):
         self.volume_already_evaluated = False
