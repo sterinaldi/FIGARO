@@ -18,6 +18,15 @@ from numba import jit, njit, prange
 from numba.extending import get_cython_function_address
 import ctypes
 
+import sys
+def my_except_hook(exctype, value, traceback):
+    if exctype == ValueError:
+        sys.__excepthook__(exctype, value, traceback)
+        print("Invalid probability value. Please check that all samples are within the given boundaries.")
+    else:
+        sys.__excepthook__(exctype, value, traceback)
+sys.excepthook = my_except_hook
+
 _PTR = ctypes.POINTER
 _dble = ctypes.c_double
 _ptr_dble = _PTR(_dble)
