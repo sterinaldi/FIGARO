@@ -22,7 +22,7 @@ import sys
 def my_except_hook(exctype, value, traceback):
     if exctype == ValueError:
         sys.__excepthook__(exctype, value, traceback)
-        print("Invalid probability value. Please check that all samples are within the given boundaries.")
+        print("Invalid probability value. You might have a sample that falls outside the given boundaries.")
     else:
         sys.__excepthook__(exctype, value, traceback)
 sys.excepthook = my_except_hook
