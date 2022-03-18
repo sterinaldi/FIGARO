@@ -9,6 +9,6 @@ def except_hook(exctype, value, traceback):
     # Sample outside boundaries
     if exctype == ValueError and tb_s2last.f_code.co_name == "assign_to_cluster" and tb_last.f_code.co_name == "numpy.random.mtrand.RandomState.choice":
         sys.__excepthook__(exctype, value, traceback)
-        print("Hint: you probably have a sample that falls outside the given boundaries.")
+        print("\nFIGARO: you probably have a sample that falls outside the given boundaries\n")
     else:
         sys.__excepthook__(exctype, value, traceback)
