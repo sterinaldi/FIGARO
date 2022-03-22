@@ -1,9 +1,14 @@
 import numpy as np
 import os
 import h5py
-from astropy.cosmology import LambdaCDM, z_at_value
-import astropy.units as u
+from figaro.cosmology import CosmologicalParameters
 from pathlib import Path
+from scipy.optimize import newton
+
+def find_redshift(omega, dl):
+    def objective(z, omega, dl):
+        return dl - omega.LuminosityDistance_double(z)
+    return newton(objective,1.0,args=(omega,dl))
 
 def load_single_event(event, seed = 0, par = 'm1', n_samples = -1, h = 0.674, om = 0.315, ol = 0.685):
     '''
@@ -118,7 +123,7 @@ def unpack_gw_posterior(event, par, cosmology, rdstate, ext, n_samples = -1):
         :np.ndarray:    samples
     '''
     h, om, ol = cosmology
-    ap_cosmology = LambdaCDM(H0 = h*100, Om0 = om, Ode0 = ol)
+    omega = CosmologicalParameters(h, om, ol, -1, 0)
     if ext == 'h5' or ext == 'hdf5':
         with h5py.File(Path(event), 'r') as f:
             try:
@@ -141,7 +146,7 @@ def unpack_gw_posterior(event, par, cosmology, rdstate, ext, n_samples = -1):
             except:
                 data = f['Overall_posterior']
                 LD        = data['luminosity_distance_Mpc']
-                z         = np.array([z_at_value(ap_cosmology.luminosity_distance, l*u.Mpc) for l in LD])
+                z         = np.array([find_redshift(omega, l) for l in LD])
                 m1_detect = data['m1_detector_frame_Msun']
                 m2_detect = data['m2_detector_frame_Msun']
                 m1        = m1_detect/(1+z)
