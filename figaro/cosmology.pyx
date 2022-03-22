@@ -143,8 +143,3 @@ cdef double _IntegrateRateWeightedComovingVolumeDensity(const double r0,
         I += _StarFormationDensity(z, r0, W, R, Q)*omega._UniformComovingVolumeDensity(z)
         z += dz
     return I*dz
-
-#cpdef double RateWeightedComovingVolumeDistribution(double z, double zmin, double zmax, CosmologicalParameters omega, CosmologicalRateParameters rate, double normalisation):
-#    if normalisation < 0.0:
-#        normalisation = IntegrateRateWeightedComovingVolumeDensity(zmin, zmax, omega, rate)
-#    return RateWeightedUniformComovingVolumeDensity(z, omega, rate)/normalisation
