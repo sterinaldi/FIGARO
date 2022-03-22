@@ -175,16 +175,16 @@ class component_h:
     
 class mixture:
     def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, n_draws = 1000):
-        self.means  = means
-        self.covs   = covs
-        self.w      = w
-        self.log_w  = np.log(w)
-        self.bounds = bounds
-        self.dim    = dim
-        self.n_cl   = n_cl
-        self.n_pts  = n_pts
-        self.norm   = 1.
-        self.norm   = self._compute_norm_const(n_draws)
+        self.means    = means
+        self.covs     = covs
+        self.w        = w
+        self.log_w    = np.log(w)
+        self.bounds   = bounds
+        self.dim      = dim
+        self.n_cl     = n_cl
+        self.n_pts    = n_pts
+        self.norm     = 1.
+        self.norm     = self._compute_norm_const(n_draws)
         self.log_norm = np.log(self.norm)
     
     def _compute_norm_const(self, n_draws):
@@ -454,9 +454,9 @@ class HDPGMM(DPGMM):
 
     def log_predictive_likelihood(self, x, ss):
         if ss == "new":
-            ss = component(np.zeros(self.dim), prior = self.prior)
+            ss     = component(np.zeros(self.dim), prior = self.prior)
             events = []
-            ss.N = 0.
+            ss.N   = 0.
             logL_D = 0.
         else:
             events = ss.events
