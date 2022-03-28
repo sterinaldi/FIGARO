@@ -86,16 +86,16 @@ def ConfidenceArea(log_skymap, ra_grid, dec_grid, adLevels = [0.68, 0.90]):
     
     return area_confidence, index, np.array(adHeights)
 
-def ConfidenceDistance(distance_map, distance_grid, adLevels = [0.68, 0.90]):
-    dd = np.diff(distance_grid)[0]
-    cumulative_distribution = np.cumsum(distance_map*dd)
-    distances = []
-    index     = []
+def ConfidenceInterval(probability, grid, adLevels = [0.68, 0.90]):
+    dx = np.diff(grid)[0]
+    cumulative_distribution = np.cumsum(probability*dx)
+    values = []
+    index  = []
     for cl in adLevels:
         idx = np.abs(cumulative_distribution-cl).argmin()
-        distances.append(distance_grid_grid[idx])
-        index.append(idx.T)
-    distance_confidence = np.array(distances)
+        values.append(grid[idx])
+        index.append(idx)
+    values_confidence = np.array(values)
 
-    return distance_confidence, index
+    return values_confidence, index
 
