@@ -132,7 +132,8 @@ def unpack_gw_posterior(event, par, cosmology, rdstate, ext, n_samples = -1):
                     samples.append(data['luminosity_distance'])
                 
                 if len(par) == 1:
-                    samples = np.array(samples[0])
+                    samples = np.array(samples)
+                    samples = samples.flatten()
                 else:
                     samples = np.array(samples).T
 
@@ -152,21 +153,21 @@ def unpack_gw_posterior(event, par, cosmology, rdstate, ext, n_samples = -1):
                 m1        = m1_detect/(1+z)
                 m2        = m2_detect/(1+z)
                 
-                if par == 'z':
-                    samples = z
-                if par == 'm1':
-                    samples = m1
-                if par == 'm2':
-                    samples = m2
-                if par == 'mc':
-                    samples = (m1*m2)**(3./5.)/(m1+m2)**(1./5.)
-                if par == 'chi_eff':
+                if 'z' in par:
+                    samples.append(z)
+                if 'm1' in par:
+                     samples.append(m1)
+                if 'm2' in par:
+                    samples.append(m2)
+                if 'mc' in par:
+                    samples.append((m1*m2)**(3./5.)/(m1+m2)**(1./5.))
+                if 'chi_eff' in par:
                     s1   = data['spin1']
                     s2   = data['spin2']
                     cos1 = data['costilt1']
                     cos2 = data['costilt2']
                     q    = m2/m1
-                    samples = (s1*cos1 + q*s2*cos2)/(1+q)
+                    samples.append((s1*cos1 + q*s2*cos2)/(1+q))
                 if 'ra' in par:
                     samples.append(ra)
                 if 'dec' in par:
@@ -175,7 +176,8 @@ def unpack_gw_posterior(event, par, cosmology, rdstate, ext, n_samples = -1):
                     samples.append(LD)
                 
                 if len(par) == 1:
-                    samples = np.array(samples[0])
+                    samples = np.array(samples)
+                    samples = samples.flatten()
                 else:
                     samples = np.array(samples).T
 
@@ -214,7 +216,8 @@ def unpack_gw_posterior(event, par, cosmology, rdstate, ext, n_samples = -1):
             samples.append(LD)
         
         if len(par) == 1:
-            samples = np.array(samples[0])
+            samples = np.array(samples)
+            samples = samples.flatten()
         else:
             samples = np.array(samples).T
         
