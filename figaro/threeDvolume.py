@@ -11,6 +11,7 @@ from corner import corner
 import imageio
 
 from scipy.special import logsumexp
+from scipy.stats import multivariate_normal as mn
 import dill
 
 from figaro.mixture import DPGMM
@@ -23,8 +24,6 @@ from figaro.diagnostic import compute_entropy_single_draw, angular_coefficient
 from pathlib import Path
 from distutils.spawn import find_executable
 from tqdm import tqdm
-
-from scipy.signal import savgol_filter
 
 rcParams["xtick.labelsize"]=14
 rcParams["ytick.labelsize"]=14
@@ -125,7 +124,7 @@ class VolumeReconstruction(DPGMM):
         self.catalog   = None
         self.cat_bound = cat_bound
         if glade_file is not None and self.max_dist < self.cat_bound:
-            self.catalog = self.load_glade(glade_file)
+            self.load_glade(glade_file)
             self.cartesian_catalog = celestial_to_cartesian(self.catalog)
             self.probit_catalog    = transform_to_probit(self.cartesian_catalog, self.bounds)
             self.log_inv_J_cat     = -np.log(inv_Jacobian(self.catalog)) - probit_logJ(self.probit_catalog, self.bounds)
@@ -168,15 +167,23 @@ class VolumeReconstruction(DPGMM):
             self.true_pixel = np.array([self.ra[self.pixel_idx[0]], self.dec[self.pixel_idx[1]], self.dist[self.pixel_idx[2]]])
         
     def load_glade(self, glade_file):
+        """
+        This is tailored to GLADE+ available on March 28th at http://glade.elte.hu - compatibility with more recent versions is not ensured.
+        """
+        self.glade_header =  ' '.join(['ra', 'dec', 'z', 'm_B', 'm_K', 'm_W1', 'm_bJ', 'logp'])
         with h5py.File(glade_file, 'r') as f:
             ra  = np.array(f['ra'])
             dec = np.array(f['dec'])
             z   = np.array(f['z'])
-        
+            B   = np.array(f['m_B'])
+            K   = np.array(f['m_K'])
+            W1  = np.array(f['m_W1'])
+            bJ  = np.array(f['m_bJ'])
         DL = self.cosmology.LuminosityDistance(z)
         catalog = np.array([ra, dec, DL]).T
-        catalog = catalog[catalog[:,2] < self.max_dist]
-        return catalog
+        self.catalog = catalog[catalog[:,2] < self.max_dist]
+        catalog_with_mag = np.array([ra, dec, z, B, K, W1, bJ]).T
+        self.catalog_with_mag = catalog_with_mag[catalog[:,2] < self.max_dist]
 
     def make_folders(self):
         if not Path(self.out_folder, 'skymaps').exists():
@@ -312,8 +319,9 @@ class VolumeReconstruction(DPGMM):
         self.cat_to_plot_cartesian = self.cartesian_catalog[np.where(log_p_cat > self.volume_heights[np.where(self.levels == self.region)])]
         
         self.sorted_cat = np.c_[self.cat_to_plot_celestial[np.argsort(self.log_p_cat_to_plot)], np.sort(self.log_p_cat_to_plot)][::-1]
+        self.sorted_cat_to_txt = np.c_[self.catalog_with_mag[np.where(log_p_cat > self.volume_heights[np.where(self.levels == self.region)])][np.argsort(self.log_p_cat_to_plot)], np.sort(self.log_p_cat_to_plot)][::-1]
         self.sorted_p_cat_to_plot = np.sort(self.p_cat_to_plot)[::-1]
-        np.savetxt(Path(self.catalog_folder, self.name+'_{0}'.format(self.n_pts)+'.txt'), self.sorted_cat[:self.n_gal_to_print], header = 'ra dec dist logp')
+        np.savetxt(Path(self.catalog_folder, self.name+'_{0}'.format(self.n_pts)+'.txt'), self.sorted_cat_to_txt[:self.n_gal_to_print], header = self.glade_header)
     
     def make_skymap(self, final_map = False):
         self.evaluate_skymap()
