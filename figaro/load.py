@@ -174,7 +174,10 @@ def unpack_gw_posterior(event, par, cosmology, rdstate, ext, n_samples = -1):
                 if 'luminosity_distance' in par:
                     samples.append(LD)
                 
-                samples = np.array(samples).T
+                if len(par) == 1:
+                    samples = np.array(samples[0])
+                else:
+                    samples = np.array(samples).T
 
                 if n_samples > -1:
                     s = int(min([n_samples, len(samples)]))
