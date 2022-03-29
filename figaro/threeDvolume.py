@@ -12,6 +12,7 @@ import imageio
 
 from scipy.special import logsumexp
 from scipy.stats import multivariate_normal as mn
+from numba import jit, prange
 import dill
 
 from figaro.mixture import DPGMM
@@ -33,6 +34,20 @@ rcParams["legend.fontsize"]=15
 rcParams["axes.labelsize"]=16
 rcParams["axes.grid"] = True
 rcParams["grid.alpha"] = 0.6
+
+@jit
+def log_add(x, y):
+     if x >= y:
+        return x+np.log1p(np.exp(y-x))
+     else:
+        return y+np.log1p(np.exp(x-y))
+
+@jit
+def log_add_array(x,y):
+    res = np.zeros(len(x), dtype = np.float64)
+    for i in prange(len(x)):
+        res[i] = log_add(x[i],y[i])
+    return res
 
 # natural sorting.
 # list.sort(key = natural_keys)
@@ -217,11 +232,18 @@ class VolumeReconstruction(DPGMM):
         if not self.entropy_folder.exists():
             self.entropy_folder.mkdir()
 
-    # Overwrites parent method to avoid memory issues in 3D grid evaluation
+    # Overwrites parent method to avoid memory issues in 3D grid or catalog evaluation
     def _evaluate_mixture_in_probit(self, x):
         p = np.zeros(len(x))
         for comp, wi in zip(self.mixture, self.w):
             p += wi*mn(comp.mu, comp.sigma).pdf(x)
+        return p
+    
+    # Overwrites parent method to avoid memory issues in 3D grid or catalog evaluation
+    def _evaluate_log_mixture_in_probit(self, x):
+        p = np.zeros(len(x))
+        for comp, wi in zip(self.mixture, self.log_w):
+            p = log_add_array(p, wi + mn(comp.mu, comp.sigma).logpdf(x))
         return p
 
     def add_sample(self, x):
