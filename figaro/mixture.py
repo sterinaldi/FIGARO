@@ -162,7 +162,7 @@ class component_h:
         if self.dim == 1:
             sample = sample_point(self.means, self.covs, self.log_w, a = 2, b = prior.L[0,0])
         else:
-            integrator = cpnest.CPNest(Integrator(self.events, draws, self.dim, prior.nu, prior.L),
+            integrator = cpnest.CPNest(Integrator(self.means, self.covs, self.dim, prior.nu, prior.L),
                                             verbose = 0,
                                             nlive   = 200,
                                             maxmcmc = 5000,
@@ -480,7 +480,7 @@ class HDPGMM(DPGMM):
         if self.dim == 1:
             sample = sample_point(ss.means, ss.covs, ss.log_w, a = 2, b = self.prior.L[0,0])
         else:
-            integrator = cpnest.CPNest(Integrator(means, sigmas, self.dim, self.prior.nu, self.prior.L),
+            integrator = cpnest.CPNest(Integrator(ss.means, ss.covs, self.dim, self.prior.nu, self.prior.L),
                                             verbose = 0,
                                             nlive   = 200,
                                             maxmcmc = 5000,
