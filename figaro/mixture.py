@@ -164,8 +164,8 @@ class component_h:
         else:
             integrator = cpnest.CPNest(Integrator(self.means, self.covs, self.dim, prior.nu, prior.L),
                                             verbose = 0,
-                                            nlive   = int(2*self.dim +self.dim*(self.dim-1)/2.),
-                                            maxmcmc = 100,
+                                            nlive   = 100,
+                                            maxmcmc = 1000,
                                             nensemble = 1,
                                             output = Path('.'),
                                             )
@@ -174,8 +174,8 @@ class component_h:
         self.mu, self.sigma = build_mean_cov(sample, self.dim)
     
 class mixture:
-    def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, n_draws = 1000):
-        if dim > 1:
+    def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, n_draws = 1000, hier_flag = False):
+        if dim > 1 and hier_flag:
             self.means = np.array([m[0] for m in means])
         else:
             self.means = means
@@ -485,8 +485,8 @@ class HDPGMM(DPGMM):
         else:
             integrator = cpnest.CPNest(Integrator(ss.means, ss.covs, self.dim, self.prior.nu, self.prior.L),
                                             verbose = 0,
-                                            nlive   = int(2*self.dim +self.dim*(self.dim-1)/2.),
-                                            maxmcmc = 100,
+                                            nlive   = 100,
+                                            maxmcmc = 1000,
                                             nensemble = 1,
                                             output = Path('.'),
                                             )
@@ -500,3 +500,7 @@ class HDPGMM(DPGMM):
     def density_from_samples(self, events):
         for ev in events:
             self.add_new_point(ev)
+    
+    # Overwrites parent function to account for hierarchical issues
+    def build_mixture(self):
+        return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, self.n_pts, n_draws = self.n_draws_norm, hier_flag = True)
