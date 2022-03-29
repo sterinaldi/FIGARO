@@ -100,6 +100,7 @@ class Integrator(cpnest.model.Model):
     def log_likelihood(self, x):
         return log_integrand(self.mean[0], self.cov_mat, self.means, self.covs)
 
+#@jit
 def build_mean_cov(x, dim):
     mean  = np.atleast_2d(x[:dim])
     corr  = np.identity(dim)/2.
