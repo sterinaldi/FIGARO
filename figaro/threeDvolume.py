@@ -61,7 +61,7 @@ class VolumeReconstruction(DPGMM):
                        incr_plot         = False,
                        glade_file        = None,
                        cosmology         = {'h': 0.674, 'om': 0.315, 'ol': 0.685},
-                       n_gal_to_print    = 100,
+                       n_gal_to_plot    = 100,
                        region_to_plot    = 0.5,
                        cat_bound         = 3000,
                        entropy           = False,
@@ -129,7 +129,7 @@ class VolumeReconstruction(DPGMM):
             self.probit_catalog    = transform_to_probit(self.cartesian_catalog, self.bounds)
             self.log_inv_J_cat     = -np.log(inv_Jacobian(self.catalog)) - probit_logJ(self.probit_catalog, self.bounds)
             self.inv_J_cat         = np.exp(self.log_inv_J)
-        self.n_gal_to_print = n_gal_to_print
+        self.n_gal_to_plot = n_gal_to_plot
         if region_to_plot in self.levels:
             self.region = region_to_plot
         else:
@@ -232,7 +232,7 @@ class VolumeReconstruction(DPGMM):
             self.N.append(self.next_plot)
             self.next_plot = 2*self.next_plot
             self.make_skymap()
-            self.make_volume_map(n_gals = self.n_gal_to_print)
+            self.make_volume_map(n_gals = self.n_gal_to_plot)
     
     def sample_from_volume(self, n_samps):
         samples = self.sample_from_dpgmm(n_samps)
@@ -311,7 +311,7 @@ class VolumeReconstruction(DPGMM):
         self.CV_host           = FindLevelForHeight(self.log_p_vol, self.log_p_vol_host)
         
     
-    def evaluate_catalog(self):
+    def evaluate_catalog(self, final_map = False):
         log_p_cat                  = self._evaluate_log_mixture_in_probit(self.probit_catalog) + self.log_inv_J_cat - self.log_norm_p_vol
         self.log_p_cat_to_plot     = log_p_cat[np.where(log_p_cat > self.volume_heights[np.where(self.levels == self.region)])]
         self.p_cat_to_plot         = np.exp(self.log_p_cat_to_plot)
@@ -321,7 +321,9 @@ class VolumeReconstruction(DPGMM):
         self.sorted_cat = np.c_[self.cat_to_plot_celestial[np.argsort(self.log_p_cat_to_plot)], np.sort(self.log_p_cat_to_plot)][::-1]
         self.sorted_cat_to_txt = np.c_[self.catalog_with_mag[np.where(log_p_cat > self.volume_heights[np.where(self.levels == self.region)])][np.argsort(self.log_p_cat_to_plot)], np.sort(self.log_p_cat_to_plot)][::-1]
         self.sorted_p_cat_to_plot = np.sort(self.p_cat_to_plot)[::-1]
-        np.savetxt(Path(self.catalog_folder, self.name+'_{0}'.format(self.n_pts)+'.txt'), self.sorted_cat_to_txt[:self.n_gal_to_print], header = self.glade_header)
+        np.savetxt(Path(self.catalog_folder, self.name+'_{0}'.format(self.n_pts)+'.txt'), self.sorted_cat_to_txt, header = self.glade_header)
+        if final_map:
+            np.savetxt(Path(self.catalog_folder, 'CR_'+self.name+'.txt'), np.array([self.areas[np.where(self.levels == self.region)], self.volumes[np.where(self.levels == self.region)]]).T, header = 'area volume')
     
     def make_skymap(self, final_map = False):
         self.evaluate_skymap()
@@ -355,7 +357,7 @@ class VolumeReconstruction(DPGMM):
         if self.catalog is None:
             return
             
-        self.evaluate_catalog()
+        self.evaluate_catalog(final_map)
         
         # Cartesian plot
         fig = plt.figure()
@@ -508,7 +510,7 @@ class VolumeReconstruction(DPGMM):
                                 self.flag_skymap = True
                                 self.N.append(self.n_pts)
                                 self.make_skymap()
-                                self.make_volume_map(n_gals = self.n_gal_to_print)
+                                self.make_volume_map(n_gals = self.n_gal_to_plot)
                                 if self.next_plot < np.inf:
                                     self.next_plot = self.n_pts*2
                         self.ac.append(ac)
@@ -517,7 +519,7 @@ class VolumeReconstruction(DPGMM):
         self.N.append(self.n_pts)
         self.plot_samples(self.n_pts, initial_samples = samples)
         self.make_skymap(final_map = True)
-        self.make_volume_map(final_map = True, n_gals = self.n_gal_to_print)
+        self.make_volume_map(final_map = True, n_gals = self.n_gal_to_plot)
         self.make_gif()
         self.volume_N_plot()
         if self.entropy:
