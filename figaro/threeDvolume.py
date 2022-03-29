@@ -241,7 +241,7 @@ class VolumeReconstruction(DPGMM):
     
     # Overwrites parent method to avoid memory issues in 3D grid or catalog evaluation
     def _evaluate_log_mixture_in_probit(self, x):
-        p = np.zeros(len(x))
+        p = -np.ones(len(x))*np.inf
         for comp, wi in zip(self.mixture, self.log_w):
             p = log_add_array(p, wi + mn(comp.mu, comp.sigma).logpdf(x))
         return p
