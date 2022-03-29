@@ -133,8 +133,8 @@ def build_mean_cov(x, dim):
     corr  = np.identity(dim)/2.
     corr[np.triu_indices(dim, 1)] = x[2*dim:]
     corr  = corr + corr.T
-    sigma = np.identity(dim)*x[dim:2*dim]**2
-    cov_mat = sigma@corr
+    sigma = x[dim:2*dim]
+    cov_mat = np.multiply(corr, np.outer(sigma, sigma))
     return mean, cov_mat
 
 #-------------------#
@@ -164,8 +164,8 @@ class component_h:
         else:
             integrator = cpnest.CPNest(Integrator(self.means, self.covs, self.dim, prior.nu, prior.L),
                                             verbose = 0,
-                                            nlive   = 200,
-                                            maxmcmc = 5000,
+                                            nlive   = int(2*self.dim +self.dim*(self.dim-1)/2.),
+                                            maxmcmc = 100,
                                             nensemble = 1,
                                             output = Path('.'),
                                             )
@@ -175,7 +175,10 @@ class component_h:
     
 class mixture:
     def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, n_draws = 1000):
-        self.means    = means
+        if dim > 1:
+            self.means = np.array([m[0] for m in means])
+        else:
+            self.means = means
         self.covs     = covs
         self.w        = w
         self.log_w    = np.log(w)
@@ -482,8 +485,8 @@ class HDPGMM(DPGMM):
         else:
             integrator = cpnest.CPNest(Integrator(ss.means, ss.covs, self.dim, self.prior.nu, self.prior.L),
                                             verbose = 0,
-                                            nlive   = 200,
-                                            maxmcmc = 5000,
+                                            nlive   = int(2*self.dim +self.dim*(self.dim-1)/2.),
+                                            maxmcmc = 100,
                                             nensemble = 1,
                                             output = Path('.'),
                                             )
