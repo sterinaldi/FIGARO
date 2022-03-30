@@ -2,9 +2,12 @@ import numpy as np
 import cpnest.model
 from numba import jit, njit, prange
 from numba.extending import get_cython_function_address
+from numba.typed import List
 import ctypes
 from scipy.stats import invgamma, invwishart
 from scipy.special import logsumexp
+
+typed_L = List()
 
 _PTR = ctypes.POINTER
 _dble = ctypes.c_double
@@ -79,8 +82,8 @@ class Integrator(cpnest.model.Model):
     
     def __init__(self, means, covs, dim, df, L):
         super(Integrator, self).__init__()
-        self.means     = means
-        self.covs      = covs
+        self.means     = means#np.array(means)
+        self.covs      = covs#np.array(covs)
         self.dim       = dim
         self.names     = ['m{0}'.format(i+1) for i in range(self.dim)] + ['s{0}'.format(i+1) for i in range(self.dim)] + ['r{0}'.format(j) for j in range(int(self.dim*(self.dim-1)/2.))]
         self.bounds    = [[-20, 20] for _ in range(self.dim)] + [[0, 1] for _ in range(self.dim)] + [[-1,1] for _ in range(int(self.dim*(self.dim-1)/2.))]
@@ -95,16 +98,23 @@ class Integrator(cpnest.model.Model):
         if not np.isfinite(logdet_jit(self.cov_mat)):
             return -np.inf
         logP = self.mu_prior + self.prior.logpdf(self.cov_mat)
+        # Matching structures
+        self.mean = np.atleast_2d([self.mean])
+        self.cov_mat = np.atleast_3d([self.cov_mat])
         return logP
     
     def log_likelihood(self, x):
-        return log_integrand(self.mean[0], self.cov_mat, self.means, self.covs)
+        return log_integrand(self.mean, self.cov_mat, self.means, self.covs)
 
-#@jit
+@jit
 def build_mean_cov(x, dim):
-    mean  = np.atleast_2d(x[:dim])
+    mean  = x[:dim]
     corr  = np.identity(dim)/2.
-    corr[np.triu_indices(dim, 1)] = x[2*dim:]
+    ctr = 0
+    for i in prange(dim-1):
+        for j in prange(i+1, dim):
+            corr[i][j] = x[2*dim:][ctr]
+            ctr = ctr+1
     corr  = corr + corr.T
     sigma = x[dim:2*dim]
     cov_mat = np.multiply(corr, np.outer(sigma, sigma))
@@ -117,7 +127,7 @@ def inv_jit(M):
 @jit
 def inv_vect_jit(Ms):
     vect = np.zeros(Ms.shape, dtype = np.float64)
-    for i in prange(len(Ms)):
+    for i in prange(Ms.shape[0]):
         vect[i] = inv_jit(Ms[i])
     return vect
 
@@ -127,42 +137,40 @@ def logdet_jit(M):
 
 @jit
 def logdet_vect_jit(Ms):
-    vect = np.zeros(len(Ms), dtype = np.float64)
-    for i in prange(len(Ms)):
+    vect = np.zeros(Ms.shape[0], dtype = np.float64)
+    for i in prange(Ms.shape[0]):
         vect[i] = logdet_jit(Ms[i])
     return vect
 
 @njit
 def triple_product(v, M, n):
-    res = np.zeros(1, dtype = np.float64)
+    res = 0.
     for i in prange(n):
         for j in prange(n):
             res = res + M[i,j]*v[i]*v[j]
     return res
 
 @jit
-def triple_product_vect(v, M, n, l):
-    vect = np.zeros(l, dtype = np.float64)
-    for i in prange(l):
+def triple_product_vect(v, M, n):
+    vect = np.zeros(v.shape[0], dtype = np.float64)
+    for i in prange(v.shape[0]):
         vect[i] = triple_product(v[i], M[i], n)
     return vect
 
 @jit
 def log_norm(x, mu, cov):
     inv_cov  = inv_vect_jit(cov)
-    exponent = -0.5*triple_product_vect(x - mu, inv_cov, len(x), len(mu))
+    exponent = -0.5*triple_product_vect(x - mu, inv_cov, x.shape[0])
     lognorm  = 0.5*np.log(2*np.pi)-0.5*logdet_vect_jit(inv_cov)
     return -lognorm+exponent
 
 @jit
 def log_integrand(mu, cov, means, sigmas):
-    logP = 0
-    m = np.atleast_2d([mu])
-    s = np.atleast_3d([cov])
+    logP = 0.
     for i in prange(len(means)):
         logP_i = -np.inf
         for j in prange(len(means[i])):
-            logP_i = log_add(logP_i, log_norm(means[i][j], m, sigmas[i][j] + s + (means[i][j] - m).T@(means[i][j] - m)))
+            logP_i = log_add(logP_i, log_norm(means[i][j], mu, sigmas[i][j] + cov + (means[i][j] - mu).T@(means[i][j] - mu))[0])
         logP = logP + logP_i
     return logP
 
@@ -193,7 +201,7 @@ def MC_predictive(events, dim, n_samps = 1000, m_min = -5, m_max = 5, a = 2, b =
     logP = logsumexp(logP)
     return logP - np.log(n_samps)
 
-#@jit
+@jit
 def log_prob_mixture_MC(mu, sigma, log_w, means, covs):
     logP = -np.ones(len(mu), dtype = np.float64)*np.inf
     for i in prange(len(means)):
