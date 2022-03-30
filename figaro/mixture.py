@@ -127,11 +127,15 @@ def compute_component_suffstats(x, mean, cov, N, mu, sigma, p_mu, p_k, p_nu, p_L
     
     return new_mean, new_cov, new_N, new_mu, new_sigma
 
-
+@jit
 def build_mean_cov(x, dim):
     mean  = np.atleast_2d(x[:dim])
     corr  = np.identity(dim)/2.
-    corr[np.triu_indices(dim, 1)] = x[2*dim:]
+    ctr   = 0
+    for i in prange(dim-1):
+        for j in prange(i+1, dim):
+            corr[i][j] = x[2*dim:][ctr]
+            ctr = ctr+1
     corr  = corr + corr.T
     sigma = x[dim:2*dim]
     cov_mat = np.multiply(corr, np.outer(sigma, sigma))
