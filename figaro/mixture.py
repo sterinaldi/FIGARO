@@ -13,7 +13,7 @@ import cpnest.model
 
 from figaro.decorators import *
 from figaro.transform import *
-from figaro.metropolis import sample_point, Integrator, MC_predictive_1d, MC_predictive
+from figaro.metropolis import sample_point, sample_point_1d, MC_predictive, MC_predictive_1d
 from figaro.exceptions import except_hook
 
 from numba import jit, njit, prange
@@ -164,17 +164,10 @@ class component_h:
         self.logL_D = logL_D
         
         if self.dim == 1:
-            sample = sample_point(self.means, self.covs, self.log_w, a = 2, b = prior.L[0,0])
+            sample = sample_point_1d(self.means, self.covs, self.log_w, a = 2, b = prior.L[0,0])
         else:
-            integrator = cpnest.CPNest(Integrator(self.means, self.covs, self.dim, prior.nu, prior.L),
-                                            verbose = 0,
-                                            nlive   = 100,
-                                            maxmcmc = 1000,
-                                            nensemble = 1,
-                                            output = Path('.'),
-                                            )
-            integrator.run()
-            sample = np.array(integrator.posterior_samples[-1].tolist())[:-2]
+            sample = sample_point(self.means, self.covs, self.log_w, dim = self.dim, df = prior.nu, L = prior.L)
+        
         self.mu, self.sigma = build_mean_cov(sample, self.dim)
     
 class mixture:
@@ -485,17 +478,9 @@ class HDPGMM(DPGMM):
         ss.logL_D = logL_D
         
         if self.dim == 1:
-            sample = sample_point(ss.means, ss.covs, ss.log_w, a = 2, b = self.prior.L[0,0])
+            sample = sample_point_1d(ss.means, ss.covs, ss.log_w, a = 2, b = self.prior.L[0,0])
         else:
-            integrator = cpnest.CPNest(Integrator(ss.means, ss.covs, self.dim, self.prior.nu, self.prior.L),
-                                            verbose = 0,
-                                            nlive   = 100,
-                                            maxmcmc = 1000,
-                                            nensemble = 1,
-                                            output = Path('.'),
-                                            )
-            integrator.run()
-            sample = np.array(integrator.posterior_samples[-1].tolist())[:-2]
+            sample = sample_point(ss.means, ss.covs, self.log_w, dim = self.dim, df = self.prior.nu, L = self.prior.L)
 
         ss.mu, ss.sigma = build_mean_cov(sample, self.dim)
         ss.N += 1
