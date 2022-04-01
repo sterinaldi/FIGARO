@@ -118,12 +118,12 @@ def propose_point_1d(old_point, dm, ds):
     s = old_point[1] + (np.random.rand() - 0.5)*2*ds
     return np.array([m,s])
 
-#@jit
+@jit
 def sample_point_1d(means, covs, log_w, m_min = -20, m_max = 20, s_min = 0, s_max = 1, burnin = 1000, dm = 1, ds = 0.05, a = 2, b = 0.2):
     old_point = np.array([0, 0.02])
     log_old = log_integrand_1d(old_point[0], old_point[1], means, covs, log_w, a, b)
     for i in range(burnin):
-        new_point = propose_point(old_point, dm, ds)
+        new_point = propose_point_1d(old_point, dm, ds)
         if not (s_min < new_point[1] < s_max and m_min < new_point[0] < m_max):
             log_new = -np.inf
         else:
@@ -151,8 +151,8 @@ def MC_predictive_1d(events, n_samps = 1000, m_min = -5, m_max = 5, a = 2, b = 0
     means = np.random.uniform(m_min, m_max, size = n_samps)
     variances = np.sqrt(invgamma(a, b).rvs(size = n_samps))
     logP = np.zeros(n_samps, dtype = np.float64)
-    for ev in events:
-        logP += log_prob_mixture_1d_MC(means, variances, ev.log_w, ev.means, ev.covs)
+    for i in prange(len(events)):
+        logP += log_prob_mixture_1d_MC(means, variances, events[i].log_w, events[i].means, events[i].covs)
     logP = logsumexp(logP)
     return logP - np.log(n_samps)
 
@@ -167,7 +167,7 @@ def log_prob_mixture_1d_MC(mu, sigma, log_w, means, covs):
 # ND Metropolis #
 #---------------#
 
-#@jit
+@jit
 def log_integrand(x, means, sigmas, log_w, dim, df, L):
     mu, cov = build_mean_cov(x, dim)
     log_prior = invwishart(df = df, scale = L).logpdf(cov)
@@ -188,7 +188,7 @@ def propose_point(old_point, dm, ds, dim):
     r = [old_point[2*dim + i] + (np.random.rand() - 0.5)*2*ds for i in range(int(dim*(dim-1)/2.))]
     return np.array(m+s+r)
 
-#@jit
+@jit
 def sample_point(means, covs, log_w, dim, df, L, m_min = -20, m_max = 20, s_min = 0, s_max = 1, burnin = 1000, dm = 1, ds = 0.05):
     m = [0. for i in range(dim)]
     s = [L[i,i] for i in range(dim)]
