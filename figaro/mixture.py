@@ -93,9 +93,9 @@ def update_alpha(alpha, n, K, burnin = 1000):
     for i in prange(n_draws):
         a_new = a_old + (np.random.random() - 0.5)
         if a_new > 0.:
-            logP_old = numba_gammaln(a_old) - numba_gammaln(a_old + n) + K * np.log(a_old) - 1./a_old
-            logP_new = numba_gammaln(a_new) - numba_gammaln(a_new + n) + K * np.log(a_new) - 1./a_new
-            if logP_new - logP_old > np.log(np.random.random()):
+            logP_old = numba_gammaln(a_old) - numba_gammaln(a_old + n) + K * np.log(a_old) + np.log(a_old) - a_old
+            logP_new = numba_gammaln(a_new) - numba_gammaln(a_new + n) + K * np.log(a_new) + np.log(a_new) - a_new
+            if logP_new > logP_old:# > np.log(np.random.random()):
                 a_old = a_new
     return a_old
 
@@ -263,7 +263,7 @@ class DPGMM:
         if prior_pars is not None:
             self.prior = prior(*prior_pars)
         else:
-            self.prior = prior(1e-3, np.identity(self.dim)*0.2**2, self.dim, np.zeros(self.dim))
+            self.prior = prior(1, np.identity(self.dim)*0.2**2, self.dim, np.zeros(self.dim))
         self.alpha      = alpha0
         self.alpha_0    = alpha0
         self.mixture    = []
@@ -345,17 +345,27 @@ class DPGMM:
     def sample_from_dpgmm(self, n_samps):
         idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = n_samps)
         ctr = Counter(idx)
-        samples = np.empty(shape = (1,self.dim))
-        for i, n in zip(ctr.keys(), ctr.values()):
-            samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n))))
+        if self.dim > 1:
+            samples = np.empty(shape = (1,self.dim))
+            for i, n in zip(ctr.keys(), ctr.values()):
+                samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n))))
+        else:
+            samples = np.array([np.zeros(1)])
+            for i, n in zip(ctr.keys(), ctr.values()):
+                samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n)).T))
         return samples[1:]
     
     def _sample_from_dpgmm_probit(self, n_samps):
         idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = n_samps)
         ctr = Counter(idx)
-        samples = np.empty(shape = (1,self.dim))
-        for i, n in zip(ctr.keys(), ctr.values()):
-            samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n))))
+        if self.dim > 1:
+            samples = np.empty(shape = (1,self.dim))
+            for i, n in zip(ctr.keys(), ctr.values()):
+                samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n))))
+        else:
+            samples = np.array([np.zeros(1)])
+            for i, n in zip(ctr.keys(), ctr.values()):
+                samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n)).T))
         return samples[1:]
 
     def _evaluate_mixture_in_probit(self, x):
@@ -480,7 +490,7 @@ class HDPGMM(DPGMM):
         if self.dim == 1:
             sample = sample_point_1d(ss.means, ss.covs, ss.log_w, a = 2, b = self.prior.L[0,0])
         else:
-            sample = sample_point(ss.means, ss.covs, self.log_w, dim = self.dim, df = self.prior.nu, L = self.prior.L)
+            sample = sample_point(ss.means, ss.covs, ss.log_w, dim = self.dim, df = self.prior.nu, L = self.prior.L)
 
         ss.mu, ss.sigma = build_mean_cov(sample, self.dim)
         ss.N += 1
