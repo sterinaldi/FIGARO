@@ -90,10 +90,23 @@ def log_norm(x, mu, cov):
     return -lognorm+exponent
 
 @jit
+def log_norm_vect(x, m, s):
+    vect = np.zeros(x.shape[0], dtype = np.float64)
+    for i in prange(x.shape[0]):
+        vect[i] = log_norm(x[i], m, s)
+    return np.sum(vect)
+
+@jit
 def log_norm_1d(x, m, s):
     return -(x-m)**2/(2*s) - 0.5*np.log(2*np.pi) - 0.5*np.log(s)
 
-
+@jit
+def log_norm_vect_1d(x, m, s):
+    vect = np.zeros(x.shape[0], dtype = np.float64)
+    for i in prange(x.shape[0]):
+        vect[i] = log_norm_1d(x[i][0], m, s)
+    return np.sum(vect)
+    
 @jit
 def build_mean_cov(x, dim):
     mean  = x[:dim]
@@ -115,39 +128,35 @@ def build_mean_cov(x, dim):
 @jit
 def propose_point_1d(old_point, dm, ds):
     m = old_point[0] + (np.random.rand() - 0.5)*2*dm
-    s = old_point[1] + (np.random.rand() - 0.5)*2*ds
+    s = np.exp(np.log(old_point[1]) + (np.random.rand() - 0.5)*2*ds)
     return np.array([m,s])
 
 @jit
-def sample_point_1d(means, covs, log_w, m_min = -20, m_max = 20, s_min = 0, s_max = 1, burnin = 1000, dm = 1, ds = 0.05, a = 2, b = 0.2):
-    old_point = np.array([0, 0.02])
+def sample_point_1d(means, covs, log_w, m_min = -20, m_max = 20, s_min = 0, s_max = 0.3, burnin = 1000, dm = 0.3, ds = 0.1, a = 2, b = 0.2):
+    old_point = np.array([0, b])
     log_old = log_integrand_1d(old_point[0], old_point[1], means, covs, log_w, a, b)
-    for i in range(burnin):
+    for _ in prange(burnin):
         new_point = propose_point_1d(old_point, dm, ds)
-        if not (s_min < new_point[1] < s_max and m_min < new_point[0] < m_max):
-            log_new = -np.inf
-        else:
-            log_new = log_integrand_1d(new_point[0], new_point[1], means, covs, log_w, a, b)
+        log_new = log_integrand_1d(new_point[0], new_point[1], means, covs, log_w, a, b)
         if log_new > log_old:
             old_point = new_point
             log_old   = log_new
     return old_point
 
 @jit
-def log_integrand_1d(mu, sigma, means, covs, log_w, a, b):
-    logP = 0
-    for i in range(len(means)):
+def log_integrand_1d(mu, sigma, means, covs, log_w, a, b, logP = 0):
+    for i in prange(len(means)):
         logP += log_prob_mixture_1d(mu, sigma, log_w[i], means[i], covs[i])
     return logP + log_invgamma(sigma, a, b)
 
 @jit
-def log_prob_mixture_1d(mu, sigma, log_w, means, covs):
-    logP = -np.inf
+def log_prob_mixture_1d(mu, sigma, log_w, means, covs, logP = -np.inf):
     for i in prange(len(means)):
         logP = log_add(logP, log_w[i] + log_norm_1d(means[i][0], mu, sigma**2 + covs[i][0,0] + (means[i][0] - mu)**2))
     return logP
 
-def MC_predictive_1d(events, n_samps = 1000, m_min = -5, m_max = 5, a = 2, b = 0.2):
+@jit(forceobj = True)
+def MC_predictive_1d(events, n_samps = 1000, m_min = -3, m_max = 3, a = 2, b = 0.2):
     means = np.random.uniform(m_min, m_max, size = n_samps)
     variances = np.sqrt(invgamma(a, b).rvs(size = n_samps))
     logP = np.zeros(n_samps, dtype = np.float64)
@@ -188,14 +197,18 @@ def propose_point(old_point, dm, ds, dim):
     r = [old_point[2*dim + i] + (np.random.rand() - 0.5)*2*ds for i in range(int(dim*(dim-1)/2.))]
     return np.array(m+s+r)
 
-@jit
+#@jit
 def sample_point(means, covs, log_w, dim, df, L, m_min = -20, m_max = 20, s_min = 0, s_max = 1, burnin = 1000, dm = 1, ds = 0.05):
     m = [0. for i in range(dim)]
     s = [L[i,i] for i in range(dim)]
     r = [0. for i in range(int(dim*(dim-1)/2.))]
     old_point = np.array(m+s+r)
+    return sample_point_inner(means, covs, log_w, dim, df, L, old_point, m_min, m_max, s_min, s_max, burnin, dm, ds)
+
+@jit
+def sample_point_inner(means, covs, log_w, dim, df, L, old_point, m_min = -20, m_max = 20, s_min = 0, s_max = 1, burnin = 1000, dm = 1, ds = 0.05):
     log_old = log_integrand(old_point, means, covs, log_w, dim, df, L)
-    for i in range(burnin):
+    for i in prange(burnin):
         new_point = propose_point(old_point, dm, ds, dim)
         if not ((s_min < new_point[dim:2*dim]).all() and (new_point[dim:2*dim] < s_max).all() and (m_min < new_point[:dim]).all() and (new_point[:dim] < m_max).all() and (-1 < new_point[:2*dim]).all() and (new_point[:2*dim] < 1).all()):
             log_new = -np.inf
@@ -206,7 +219,7 @@ def sample_point(means, covs, log_w, dim, df, L, m_min = -20, m_max = 20, s_min 
             log_old   = log_new
     return old_point
 
-def MC_predictive(events, dim, n_samps = 1000, m_min = -5, m_max = 5, a = 2, b = np.array([0.2])):
+def MC_predictive(events, dim, n_samps = 1000, m_min = -10, m_max = 10, a = 2, b = np.array([0.2])):
     means = np.random.uniform(m_min, m_max, size = (n_samps, dim))
     if len(b) == 1:
         b = np.identity(dim)*b
