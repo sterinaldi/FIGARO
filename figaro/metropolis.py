@@ -1,5 +1,4 @@
 import numpy as np
-import cpnest.model
 from numba import jit, njit, prange
 from numba.extending import get_cython_function_address
 import ctypes
@@ -77,31 +76,6 @@ def log_prob_mixture_1d(mu, sigma, log_w, means, covs):
 
 def sample_point(means, covs, log_w, m_min = -20, m_max = 20, s_min = 0, s_max = 1, burnin = 1000, dm = 1, ds = 0.05, a = 2, b = 0.2):
     pass
-
-class Integrator(cpnest.model.Model):
-    
-    def __init__(self, means, covs, dim, df, L):
-        super(Integrator, self).__init__()
-        self.means     = means
-        self.covs      = covs
-        self.dim       = dim
-        self.names     = ['m{0}'.format(i+1) for i in range(self.dim)] + ['s{0}'.format(i+1) for i in range(self.dim)] + ['r{0}'.format(j) for j in range(int(self.dim*(self.dim-1)/2.))]
-        self.bounds    = [[-20, 20] for _ in range(self.dim)] + [[0, 1] for _ in range(self.dim)] + [[-1,1] for _ in range(int(self.dim*(self.dim-1)/2.))]
-        self.prior     = invwishart(df = df, scale = L)
-        self.mu_prior  = -self.dim*np.log(40)
-    
-    def log_prior(self, x):
-        logP = super(Integrator, self).log_prior(x)
-        if not np.isfinite(logP):
-            return -np.inf
-        self.mean, self.cov_mat = build_mean_cov(np.array(x.values), self.dim)
-        if not np.isfinite(logdet_jit(self.cov_mat)):
-            return -np.inf
-        logP = self.prior.logpdf(self.cov_mat) + self.mu_prior
-        return logP
-    
-    def log_likelihood(self, x):
-        return log_integrand(self.mean[0], self.cov_mat, self.means, self.covs)
 
 def build_mean_cov(x, dim):
     mean  = np.atleast_2d(x[:dim])
