@@ -1,10 +1,5 @@
 import traceback as tb
 import sys
-from numba.core.errors import NumbaDeprecationWarning, NumbaPendingDeprecationWarning
-import warnings
-
-warnings.simplefilter('ignore', category=NumbaDeprecationWarning)
-warnings.simplefilter('ignore', category=NumbaPendingDeprecationWarning)
 
 def except_hook(exctype, value, traceback):
     tb_last   = list(tb.walk_tb(traceback))[-1][0] # Get last call from traceback (function that raised the exception)

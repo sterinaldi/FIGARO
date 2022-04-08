@@ -13,7 +13,7 @@ import cpnest.model
 
 from figaro.decorators import *
 from figaro.transform import *
-from figaro.metropolis import sample_point, sample_point_1d, MC_predictive, MC_predictive_1d
+from figaro.metropolis import sample_point, Integrator, MC_predictive_1d, MC_predictive
 from figaro.exceptions import except_hook
 
 from numba import jit, njit, prange
@@ -93,9 +93,9 @@ def update_alpha(alpha, n, K, burnin = 1000):
     for i in prange(n_draws):
         a_new = a_old + (np.random.random() - 0.5)
         if a_new > 0.:
-            logP_old = numba_gammaln(a_old) - numba_gammaln(a_old + n) + K * np.log(a_old) - a_old + np.log(a_old)
-            logP_new = numba_gammaln(a_new) - numba_gammaln(a_new + n) + K * np.log(a_new) - a_new + np.log(a_new)
-            if logP_new > logP_old:
+            logP_old = numba_gammaln(a_old) - numba_gammaln(a_old + n) + K * np.log(a_old) - 1./a_old
+            logP_new = numba_gammaln(a_new) - numba_gammaln(a_new + n) + K * np.log(a_new) - 1./a_new
+            if logP_new - logP_old > np.log(np.random.random()):
                 a_old = a_new
     return a_old
 
@@ -127,18 +127,14 @@ def compute_component_suffstats(x, mean, cov, N, mu, sigma, p_mu, p_k, p_nu, p_L
     
     return new_mean, new_cov, new_N, new_mu, new_sigma
 
-@jit
+
 def build_mean_cov(x, dim):
     mean  = np.atleast_2d(x[:dim])
     corr  = np.identity(dim)/2.
-    ctr   = 0
-    for i in prange(dim-1):
-        for j in prange(i+1, dim):
-            corr[i][j] = x[2*dim:][ctr]
-            ctr = ctr+1
+    corr[np.triu_indices(dim, 1)] = x[2*dim:]
     corr  = corr + corr.T
-    sigma = x[dim:2*dim]
-    cov_mat = np.multiply(corr, np.outer(sigma, sigma))
+    sigma = np.identity(dim)*x[dim:2*dim]**2
+    cov_mat = sigma@corr
     return mean, cov_mat
 
 #-------------------#
@@ -164,19 +160,22 @@ class component_h:
         self.logL_D = logL_D
         
         if self.dim == 1:
-            sample = sample_point_1d(self.means, self.covs, self.log_w, a = 2, b = prior.L[0,0])
-            self.mu    = sample[0]
-            self.sigma = sample[1]**2
+            sample = sample_point(self.means, self.covs, self.log_w, a = 2, b = prior.L[0,0])
         else:
-            sample = sample_point(self.means, self.covs, self.log_w, dim = self.dim, df = prior.nu, L = prior.L)
-            self.mu, self.sigma = build_mean_cov(sample, self.dim)
+            integrator = cpnest.CPNest(Integrator(self.events, draws, self.dim, prior.nu, prior.L),
+                                            verbose = 0,
+                                            nlive   = 200,
+                                            maxmcmc = 5000,
+                                            nensemble = 1,
+                                            output = Path('.'),
+                                            )
+            integrator.run()
+            sample = np.array(integrator.posterior_samples[-1].tolist())[:-2]
+        self.mu, self.sigma = build_mean_cov(sample, self.dim)
     
 class mixture:
-    def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, n_draws = 1000, hier_flag = False):
-        if dim > 1 and hier_flag:
-            self.means = np.array([m[0] for m in means])
-        else:
-            self.means = means
+    def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, n_draws = 1000):
+        self.means    = means
         self.covs     = covs
         self.w        = w
         self.log_w    = np.log(w)
@@ -264,7 +263,7 @@ class DPGMM:
         if prior_pars is not None:
             self.prior = prior(*prior_pars)
         else:
-            self.prior = prior(1e-1, np.identity(self.dim)*0.2**2, self.dim+2, np.zeros(self.dim))
+            self.prior = prior(1e-3, np.identity(self.dim)*0.2**2, self.dim, np.zeros(self.dim))
         self.alpha      = alpha0
         self.alpha_0    = alpha0
         self.mixture    = []
@@ -346,27 +345,17 @@ class DPGMM:
     def sample_from_dpgmm(self, n_samps):
         idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = n_samps)
         ctr = Counter(idx)
-        if self.dim > 1:
-            samples = np.empty(shape = (1,self.dim))
-            for i, n in zip(ctr.keys(), ctr.values()):
-                samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n))))
-        else:
-            samples = np.array([np.zeros(1)])
-            for i, n in zip(ctr.keys(), ctr.values()):
-                samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n)).T))
+        samples = np.empty(shape = (1,self.dim))
+        for i, n in zip(ctr.keys(), ctr.values()):
+            samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n))))
         return samples[1:]
     
     def _sample_from_dpgmm_probit(self, n_samps):
         idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = n_samps)
         ctr = Counter(idx)
-        if self.dim > 1:
-            samples = np.empty(shape = (1,self.dim))
-            for i, n in zip(ctr.keys(), ctr.values()):
-                samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n))))
-        else:
-            samples = np.array([np.zeros(1)])
-            for i, n in zip(ctr.keys(), ctr.values()):
-                samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n)).T))
+        samples = np.empty(shape = (1,self.dim))
+        for i, n in zip(ctr.keys(), ctr.values()):
+            samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n))))
         return samples[1:]
 
     def _evaluate_mixture_in_probit(self, x):
@@ -476,7 +465,7 @@ class HDPGMM(DPGMM):
         events.append(x)
         
         if self.dim == 1:
-            logL_N = MC_predictive_1d(events, n_samps = self.MC_draws, a = self.prior.nu, b = self.prior.L[0,0])
+            logL_N = MC_predictive_1d(events, n_samps = self.MC_draws, a = 2, b = self.prior.L[0,0])
         else:
             logL_N = MC_predictive(events, self.dim, n_samps = self.MC_draws, a = self.prior.nu, b = self.prior.L)
         return logL_N - logL_D, logL_N
@@ -489,19 +478,22 @@ class HDPGMM(DPGMM):
         ss.logL_D = logL_D
         
         if self.dim == 1:
-            sample = sample_point_1d(ss.means, ss.covs, ss.log_w, a = 2, b = self.prior.L[0,0])
-            ss.mu    = sample[0]
-            ss.sigma = sample[1]**2
+            sample = sample_point(ss.means, ss.covs, ss.log_w, a = 2, b = self.prior.L[0,0])
         else:
-            sample = sample_point(ss.means, ss.covs, ss.log_w, dim = self.dim, df = self.prior.nu, L = self.prior.L)
-            ss.mu, ss.sigma = build_mean_cov(sample, self.dim)
+            integrator = cpnest.CPNest(Integrator(means, sigmas, self.dim, self.prior.nu, self.prior.L),
+                                            verbose = 0,
+                                            nlive   = 200,
+                                            maxmcmc = 5000,
+                                            nensemble = 1,
+                                            output = Path('.'),
+                                            )
+            integrator.run()
+            sample = np.array(integrator.posterior_samples[-1].tolist())[:-2]
+
+        ss.mu, ss.sigma = build_mean_cov(sample, self.dim)
         ss.N += 1
         return ss
 
     def density_from_samples(self, events):
         for ev in events:
             self.add_new_point(ev)
-    
-    # Overwrites parent function to account for hierarchical issues
-    def build_mixture(self):
-        return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, self.n_pts, n_draws = self.n_draws_norm, hier_flag = True)
