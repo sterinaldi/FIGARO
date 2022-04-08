@@ -35,16 +35,20 @@ def numba_gammaln(x):
 @jit
 def propose_point_1d(old_point, dm, ds):
     m = old_point[0] + (np.random.rand() - 0.5)*2*dm
-    s = np.exp(np.log(old_point[1]) + (np.random.rand() - 0.5)*2*ds)
+    s = old_point[1] + (np.random.rand() - 0.5)*2*ds
     return np.array([m,s])
 
 #@jit
-def sample_point_1d(means, covs, log_w, m_min = -20, m_max = 20, s_min = 0, s_max = 1, burnin = 1000, dm = 0.5, ds = 0.05, a = 2, b = 0.2):
+def sample_point_1d(means, covs, log_w, m_min = -20, m_max = 20, s_min = 0, s_max = 1, burnin = 1000, dm = 1, ds = 0.05, a = 2, b = 0.2):
     old_point = np.array([0, 0.02])
     for i in range(burnin):
-        new_point = propose_point_1d(old_point, dm, ds)
-        log_new = log_integrand_1d(new_point[0], new_point[1], means, covs, log_w, a, b)
-        log_old = log_integrand_1d(old_point[0], old_point[1], means, covs, log_w, a, b)
+        new_point = propose_point(old_point, dm, ds)
+        if not (s_min < new_point[1] < s_max and m_min < new_point[0] < m_max):
+            log_new = -np.inf
+            log_old = 0.
+        else:
+            log_new = log_integrand_1d(new_point[0], new_point[1], means, covs, log_w, a, b)
+            log_old = log_integrand_1d(old_point[0], old_point[1], means, covs, log_w, a, b)
         if log_new > log_old:
             old_point = new_point
     return old_point
