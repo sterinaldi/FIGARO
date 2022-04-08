@@ -86,13 +86,13 @@ def student_t(df, t, mu, sigma, dim):
 
 @jit
 def update_alpha(alpha, n, K, burnin = 1000):
-    a_old   = alpha
+    a_old = alpha
     n_draws = burnin+np.random.randint(100)
     for i in prange(n_draws):
         a_new = a_old + (np.random.random() - 0.5)
         if a_new > 0.:
-            logP_new = numba_gammaln(a_new) - numba_gammaln(a_new + n) + K * np.log(a_new) - 1./a_new
             logP_old = numba_gammaln(a_old) - numba_gammaln(a_old + n) + K * np.log(a_old) - 1./a_old
+            logP_new = numba_gammaln(a_new) - numba_gammaln(a_new + n) + K * np.log(a_new) - 1./a_new
             if logP_new > logP_old:
                 a_old = a_new
     return a_old
