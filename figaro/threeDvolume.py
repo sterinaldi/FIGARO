@@ -19,8 +19,11 @@ from figaro.mixture import DPGMM
 from figaro.transform import *
 from figaro.coordinates import celestial_to_cartesian, cartesian_to_celestial, inv_Jacobian
 from figaro.credible_regions import ConfidenceArea, ConfidenceVolume, FindNearest, FindLevelForHeight
-from figaro.cosmology import CosmologicalParameters
 from figaro.diagnostic import compute_entropy_single_draw, angular_coefficient
+try:
+    from figaro.cosmology import CosmologicalParameters
+except ModuleNotFoundError:
+    print("LAL is not installed. Please do not provide a galaxy catalog.")
 
 from pathlib import Path
 from distutils.spawn import find_executable
@@ -135,10 +138,10 @@ class VolumeReconstruction(DPGMM):
             self.flag_skymap = False
         
         # Catalog
-        self.cosmology = CosmologicalParameters(cosmology['h'], cosmology['om'], cosmology['ol'], 1, 0)
         self.catalog   = None
         self.cat_bound = cat_bound
         if glade_file is not None and self.max_dist < self.cat_bound:
+            self.cosmology = CosmologicalParameters(cosmology['h'], cosmology['om'], cosmology['ol'], 1, 0)
             self.load_glade(glade_file)
             self.cartesian_catalog = celestial_to_cartesian(self.catalog)
             self.probit_catalog    = transform_to_probit(self.cartesian_catalog, self.bounds)
