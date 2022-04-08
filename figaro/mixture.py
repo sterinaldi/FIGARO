@@ -11,7 +11,7 @@ from scipy.stats import invwishart
 
 from figaro.decorators import *
 from figaro.transform import *
-from figaro.metropolis import sample_point_1d, sample_point, MC_predictive_1d, MC_predictive
+from figaro.metropolis import sample_point, sample_point_1d, MC_predictive_1d, MC_predictive
 from figaro.exceptions import except_hook
 
 from numba import jit, njit, prange
@@ -93,7 +93,7 @@ def update_alpha(alpha, n, K, burnin = 1000):
         if a_new > 0.:
             logP_old = numba_gammaln(a_old) - numba_gammaln(a_old + n) + K * np.log(a_old) - 1./a_old
             logP_new = numba_gammaln(a_new) - numba_gammaln(a_new + n) + K * np.log(a_new) - 1./a_new
-            if logP_new > logP_old:
+            if logP_new - logP_old > np.log(np.random.random()):
                 a_old = a_new
     return a_old
 
@@ -124,6 +124,7 @@ def compute_component_suffstats(x, mean, cov, N, mu, sigma, p_mu, p_k, p_nu, p_L
     new_sigma = (p_L*p_k + new_cov*new_N + p_k*new_N*((new_mean - p_mu).T@(new_mean - p_mu))/(p_k + new_N))/(p_nu + new_N)
     
     return new_mean, new_cov, new_N, new_mu, new_sigma
+
 
 def build_mean_cov(x, dim):
     mean  = np.atleast_2d(x[:dim])
@@ -157,7 +158,7 @@ class component_h:
         self.logL_D = logL_D
         
         if self.dim == 1:
-            sample = sample_point_1d(self.means, self.covs, self.log_w, a = prior.nu, b = prior.L[0,0])
+            sample = sample_point_1d(self.means, self.covs, self.log_w, a = prior.nu+1, b = prior.L[0,0])
         else:
             sample = sample_point(self.means, self.covs, self.log_w, a = prior.nu, b = prior.L)
         self.mu, self.sigma = build_mean_cov(sample, self.dim)
@@ -252,7 +253,7 @@ class DPGMM:
         if prior_pars is not None:
             self.prior = prior(*prior_pars)
         else:
-            self.prior = prior(1e-2, np.identity(self.dim)*0.2**2, self.dim+2, np.zeros(self.dim))
+            self.prior = prior(1e-3, np.identity(self.dim)*0.2**2, self.dim, np.zeros(self.dim))
         self.alpha      = alpha0
         self.alpha_0    = alpha0
         self.mixture    = []
@@ -467,7 +468,7 @@ class HDPGMM(DPGMM):
         ss.logL_D = logL_D
         
         if self.dim == 1:
-            sample = sample_point_1d(ss.means, ss.covs, ss.log_w, a = self.prior.nu, b = self.prior.L[0,0])
+            sample = sample_point_1d(ss.means, ss.covs, ss.log_w, a = self.prior.nu+1, b = self.prior.L[0,0])
         else:
             sample = sample_point(ss.means, ss.covs, ss.log_w, a = self.prior.nu, b = self.prior.L)
         ss.mu, ss.sigma = build_mean_cov(sample, self.dim)
