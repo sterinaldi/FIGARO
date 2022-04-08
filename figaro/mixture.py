@@ -86,16 +86,15 @@ def student_t(df, t, mu, sigma, dim):
 
 @jit
 def update_alpha(alpha, n, K, burnin = 1000):
-    a_old    = alpha
-    logP_old = numba_gammaln(a_old) - numba_gammaln(a_old + n) + K * np.log(a_old) - a_old + np.log(a_old)
+    a_old   = alpha
     n_draws = burnin+np.random.randint(100)
     for i in prange(n_draws):
         a_new = a_old + (np.random.random() - 0.5)
         if a_new > 0.:
-            logP_new = numba_gammaln(a_new) - numba_gammaln(a_new + n) + K * np.log(a_new) - a_new + np.log(a_new)
+            logP_new = numba_gammaln(a_new) - numba_gammaln(a_new + n) + K * np.log(a_new) - 1./a_new
+            logP_old = numba_gammaln(a_old) - numba_gammaln(a_old + n) + K * np.log(a_old) - 1./a_old
             if logP_new > logP_old:
-                a_old    = a_new
-                logP_old = logP_new
+                a_old = a_new
     return a_old
 
 @jit
@@ -125,7 +124,6 @@ def compute_component_suffstats(x, mean, cov, N, mu, sigma, p_mu, p_k, p_nu, p_L
     new_sigma = (p_L*p_k + new_cov*new_N + p_k*new_N*((new_mean - p_mu).T@(new_mean - p_mu))/(p_k + new_N))/(p_nu + new_N)
     
     return new_mean, new_cov, new_N, new_mu, new_sigma
-
 
 def build_mean_cov(x, dim):
     mean  = np.atleast_2d(x[:dim])
