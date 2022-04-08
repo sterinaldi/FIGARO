@@ -8,7 +8,7 @@ from distutils.extension import Extension
 import os
 
 if not("LAL_PREFIX" in os.environ):
-    print("No LAL installation found, please install LAL from source or source your LAL installation, see https://wiki.ligo.org/Computing/LALSuiteInstall. Some functions - GW posterior samples loading and catalog loading - will not be available and errors might be raised.")
+    print("No LAL installation found, please install LAL from source or source your LAL installation, see https://wiki.ligo.org/Computing/LALSuiteInstall. Some functions - GW posterior samples loading and catalog loading - won't be available and errors might be raised.")
     lal_flag = False
 else:
     lal_prefix = os.environ.get("LAL_PREFIX")
