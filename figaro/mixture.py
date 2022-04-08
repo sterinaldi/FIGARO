@@ -9,11 +9,9 @@ from scipy.special import gammaln, logsumexp
 from scipy.stats import multivariate_normal as mn
 from scipy.stats import invwishart
 
-import cpnest.model
-
 from figaro.decorators import *
 from figaro.transform import *
-from figaro.metropolis import sample_point, Integrator, MC_predictive_1d, MC_predictive
+from figaro.metropolis import sample_point_1d, sample_point, MC_predictive_1d, MC_predictive
 from figaro.exceptions import except_hook
 
 from numba import jit, njit, prange
@@ -88,15 +86,16 @@ def student_t(df, t, mu, sigma, dim):
 
 @jit
 def update_alpha(alpha, n, K, burnin = 1000):
-    a_old = alpha
+    a_old    = alpha
+    logP_old = numba_gammaln(a_old) - numba_gammaln(a_old + n) + K * np.log(a_old) - a_old + np.log(a_old)
     n_draws = burnin+np.random.randint(100)
     for i in prange(n_draws):
         a_new = a_old + (np.random.random() - 0.5)
         if a_new > 0.:
-            logP_old = numba_gammaln(a_old) - numba_gammaln(a_old + n) + K * np.log(a_old) - 1./a_old
-            logP_new = numba_gammaln(a_new) - numba_gammaln(a_new + n) + K * np.log(a_new) - 1./a_new
-            if logP_new - logP_old > np.log(np.random.random()):
-                a_old = a_new
+            logP_new = numba_gammaln(a_new) - numba_gammaln(a_new + n) + K * np.log(a_new) - a_new + np.log(a_new)
+            if logP_new > logP_old:
+                a_old    = a_new
+                logP_old = logP_new
     return a_old
 
 @jit
@@ -160,17 +159,9 @@ class component_h:
         self.logL_D = logL_D
         
         if self.dim == 1:
-            sample = sample_point(self.means, self.covs, self.log_w, a = 2, b = prior.L[0,0])
+            sample = sample_point_1d(self.means, self.covs, self.log_w, a = prior.nu, b = prior.L[0,0])
         else:
-            integrator = cpnest.CPNest(Integrator(self.events, draws, self.dim, prior.nu, prior.L),
-                                            verbose = 0,
-                                            nlive   = 200,
-                                            maxmcmc = 5000,
-                                            nensemble = 1,
-                                            output = Path('.'),
-                                            )
-            integrator.run()
-            sample = np.array(integrator.posterior_samples[-1].tolist())[:-2]
+            sample = sample_point(self.means, self.covs, self.log_w, a = prior.nu, b = prior.L)
         self.mu, self.sigma = build_mean_cov(sample, self.dim)
     
 class mixture:
@@ -263,7 +254,7 @@ class DPGMM:
         if prior_pars is not None:
             self.prior = prior(*prior_pars)
         else:
-            self.prior = prior(1e-3, np.identity(self.dim)*0.2**2, self.dim, np.zeros(self.dim))
+            self.prior = prior(1e-2, np.identity(self.dim)*0.2**2, self.dim+2, np.zeros(self.dim))
         self.alpha      = alpha0
         self.alpha_0    = alpha0
         self.mixture    = []
@@ -478,18 +469,9 @@ class HDPGMM(DPGMM):
         ss.logL_D = logL_D
         
         if self.dim == 1:
-            sample = sample_point(ss.means, ss.covs, ss.log_w, a = 2, b = self.prior.L[0,0])
+            sample = sample_point_1d(ss.means, ss.covs, ss.log_w, a = self.prior.nu, b = self.prior.L[0,0])
         else:
-            integrator = cpnest.CPNest(Integrator(means, sigmas, self.dim, self.prior.nu, self.prior.L),
-                                            verbose = 0,
-                                            nlive   = 200,
-                                            maxmcmc = 5000,
-                                            nensemble = 1,
-                                            output = Path('.'),
-                                            )
-            integrator.run()
-            sample = np.array(integrator.posterior_samples[-1].tolist())[:-2]
-
+            sample = sample_point(ss.means, ss.covs, ss.log_w, a = self.prior.nu, b = self.prior.L)
         ss.mu, ss.sigma = build_mean_cov(sample, self.dim)
         ss.N += 1
         return ss
