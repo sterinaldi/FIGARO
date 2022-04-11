@@ -1,4 +1,5 @@
 import traceback as tb
+import numpy
 import sys
 
 def except_hook(exctype, value, traceback):
@@ -11,6 +12,9 @@ def except_hook(exctype, value, traceback):
     #-----------#
     # Sample outside boundaries
     if exctype == ValueError and tb_last.f_code.co_name == "numpy.random.mtrand.RandomState.choice" and tb_s2last.f_code.co_name == "assign_to_cluster":
+        sys.__excepthook__(exctype, value, traceback)
+        print("\nFIGARO: you probably have a sample that falls outside the given boundaries\n")
+    elif exctype == numpy.linalg.LinAlgError and tb_last.f_code.co_name == "_check_finite_matrix" and tb_s2last.f_code.co_name == "log_predictive_likelihood":
         sys.__excepthook__(exctype, value, traceback)
         print("\nFIGARO: you probably have a sample that falls outside the given boundaries\n")
     else:
