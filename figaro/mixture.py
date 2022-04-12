@@ -125,14 +125,13 @@ def compute_component_suffstats(x, mean, cov, N, mu, sigma, p_mu, p_k, p_nu, p_L
     
     return new_mean, new_cov, new_N, new_mu, new_sigma
 
-
 def build_mean_cov(x, dim):
     mean  = np.atleast_2d(x[:dim])
     corr  = np.identity(dim)/2.
     corr[np.triu_indices(dim, 1)] = x[2*dim:]
     corr  = corr + corr.T
-    sigma = np.identity(dim)*x[dim:2*dim]**2
-    cov_mat = sigma@corr
+    sigma = x[dim:2*dim]
+    cov_mat = np.multiply(corr, np.outer(sigma, sigma))
     return mean, cov_mat
 
 #-------------------#
@@ -160,12 +159,15 @@ class component_h:
         if self.dim == 1:
             sample = sample_point_1d(self.means, self.covs, self.log_w, a = prior.nu+1, b = prior.L[0,0])
         else:
-            sample = sample_point(self.means, self.covs, self.log_w, a = prior.nu, b = prior.L)
+            sample = sample_point(self.means, self.covs, self.log_w, self.dim, a = prior.nu, b = prior.L)
         self.mu, self.sigma = build_mean_cov(sample, self.dim)
     
 class mixture:
-    def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, n_draws = 1000):
-        self.means    = means
+    def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, n_draws = 1000, hier_flag = False):
+        if dim > 1 and hier_flag:
+            self.means = np.array([m[0] for m in means])
+        else:
+            self.means = means
         self.covs     = covs
         self.w        = w
         self.log_w    = np.log(w)
@@ -253,7 +255,7 @@ class DPGMM:
         if prior_pars is not None:
             self.prior = prior(*prior_pars)
         else:
-            self.prior = prior(1e-3, np.identity(self.dim)*0.2**2, self.dim, np.zeros(self.dim))
+            self.prior = prior(1e-1, np.identity(self.dim)*0.2**2, self.dim, np.zeros(self.dim))
         self.alpha      = alpha0
         self.alpha_0    = alpha0
         self.mixture    = []
@@ -331,21 +333,30 @@ class DPGMM:
         self.assign_to_cluster(np.atleast_2d(x))
         self.alpha = update_alpha(self.alpha, self.n_pts, self.n_cl)
     
-    @from_probit
     def sample_from_dpgmm(self, n_samps):
         idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = n_samps)
         ctr = Counter(idx)
-        samples = np.empty(shape = (1,self.dim))
-        for i, n in zip(ctr.keys(), ctr.values()):
-            samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n))))
+        if self.dim > 1:
+            samples = np.empty(shape = (1,self.dim))
+            for i, n in zip(ctr.keys(), ctr.values()):
+                samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n))))
+        else:
+            samples = np.array([np.zeros(1)])
+            for i, n in zip(ctr.keys(), ctr.values()):
+                samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n)).T))
         return samples[1:]
-    
+
     def _sample_from_dpgmm_probit(self, n_samps):
         idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = n_samps)
         ctr = Counter(idx)
-        samples = np.empty(shape = (1,self.dim))
-        for i, n in zip(ctr.keys(), ctr.values()):
-            samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n))))
+        if self.dim > 1:
+            samples = np.empty(shape = (1,self.dim))
+            for i, n in zip(ctr.keys(), ctr.values()):
+                samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n))))
+        else:
+            samples = np.array([np.zeros(1)])
+            for i, n in zip(ctr.keys(), ctr.values()):
+                samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n)).T))
         return samples[1:]
 
     def _evaluate_mixture_in_probit(self, x):
@@ -395,7 +406,7 @@ class HDPGMM(DPGMM):
                        ):
         dim = len(bounds)
         if prior_pars == None:
-            prior_pars = (1e-3, np.identity(dim)*0.2**2, dim, np.zeros(dim))
+            prior_pars = (1e-1, np.identity(dim)*0.2**2, dim, np.zeros(dim))
         super().__init__(bounds = bounds, prior_pars = prior_pars, alpha0 = alpha0, out_folder = out_folder, n_draws_norm = n_draws_norm)
         self.MC_draws = int(MC_draws)
     
@@ -470,7 +481,7 @@ class HDPGMM(DPGMM):
         if self.dim == 1:
             sample = sample_point_1d(ss.means, ss.covs, ss.log_w, a = self.prior.nu+1, b = self.prior.L[0,0])
         else:
-            sample = sample_point(ss.means, ss.covs, ss.log_w, a = self.prior.nu, b = self.prior.L)
+            sample = sample_point(ss.means, ss.covs, ss.log_w, self.dim, a = self.prior.nu, b = self.prior.L)
         ss.mu, ss.sigma = build_mean_cov(sample, self.dim)
         ss.N += 1
         return ss
@@ -478,3 +489,7 @@ class HDPGMM(DPGMM):
     def density_from_samples(self, events):
         for ev in events:
             self.add_new_point(ev)
+
+    # Overwrites parent function to account for hierarchical issues
+    def build_mixture(self):
+        return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, self.n_pts, n_draws = self.n_draws_norm, hier_flag = True)
