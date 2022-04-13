@@ -69,7 +69,7 @@ def natural_keys(text):
 class VolumeReconstruction(DPGMM):
     def __init__(self, max_dist,
                        out_folder        = '.',
-                       prior_pars        = None,
+                       prior_pars        = (1e-3, np.identity(3)*0.2**2, 3, np.zeros(3)),
                        alpha0            = 1,
                        n_gridpoints      = [720, 360, 100], # RA, dec, DL
                        name              = 'skymap',
@@ -84,6 +84,7 @@ class VolumeReconstruction(DPGMM):
                        cat_bound         = 3000,
                        entropy           = False,
                        true_host         = None,
+                       host_name         = 'Host',
                        entropy_step      = 1,
                        entropy_ac_step   = 500,
                        n_sign_changes    = 5,
@@ -123,7 +124,13 @@ class VolumeReconstruction(DPGMM):
         self.inv_J = np.exp(self.log_inv_J)
         
         # True host
-        self.true_host = true_host
+        if len(true_host) == 2:
+            self.true_host = np.concatenate((np.array(true_host), np.ones(1)))
+        elif len(true_host) == 3:
+            self.true_host = true_host
+        else:
+            self.true_host == None
+        self.host_name = host_name
         if self.true_host is not None:
             self.pixel_idx  = FindNearest(self.ra, self.dec, self.dist, self.true_host)
             self.true_pixel = np.array([self.ra[self.pixel_idx[0]], self.dec[self.pixel_idx[1]], self.dist[self.pixel_idx[2]]])
@@ -425,7 +432,7 @@ class VolumeReconstruction(DPGMM):
         y_lim = ax.get_ylim()
         c1 = ax.contour(self.ra_2d, self.dec_2d, self.log_p_skymap.T, np.sort(self.skymap_heights), colors = 'black', linewidths = 0.5, linestyles = 'solid')
         if self.true_host is not None:
-            ax.scatter([self.true_pixel[0]], [self.true_pixel[1]], s=80, facecolors='none', edgecolors='g', label = '$\mathrm{Host}$')
+            ax.scatter([self.true_host[0]], [self.true_host[1]], s=80, facecolors='none', edgecolors='g', label = '$\mathrm{' + self.host_name + '}$')
         for i in range(len(self.areas)):
             c1.collections[i].set_label('${0:.0f}\\%'.format(100*self.levels[-i])+ '\ \mathrm{CR}:'+'{0:.1f}'.format(self.areas[-i]) + '\ \mathrm{deg}^2$')
         handles, labels = ax.get_legend_handles_labels()
@@ -539,6 +546,8 @@ class VolumeReconstruction(DPGMM):
                                 if self.next_plot < np.inf:
                                     self.next_plot = self.n_pts*2
                         self.ac.append(ac)
+            else:
+                self.flag_skymap = True
                         
         self.save_density()
         self.N.append(self.n_pts)
