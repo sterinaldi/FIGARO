@@ -2,3 +2,5 @@ tqdm
 cython
 dill
 corner
+astropy
+pyvo
