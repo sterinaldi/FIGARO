@@ -10,6 +10,13 @@ from matplotlib.lines import Line2D
 from corner import corner
 import imageio
 
+from astropy.coordinates import SkyCoord
+from astropy.units import Quantity
+from astropy.io import fits
+from astropy.wcs import WCS
+import pyvo as vo
+import socket
+
 from scipy.special import logsumexp
 from scipy.stats import multivariate_normal as mn
 from numba import jit, prange
@@ -68,26 +75,27 @@ def natural_keys(text):
 
 class VolumeReconstruction(DPGMM):
     def __init__(self, max_dist,
-                       out_folder        = '.',
-                       prior_pars        = (1e-3, np.identity(3)*0.2**2, 3, np.zeros(3)),
-                       alpha0            = 1,
-                       n_gridpoints      = [720, 360, 100], # RA, dec, DL
-                       name              = 'skymap',
-                       labels            = ['$\\alpha$', '$\\delta$', '$D\ [Mpc]$'],
-                       levels            = [0.50, 0.90],
-                       latex             = False,
-                       incr_plot         = False,
-                       glade_file        = None,
-                       cosmology         = {'h': 0.674, 'om': 0.315, 'ol': 0.685},
-                       n_gal_to_plot    = 100,
-                       region_to_plot    = 0.5,
-                       cat_bound         = 3000,
-                       entropy           = False,
-                       true_host         = None,
-                       host_name         = 'Host',
-                       entropy_step      = 1,
-                       entropy_ac_step   = 500,
-                       n_sign_changes    = 5,
+                       out_folder          = '.',
+                       prior_pars          = (1e-3, np.identity(3)*0.2**2, 3, np.zeros(3)),
+                       alpha0              = 1,
+                       n_gridpoints        = [720, 360, 100], # RA, dec, DL
+                       name                = 'skymap',
+                       labels              = ['$\\alpha$', '$\\delta$', '$D\ [Mpc]$'],
+                       levels              = [0.50, 0.90],
+                       latex               = False,
+                       incr_plot           = False,
+                       glade_file          = None,
+                       cosmology           = {'h': 0.674, 'om': 0.315, 'ol': 0.685},
+                       n_gal_to_plot       = 100,
+                       region_to_plot      = 0.5,
+                       cat_bound           = 3000,
+                       entropy             = False,
+                       true_host           = None,
+                       host_name           = 'Host',
+                       entropy_step        = 1,
+                       entropy_ac_step     = 500,
+                       n_sign_changes      = 5,
+                       virtual_observatory = False,
                        ):
                 
         self.max_dist = max_dist
@@ -124,12 +132,13 @@ class VolumeReconstruction(DPGMM):
         self.inv_J = np.exp(self.log_inv_J)
         
         # True host
-        if len(true_host) == 2:
-            self.true_host = np.concatenate((np.array(true_host), np.ones(1)))
-        elif len(true_host) == 3:
-            self.true_host = true_host
+        if true_host is not None:
+            if len(true_host) == 2:
+                self.true_host = np.concatenate((np.array(true_host), np.ones(1)))
+            elif len(true_host) == 3:
+                self.true_host = true_host
         else:
-            self.true_host == None
+            self.true_host = true_host
         self.host_name = host_name
         if self.true_host is not None:
             self.pixel_idx  = FindNearest(self.ra, self.dec, self.dist, self.true_host)
@@ -159,6 +168,7 @@ class VolumeReconstruction(DPGMM):
             self.region = region_to_plot
         else:
             self.region = self.levels[0]
+        self.virtual_observatory = virtual_observatory
         
         # Entropy
         self.entropy         = entropy
@@ -273,7 +283,10 @@ class VolumeReconstruction(DPGMM):
     def plot_samples(self, n_samps, initial_samples = None):
         mix_samples = self.sample_from_volume(n_samps)
         if initial_samples is not None:
-            c = corner(initial_samples, color = 'coral', labels = self.labels, truths = self.true_host, hist_kwargs={'density':True, 'label':'$\mathrm{Samples}$'})
+            if self.true_host is not None:
+                c = corner(initial_samples, color = 'coral', labels = self.labels, truths = self.true_host, hist_kwargs={'density':True, 'label':'$\mathrm{Samples}$'})
+            else:
+                c = corner(initial_samples, color = 'coral', labels = self.labels, hist_kwargs={'density':True, 'label':'$\mathrm{Samples}$'})
             c = corner(mix_samples, fig = c, color = 'dodgerblue', labels = self.labels, hist_kwargs={'density':True, 'label':'$\mathrm{DPGMM}$'})
         else:
             c = corner(mix_samples, fig = c, color = 'dodgerblue', labels = self.labels, hist_kwargs={'density':True, 'label':'$\mathrm{DPGMM}$'})
@@ -425,24 +438,56 @@ class VolumeReconstruction(DPGMM):
         plt.close()
         
         # 2D galaxy plot
+        # Limits for VO image
+        fig_b = plt.figure()
+        ax_b  = fig_b.add_subplot(111)
+        c = ax_b.scatter(self.sorted_cat[:,0][:-int(n_gals):-1]*180./np.pi, self.sorted_cat[:,1][:-int(n_gals):-1]*180./np.pi, c = self.sorted_p_cat_to_plot[:-int(n_gals):-1], marker = '+', cmap = 'coolwarm', linewidths = 1)
+        x_lim = ax_b.get_xlim()
+        y_lim = ax_b.get_ylim()
         fig = plt.figure()
-        ax = fig.add_subplot(111)
-        c = ax.scatter(self.sorted_cat[:,0][:-int(n_gals):-1], self.sorted_cat[:,1][:-int(n_gals):-1], c = self.sorted_p_cat_to_plot[:-int(n_gals):-1], marker = '+', cmap = 'coolwarm', linewidths= 1)
-        x_lim = ax.get_xlim()
-        y_lim = ax.get_ylim()
-        c1 = ax.contour(self.ra_2d, self.dec_2d, self.log_p_skymap.T, np.sort(self.skymap_heights), colors = 'black', linewidths = 0.5, linestyles = 'solid')
-        if self.true_host is not None:
-            ax.scatter([self.true_host[0]], [self.true_host[1]], s=80, facecolors='none', edgecolors='g', label = '$\mathrm{' + self.host_name + '}$')
+        if self.virtual_observatory:
+            # Download background
+            if self.true_host is not None:
+                pos = SkyCoord(self.true_host[0]*180./np.pi, self.true_host[1]*180./np.pi, unit = 'deg')
+            else:
+                pos = SkyCoord((x_lim[1]+x_lim[0])/2., (y_lim[1]+y_lim[0])/2., unit = 'deg')
+            size = (Quantity(4, unit = 'deg'), Quantity(6, unit = 'deg'))
+            ss = vo.regsearch(servicetype='image',waveband='optical', keywords=['SkyView'])[0]
+            sia_results = ss.search(pos=pos, size=size, intersect='overlaps', format='image/fits')
+            urls = [r.getdataurl() for r in sia_results]
+            for attempt in range(10):
+                # Download timeout
+                try:
+                    hdu = [fits.open(ff)[0] for ff in urls][0]
+                except socket.timeout:
+                    continue
+                else:
+                    break
+            wcs = WCS(hdu.header)
+            ax = fig.add_subplot(111, projection=wcs)
+            ax.imshow(hdu.data,cmap = 'gray')
+            ax.set_autoscale_on(False)
+            c = ax.scatter(self.sorted_cat[:,0][:-int(n_gals):-1]*180./np.pi, self.sorted_cat[:,1][:-int(n_gals):-1]*180./np.pi, c = self.sorted_p_cat_to_plot[:-int(n_gals):-1], marker = '+', cmap = 'coolwarm', linewidths = 0.5, transform=ax.get_transform('world'), zorder = 100)
+            c1 = ax.contourf(self.ra_2d*180./np.pi, self.dec_2d*180./np.pi, self.log_p_skymap.T, np.sort(self.skymap_heights), colors = 'white', linewidths = 0.5, linestyles = 'solid', transform=ax.get_transform('world'), zorder = 99, alpha = 0)
+            if self.true_host is not None:
+                ax.scatter([self.true_host[0]*180./np.pi], [self.true_host[1]*180./np.pi], s=80, facecolors='none', edgecolors='g', label = '$\mathrm{' + self.host_name + '}$', transform=ax.get_transform('world'), zorder = 101)
+            leg_col = 'white'
+        else:
+            ax = fig.add_subplot(111)
+            c = ax.scatter(self.sorted_cat[:,0][:-int(n_gals):-1], self.sorted_cat[:,1][:-int(n_gals):-1], c = self.sorted_p_cat_to_plot[:-int(n_gals):-1], marker = '+', cmap = 'coolwarm', linewidths = 1)
+            c1 = ax.contour(self.ra_2d, self.dec_2d, self.log_p_skymap.T, np.sort(self.skymap_heights), colors = 'black', linewidths = 0.5, linestyles = 'solid')
+            if self.true_host is not None:
+                ax.scatter([self.true_host[0]], [self.true_host[1]], s=80, facecolors='none', edgecolors='g', label = '$\mathrm{' + self.host_name + '}$')
+            leg_col = 'black'
         for i in range(len(self.areas)):
             c1.collections[i].set_label('${0:.0f}\\%'.format(100*self.levels[-i])+ '\ \mathrm{CR}:'+'{0:.1f}'.format(self.areas[-i]) + '\ \mathrm{deg}^2$')
         handles, labels = ax.get_legend_handles_labels()
         patch = mpatches.Patch(color='grey', label='${0}'.format(len(self.cat_to_plot_celestial))+'\ \mathrm{galaxies}$', alpha = 0)
         handles.append(patch)
+        plt.colorbar(c, label = '$p_{host}$')
         ax.set_xlabel('$\\alpha$')
         ax.set_ylabel('$\\delta$')
-        ax.set_xlim(x_lim)
-        ax.set_ylim(y_lim)
-        ax.legend(handles = handles, loc = 0, frameon = False, fontsize = 10, handlelength=0)
+        ax.legend(handles = handles, loc = 2, frameon = False, fontsize = 10, handlelength=0, labelcolor = leg_col)
         if final_map:
             fig.savefig(Path(self.skymap_folder, 'galaxies_'+self.name+'_all.pdf'), bbox_inches = 'tight')
         else:
