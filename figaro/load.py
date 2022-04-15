@@ -1,10 +1,11 @@
 import numpy as np
 import os
 import h5py
+import warnings
 try:
     from figaro.cosmology import CosmologicalParameters
 except ModuleNotFoundError:
-    print("LAL is not installed. GW posterior samples cannot be loaded.")
+    warnings.warn("LAL is not installed. GW posterior samples cannot be loaded.")
 from pathlib import Path
 from scipy.optimize import newton
 

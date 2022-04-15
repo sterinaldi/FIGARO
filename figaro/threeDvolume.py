@@ -2,6 +2,7 @@ import numpy as np
 from itertools import product
 import h5py
 import re
+import warnings
 
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
@@ -29,8 +30,10 @@ from figaro.credible_regions import ConfidenceArea, ConfidenceVolume, FindNeares
 from figaro.diagnostic import compute_entropy_single_draw, angular_coefficient
 try:
     from figaro.cosmology import CosmologicalParameters
+    lal_flag = True
 except ModuleNotFoundError:
-    print("LAL is not installed. Please do not provide a galaxy catalog.")
+    warnings.warn("LAL is not installed. If provided, galaxy catalog will not be loaded")
+    lal_flag = False
 
 from pathlib import Path
 from distutils.spawn import find_executable
@@ -156,7 +159,7 @@ class VolumeReconstruction(DPGMM):
         # Catalog
         self.catalog   = None
         self.cat_bound = cat_bound
-        if glade_file is not None and self.max_dist < self.cat_bound:
+        if lal_flag and glade_file is not None and self.max_dist < self.cat_bound:
             self.cosmology = CosmologicalParameters(cosmology['h'], cosmology['om'], cosmology['ol'], 1, 0)
             self.load_glade(glade_file)
             self.cartesian_catalog = celestial_to_cartesian(self.catalog)
