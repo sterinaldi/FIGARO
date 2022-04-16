@@ -16,7 +16,7 @@ rcParams["axes.labelsize"]=16
 rcParams["axes.grid"] = True
 rcParams["grid.alpha"] = 0.6
 
-def plot_median_cr(draws, injected = None, samples = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = 'x', unit = None, hierarchical = False):
+def plot_median_cr(draws, injected = None, samples = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = 'x', unit = None, hierarchical = False, show = False, save = True):
     
     if hierarchical:
         rec_label = '\mathrm{(H)DPGMM}'
@@ -84,9 +84,11 @@ def plot_median_cr(draws, injected = None, samples = None, bounds = None, out_fo
     ax.set_ylabel('$p({0})$'.format(label))
     ax.grid(True,dashes=(1,3))
     ax.legend(loc = 0, frameon = False)
-    fig.savefig(Path(out_folder, '{0}.pdf'.format(name)), bbox_inches = 'tight')
-    ax.set_yscale('log')
-    fig.savefig(Path(out_folder, 'log_{0}.pdf'.format(name)), bbox_inches = 'tight')
-    plt.close()
-    np.savetxt(Path(out_folder, 'prob_{0}.txt'.format(name)), np.array([x, p[50], p[5], p[16], p[84], p[95]]).T, header = 'x 50 5 16 84 95')
-            
+    if show:
+        plt.show()
+    if save:
+        fig.savefig(Path(out_folder, '{0}.pdf'.format(name)), bbox_inches = 'tight')
+        ax.set_yscale('log')
+        fig.savefig(Path(out_folder, 'log_{0}.pdf'.format(name)), bbox_inches = 'tight')
+        plt.close()
+        np.savetxt(Path(out_folder, 'prob_{0}.txt'.format(name)), np.array([x, p[50], p[5], p[16], p[84], p[95]]).T, header = 'x 50 5 16 84 95')
