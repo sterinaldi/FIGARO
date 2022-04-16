@@ -29,7 +29,7 @@ def compute_autocorrelation(draws, mean, dx):
     for tau in prange(taumax):
         sum = 0.
         for i in prange(n_draws):
-            sum += np.sum((draws[i] - mean)*(self.prob_draws[(i+tau)%n_draws] - mean))*dx/(N*n_draws)
+            sum += np.sum((draws[i] - mean)*(draws[(i+tau)%n_draws] - mean))*dx/(N*n_draws)
         autocorrelation[tau] = sum
     return taumax, autocorrelation
 
@@ -45,32 +45,52 @@ def compute_entropy(draws, n_draws = 1e3):
         S[i] = compute_entropy_single_draw(d, int(n_draws))
     return S
 
-def autocorrelation(draws, xmin, xmax, out_folder, name = 'event', n_points = 1000):
+def autocorrelation(draws, bounds = None, out_folder = '.', name = 'event', n_points = 1000, save = True, show = False):
     # 1-d only
-    x  = np.linspace(xmin, xmax, n_points)
+    
+    all_bounds = np.atleast_2d([d.bounds[0] for d in draws])
+    x_min = np.max(all_bounds[:,0])
+    x_max = np.min(all_bounds[:,1])
+
+    if bounds is not None:
+        if not bounds[0] >= x_min:
+            warnings.warn("The provided lower bound is invalid for at least one draw. {0} will be used instead.".format(x_min))
+        else:
+            x_min = bounds[0]
+        if not bounds[1] <= x_max:
+            warnings.warn("The provided upper bound is invalid for at least one draw. {0} will be used instead.".format(x_max))
+        else:
+            x_max = bounds[1]
+    x  = np.linspace(x_min, x_max, n_points+2)[1:-1]
     dx = x[1] - x[0]
     
-    functions = np.array([mix.evaluate_mixture(x) for mix in draws])
+    functions = np.array([mix.evaluate_mixture(np.atleast_2d(x).T) for mix in draws])
     mean      = np.mean(functions, axis = 0)
     
     taumax, ac = compute_autocorrelation(functions, mean, dx)
     
     fig, ax = plt.subplots()
     ax.plot(np.arange(taumax), ac, ls = '--', marker = '', lw = 0.7)
-    ax.set_xlabel('$\tau$')
-    ax.set_ylabel('$C(\tau)$')
-    ax.grid()
-    fig.savefig(Path(out_folder, name+'_autocorrelation.pdf'), bbox_inches = 'tight')
+    ax.set_xlabel('$\\tau$')
+    ax.set_ylabel('$C(\\tau)$')
+    ax.grid(visible = True)
+    if show:
+        plt.show()
+    if save:
+        fig.savefig(Path(out_folder, name+'_autocorrelation.pdf'), bbox_inches = 'tight')
     plt.close()
 
-def entropy(draws, out_folder, name = 'event', n_draws = 1e3, step = 1, dim = 1):
+def entropy(draws, out_folder, name = 'event', n_draws = 1e3, step = 1, dim = 1, show = False, save = True):
     S = compute_entropy(draws, int(n_draws**dim))
     fig, ax = plt.subplots()
     ax.plot(np.arange(1, len(draws)+1)*step, S, ls = '--', marker = '', lw = 0.7)
     ax.set_xlabel('$N$')
     ax.set_ylabel('$S(N)\ [\mathrm{bits}]$')
     ax.grid()
-    fig.savefig(Path(out_folder, name+'_entropy.pdf'), bbox_inches = 'tight')
+    if show:
+        plt.show()
+    if save:
+        fig.savefig(Path(out_folder, name+'_entropy.pdf'), bbox_inches = 'tight')
     plt.close()
 
 def plot_n_clusters_alpha(n_cl, alpha, out_folder, name = 'event'):
