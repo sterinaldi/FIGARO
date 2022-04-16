@@ -27,11 +27,6 @@ def plot_median_cr(draws, injected = None, samples = None, bounds = None, out_fo
     x_min = np.max(all_bounds[:,0])
     x_max = np.min(all_bounds[:,1])
     
-    if x_min == 0:
-        x_min = 0.001
-    if x_max == 0:
-        x_max = -0.001
-    
     if bounds is not None:
         if not bounds[0] >= x_min:
             warnings.warn("The provided lower bound is invalid for at least one draw. {0} will be used instead.".format(x_min))
@@ -75,7 +70,7 @@ def plot_median_cr(draws, injected = None, samples = None, bounds = None, out_fo
         ax.plot(x, p_x, lw = 0.5, color = 'red', label = '$\mathrm{Simulated}$')
     
     # Median
-    ax.plot(x, p[50], lw = 0.5, color = 'steelblue', label = '${0}$'.format(rec_label))
+    ax.plot(x, p[50], lw = 0.7, color = 'steelblue', label = '${0}$'.format(rec_label))
     
     if unit is None:
         ax.set_xlabel('${0}$'.format(label))
