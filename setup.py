@@ -55,13 +55,13 @@ ext_modules = cythonize(ext_modules, compiler_directives={'language_level' : "3"
 setup(
       name = 'figaro/cumulative',
       ext_modules = cythonize(ext_modules, language_level = "3"),
-      include_dirs=[numpy.get_include()]
+      include_dirs=['figaro', numpy.get_include()]
       )
 if lal_flag:
     setup(
           name = 'figaro/cosmology',
           ext_modules = cythonize(ext_modules, language_level = "3"),
-          include_dirs=[numpy.get_include()]
+          include_dirs=['figaro', numpy.get_include()]
           )
 
 setup(
