@@ -577,7 +577,7 @@ class DPGMM:
             :np.ndarray x: sample
         """
         self.n_pts += 1
-        self.assign_to_cluster(np.atleast_2d(x))
+        self._assign_to_cluster(np.atleast_2d(x))
         self.alpha = update_alpha(self.alpha, self.n_pts, self.n_cl)
     
     def sample_from_dpgmm(self, n_samps):
@@ -752,7 +752,7 @@ class HDPGMM(DPGMM):
         super().__init__(bounds = bounds, prior_pars = prior_pars, alpha0 = alpha0, out_folder = out_folder, n_draws_norm = n_draws_norm)
         self.MC_draws = int(MC_draws)
     
-    def _add_new_point(self, ev):
+    def add_new_point(self, ev):
         """
         Update the probability density reconstruction adding a new sample
         
@@ -761,7 +761,7 @@ class HDPGMM(DPGMM):
         """
         self.n_pts += 1
         x = np.random.choice(ev)
-        self.assign_to_cluster(x)
+        self._assign_to_cluster(x)
         self.alpha = update_alpha(self.alpha, self.n_pts, self.n_cl)
 
     def _cluster_assignment_distribution(self, x):
