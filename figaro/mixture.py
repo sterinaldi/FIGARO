@@ -429,10 +429,11 @@ class DPGMM:
     Class to infer a distribution given a set of samples.
     
     Arguments:
-        :iterable bounds: boundaries of the rectangle over which the distribution is defined. It should be in the format [[xmin, xmax],[ymin, ymax],...]
-        :iterable prior_pars: NIG/NIW prior parameters (k, L, nu, mu)
-        :double alpha0: initial guess for concentration parameter
-        :int n_draws_norm: number of MC draws to estimate normalisation constant while instancing mixture class
+        :iterable bounds:        boundaries of the rectangle over which the distribution is defined. It should be in the format [[xmin, xmax],[ymin, ymax],...]
+        :iterable prior_pars:    NIG/NIW prior parameters (k, L, nu, mu)
+        :double alpha0:          initial guess for concentration parameter
+        :str or Path out_folder: folder for outputs
+        :int n_draws_norm:       number of MC draws to estimate normalisation constant while instancing mixture class
     
     Returns:
         :DPGMM: instance of DPGMM class
@@ -637,9 +638,9 @@ class DPGMM:
         return p
 
     @probit
-    def evaluate_mixture(self, x):
+    def evaluate_mixture_no_jacobian(self, x):
         """
-        Evaluate mixture at point(s) x
+        Evaluate mixture at point(s) x without jacobian
         
         Arguments:
             :np.ndarray x: point(s) to evaluate the mixture at
@@ -651,27 +652,36 @@ class DPGMM:
         return p
     
     @probit
-    def evaluate_mixture_with_jacobian(self, x):
+    def evaluate_mixture(self, x):
+        """
+        Evaluate mixture at point(s) x
+        
+        Arguments:
+            :np.ndarray x: point(s) to evaluate the mixture at
+        
+        Returns:
+            :np.ndarray: mixture.pdf(x)
+        """
         p = np.sum(np.array([w*mn(comp.mu, comp.sigma).pdf(x) for comp, w in zip(self.mixture, self.w)]), axis = 0)
         return p * np.exp(-probit_logJ(x, self.bounds))
 
     def _evaluate_log_mixture_in_probit(self, x):
         """
-        Evaluate mixture at point(s) x in probit space
+        Evaluate log mixture at point(s) x in probit space
         
         Arguments:
             :np.ndarray x: point(s) to evaluate the mixture at (in probit space)
         
         Returns:
-            :np.ndarray: mixture.pdf(x)
+            :np.ndarray: mixture.logpdf(x)
         """
         p = logsumexp(np.array([w + mn(comp.mu, comp.sigma).logpdf(x) for comp, w in zip(self.mixture, self.log_w)]), axis = 0)
         return p
 
     @probit
-    def evaluate_log_mixture(self, x):
+    def evaluate_log_mixture_no_jacobian(self, x):
         """
-        Evaluate log mixture at point(s) x
+        Evaluate log mixture at point(s) x without jacobian
         
         Arguments:
             :np.ndarray x: point(s) to evaluate the mixture at
@@ -683,20 +693,52 @@ class DPGMM:
         return p
         
     @probit
-    def evaluate_log_mixture_with_jacobian(self, x):
+    def evaluate_log_mixture(self, x):
+        """
+        Evaluate mixture at point(s) x
+        
+        Arguments:
+            :np.ndarray x: point(s) to evaluate the mixture at
+        
+        Returns:
+            :np.ndarray: mixture.pdf(x)
+        """
         p = logsumexp(np.array([w + mn(comp.mu, comp.sigma).logpdf(x) for comp, w in zip(self.mixture, self.log_w)]), axis = 0)
         return p - probit_logJ(x, self.bounds)
 
     def save_density(self):
+        """
+        Build and save density
+        """
         mixture = self.build_mixture()
         with open(Path(self.out_folder, 'mixture.pkl'), 'wb') as dill_file:
             dill.dump(mixture, dill_file)
         
     def build_mixture(self):
+        """
+        Instances a mixture class representing the inferred distribution
+        
+        Returns:
+            :mixture: the inferred distribution
+        """
         return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, self.n_pts, n_draws = self.n_draws_norm)
 
 
 class HDPGMM(DPGMM):
+    """
+    Class to infer a distribution given a set of observations (each being a set of samples).
+    Child of DPGMM class
+    
+    Arguments:
+        :iterable bounds:        boundaries of the rectangle over which the distribution is defined. It should be in the format [[xmin, xmax],[ymin, ymax],...]
+        :iterable prior_pars:    NIG/NIW prior parameters (k, L, nu, mu)
+        :double alpha0:          initial guess for concentration parameter
+        :str or Path out_folder: folder for outputs
+        :int n_draws_norm:       number of MC draws to estimate normalisation constant while instancing mixture class
+    
+    Returns:
+        :HDPGMM: instance of HDPGMM class
+    """
     def __init__(self, bounds,
                        alpha0     = 1.,
                        out_folder = '.',
@@ -711,12 +753,27 @@ class HDPGMM(DPGMM):
         self.MC_draws = int(MC_draws)
     
     def add_new_point(self, ev):
+        """
+        Update the probability density reconstruction adding a new sample
+        
+        Arguments:
+            :iterable x: set of single-event draws from a DPGMM inference
+        """
         self.n_pts += 1
         x = np.random.choice(ev)
         self.assign_to_cluster(x)
         self.alpha = update_alpha(self.alpha, self.n_pts, self.n_cl)
 
     def cluster_assignment_distribution(self, x):
+        """
+        Compute the marginal distribution of cluster assignment for each cluster.
+        
+        Arguments:
+            :np.ndarray x: sample
+        
+        Returns:
+            :dict: p_i for each component
+        """
         scores = {}
         logL_N = {}
         for i in list(np.arange(self.n_cl)) + ["new"]:
@@ -735,6 +792,12 @@ class HDPGMM(DPGMM):
         return scores, logL_N
 
     def assign_to_cluster(self, x):
+        """
+        Assign the new sample x to an existing cluster or to a new cluster according to the marginal distribution of cluster assignment.
+        
+        Arguments:
+            :np.ndarray x: sample
+        """
         scores, logL_N = self.cluster_assignment_distribution(x)
         scores = scores.items()
         labels, scores = zip(*scores)
@@ -754,6 +817,16 @@ class HDPGMM(DPGMM):
         return
 
     def log_predictive_likelihood(self, x, ss):
+        """
+        Compute log likelihood of drawing sample x from component ss given the samples that are already assigned to that component.
+        
+        Arguments:
+            :np.ndarray x: sample
+            :component ss: component to update
+        
+        Returns:
+            :double: log Likelihood
+        """
         if ss == "new":
             ss     = component(np.zeros(self.dim), prior = self.prior)
             events = []
@@ -772,6 +845,17 @@ class HDPGMM(DPGMM):
         return logL_N - logL_D, logL_N
 
     def add_datapoint_to_component(self, x, ss, logL_D):
+        """
+        Update component parameters after assigning a sample to a component
+        
+        Arguments:
+            :np.ndarray x: sample
+            :component ss: component to update
+            :double logL_D: log Likelihood denominator
+        
+        Returns:
+            :component: updated component
+        """
         ss.events.append(x)
         ss.means.append(x.means)
         ss.covs.append(x.covs)
@@ -787,9 +871,21 @@ class HDPGMM(DPGMM):
         return ss
 
     def density_from_samples(self, events):
+        """
+        Reconstruct the probability density from a set of samples.
+        
+        Arguments:
+            :iterable samples: set of single-event draws from DPGMM
+        """
         for ev in events:
             self.add_new_point(ev)
 
     # Overwrites parent function to account for hierarchical issues
     def build_mixture(self):
+        """
+        Instances a mixture class representing the inferred distribution
+        
+        Returns:
+            :mixture: the inferred distribution
+        """
         return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, self.n_pts, n_draws = self.n_draws_norm, hier_flag = True)
