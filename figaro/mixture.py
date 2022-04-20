@@ -473,7 +473,7 @@ class DPGMM:
         if prior_pars is not None:
             self.prior = prior(*prior_pars)
         
-    def add_datapoint_to_component(self, x, ss):
+    def _add_datapoint_to_component(self, x, ss):
         """
         Update component parameters after assigning a sample to a component
         
@@ -492,7 +492,7 @@ class DPGMM:
         ss.sigma = new_sigma
         return ss
     
-    def log_predictive_likelihood(self, x, ss):
+    def _log_predictive_likelihood(self, x, ss):
         """
         Compute log likelihood of drawing sample x from component ss given the samples that are already assigned to that component.
         
@@ -509,7 +509,7 @@ class DPGMM:
         t_df, t_shape, mu_n = compute_t_pars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.cov, ss.N, self.dim)
         return student_t(df = t_df, t = x, mu = mu_n, sigma = t_shape, dim = self.dim)
 
-    def cluster_assignment_distribution(self, x):
+    def _cluster_assignment_distribution(self, x):
         """
         Compute the marginal distribution of cluster assignment for each cluster.
         
@@ -525,7 +525,7 @@ class DPGMM:
                 ss = "new"
             else:
                 ss = self.mixture[i]
-            scores[i] = self.log_predictive_likelihood(x, ss)
+            scores[i] = self._log_predictive_likelihood(x, ss)
             if ss == "new":
                 scores[i] += np.log(self.alpha)
             else:
@@ -535,14 +535,14 @@ class DPGMM:
         scores = {cid: score*normalization for cid, score in scores.items()}
         return scores
 
-    def assign_to_cluster(self, x):
+    def _assign_to_cluster(self, x):
         """
         Assign the new sample x to an existing cluster or to a new cluster according to the marginal distribution of cluster assignment.
         
         Arguments:
             :np.ndarray x: sample
         """
-        scores = self.cluster_assignment_distribution(x).items()
+        scores = self._cluster_assignment_distribution(x).items()
         labels, scores = zip(*scores)
         cid = np.random.choice(labels, p=scores)
         if cid == "new":
@@ -550,7 +550,7 @@ class DPGMM:
             self.N_list.append(1.)
             self.n_cl += 1
         else:
-            self.mixture[int(cid)] = self.add_datapoint_to_component(x, self.mixture[int(cid)])
+            self.mixture[int(cid)] = self._add_datapoint_to_component(x, self.mixture[int(cid)])
             self.N_list[int(cid)] += 1
         # Update weights
         self.w = np.array(self.N_list)
@@ -638,7 +638,7 @@ class DPGMM:
         return p
 
     @probit
-    def evaluate_mixture_no_jacobian(self, x):
+    def _evaluate_mixture_no_jacobian(self, x):
         """
         Evaluate mixture at point(s) x without jacobian
         
@@ -679,7 +679,7 @@ class DPGMM:
         return p
 
     @probit
-    def evaluate_log_mixture_no_jacobian(self, x):
+    def _evaluate_log_mixture_no_jacobian(self, x):
         """
         Evaluate log mixture at point(s) x without jacobian
         
@@ -752,7 +752,7 @@ class HDPGMM(DPGMM):
         super().__init__(bounds = bounds, prior_pars = prior_pars, alpha0 = alpha0, out_folder = out_folder, n_draws_norm = n_draws_norm)
         self.MC_draws = int(MC_draws)
     
-    def add_new_point(self, ev):
+    def _add_new_point(self, ev):
         """
         Update the probability density reconstruction adding a new sample
         
@@ -764,7 +764,7 @@ class HDPGMM(DPGMM):
         self.assign_to_cluster(x)
         self.alpha = update_alpha(self.alpha, self.n_pts, self.n_cl)
 
-    def cluster_assignment_distribution(self, x):
+    def _cluster_assignment_distribution(self, x):
         """
         Compute the marginal distribution of cluster assignment for each cluster.
         
@@ -781,7 +781,7 @@ class HDPGMM(DPGMM):
                 ss = "new"
             else:
                 ss = self.mixture[i]
-            scores[i], logL_N[i] = self.log_predictive_likelihood(x, ss)
+            scores[i], logL_N[i] = self._log_predictive_likelihood(x, ss)
             if ss == "new":
                 scores[i] += np.log(self.alpha)
             else:
@@ -791,14 +791,14 @@ class HDPGMM(DPGMM):
         scores = {cid: score*normalization for cid, score in scores.items()}
         return scores, logL_N
 
-    def assign_to_cluster(self, x):
+    def _assign_to_cluster(self, x):
         """
         Assign the new sample x to an existing cluster or to a new cluster according to the marginal distribution of cluster assignment.
         
         Arguments:
             :np.ndarray x: sample
         """
-        scores, logL_N = self.cluster_assignment_distribution(x)
+        scores, logL_N = self._cluster_assignment_distribution(x)
         scores = scores.items()
         labels, scores = zip(*scores)
         cid = np.random.choice(labels, p=scores)
@@ -807,7 +807,7 @@ class HDPGMM(DPGMM):
             self.N_list.append(1.)
             self.n_cl += 1
         else:
-            self.mixture[int(cid)] = self.add_datapoint_to_component(x, self.mixture[int(cid)], logL_N[int(cid)])
+            self.mixture[int(cid)] = self._add_datapoint_to_component(x, self.mixture[int(cid)], logL_N[int(cid)])
             self.N_list[int(cid)] += 1
             
         # Update weights
@@ -816,7 +816,7 @@ class HDPGMM(DPGMM):
         self.log_w = np.log(self.w)
         return
 
-    def log_predictive_likelihood(self, x, ss):
+    def _log_predictive_likelihood(self, x, ss):
         """
         Compute log likelihood of drawing sample x from component ss given the samples that are already assigned to that component.
         
@@ -844,7 +844,7 @@ class HDPGMM(DPGMM):
             logL_N = MC_predictive(events, self.dim, n_samps = self.MC_draws, a = self.prior.nu, b = self.prior.L)
         return logL_N - logL_D, logL_N
 
-    def add_datapoint_to_component(self, x, ss, logL_D):
+    def _add_datapoint_to_component(self, x, ss, logL_D):
         """
         Update component parameters after assigning a sample to a component
         
