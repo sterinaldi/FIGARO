@@ -36,37 +36,25 @@ gammaln_float64 = functype(addr)
 # Functions #
 #-----------#
 
-@jit
-def log_add(x, y):
-     if x >= y:
-        return x+np.log1p(np.exp(y-x))
-     else:
-        return y+np.log1p(np.exp(x-y))
-
 @njit
 def numba_gammaln(x):
     return gammaln_float64(x)
 
-@njit
-def inv_jit(M):
-  return np.linalg.inv(M)
-
-@njit
-def logdet_jit(M):
-    return np.log(np.linalg.det(M))
-
-@njit
-def triple_product(v, M, n):
-    res = np.zeros(1, dtype = np.float64)
-    for i in prange(n):
-        for j in prange(n):
-            res = res + M[i,j]*v[i]*v[j]
-    return res
-
 @jit
 def student_t(df, t, mu, sigma, dim):
     """
-    http://gregorygundersen.com/blog/2020/01/20/multivariate-t/
+    Multivariate student-t pdf.
+    As in http://gregorygundersen.com/blog/2020/01/20/multivariate-t/
+    
+    Arguments:
+        :float df:         degrees of freedom
+        :float t:          variable
+        :np.ndarray mu:    mean
+        :np.ndarray sigma: variance
+        :int dim:          number of dimensions
+        
+    Returns:
+        :float: student_t(df).logpdf(t)
     """
     vals, vecs = np.linalg.eigh(sigma)
     logdet     = np.log(vals).sum()
@@ -86,6 +74,17 @@ def student_t(df, t, mu, sigma, dim):
 
 @jit
 def update_alpha(alpha, n, K, burnin = 1000):
+    """
+    Update concentration parameter using a Metropolis-Hastings sampling scheme.
+    
+    Arguments:
+        :int n:      Number of samples
+        :int K:      Number of active clusters
+        :int burnin: MH burnin
+    
+    Returns:
+        :double: new concentration parametere value
+    """
     a_old = alpha
     n_draws = burnin+np.random.randint(100)
     for i in prange(n_draws):
@@ -99,6 +98,24 @@ def update_alpha(alpha, n, K, burnin = 1000):
 
 @jit
 def compute_t_pars(k, mu, nu, L, mean, S, N, dim):
+    """
+    Compute parameters for student-t distribution.
+    
+    Arguments:
+        :double k:        Normal std parameter (for NIG/NIW)
+        :np.ndarray mu:   Normal mean parameter (for NIG/NIW)
+        :int nu:          Gamma df parameter (for NIG/NIW)
+        :np.ndarray L:    Gamma scale matrix (for NIG/NIW)
+        :np.ndarray mean: samples mean
+        :np.ndarray S:    samples covariance
+        :int N:           number of samples
+        :int dim:         number of dimensions
+    
+    Returns:
+        :int:        degrees of fredom for student-t
+        :np.ndarray: scale matrix for student-t
+        :np.ndarray: mean for student-t
+    """
     # Update hyperparameters
     k_n, mu_n, nu_n, L_n = compute_hyperpars(k, mu, nu, L, mean, S, N)
     # Update t-parameters
@@ -108,6 +125,25 @@ def compute_t_pars(k, mu, nu, L, mean, S, N, dim):
 
 @jit
 def compute_hyperpars(k, mu, nu, L, mean, S, N):
+    """
+    Update hyperparameters for Normal Inverse Gamma/Wishart (NIG/NIW).
+    See https://www.cs.ubc.ca/~murphyk/Papers/bayesGauss.pdf
+    
+    Arguments:
+        :double k:        Normal std parameter (for NIG/NIW)
+        :np.ndarray mu:   Normal mean parameter (for NIG/NIW)
+        :int nu:          Gamma df parameter (for NIG/NIW)
+        :np.ndarray L:    Gamma scale matrix (for NIG/NIW)
+        :np.ndarray mean: samples mean
+        :np.ndarray S:    samples covariance
+        :int N:           number of samples
+    
+    Returns:
+        :double:     updated Normal std parameter (for NIG/NIW)
+        :np.ndarray: updated Normal mean parameter (for NIG/NIW)
+        :int:        updated Gamma df parameter (for NIG/NIW)
+        :np.ndarray: updated Gamma scale matrix (for NIG/NIW)
+    """
     k_n  = k + N
     mu_n = (mu*k + N*mean)/k_n
     nu_n = nu + N
@@ -115,8 +151,27 @@ def compute_hyperpars(k, mu, nu, L, mean, S, N):
     return k_n, mu_n, nu_n, L_n
 
 @jit
-def compute_component_suffstats(x, mean, cov, N, mu, sigma, p_mu, p_k, p_nu, p_L):
-
+def compute_component_suffstats(x, mean, cov, N, p_mu, p_k, p_nu, p_L):
+    """
+    Update mean, covariance, number of samples and maximum a posteriori for mean and covariance.
+    
+    Arguments:
+        :np.ndarray x:    sample to add
+        :np.ndarray mean: mean of samples already in the cluster
+        :np.ndarray cov:  covariance of samples already in the cluster
+        :int N:           number of samples already in the cluster
+        :np.ndarray p_mu: NIG Normal mean parameter
+        :double p_k:      NIG Normal std parameter
+        :int p_nu:        NIG Gamma df parameter
+        :np.ndarray p_L:  NIG Gamma scale matrix
+    
+    Returns:
+        :np.ndarray: updated mean
+        :np.ndarray: updated covariance
+        :int N:      updated number of samples
+        :np.ndarray: mean (maximum a posteriori)
+        :np.ndarray: covariance (maximum a posteriori)
+    """
     new_mean  = (mean*N+x)/(N+1)
     new_cov   = (N*(cov + mean.T@mean) + x.T@x)/(N+1) - new_mean.T@new_mean
     new_N     = N+1
@@ -126,6 +181,17 @@ def compute_component_suffstats(x, mean, cov, N, mu, sigma, p_mu, p_k, p_nu, p_L
     return new_mean, new_cov, new_N, new_mu, new_sigma
 
 def build_mean_cov(x, dim):
+    """
+    Build mean and covariance matrix from array.
+    
+    Arguments:
+        :np.ndarray x: values for mean and covariance. Mean values are the first dim entries, stds are the second dim entries and off-diagonal elements are the remaining dim*(dim-1)/2 entries.
+        :int dim:      number of dimensions
+    
+    Returns:
+        :np.ndarray: mean
+        :np.ndarray: covariance matrix
+    """
     mean  = np.atleast_2d(x[:dim])
     corr  = np.identity(dim)/2.
     corr[np.triu_indices(dim, 1)] = x[2*dim:]
@@ -138,7 +204,37 @@ def build_mean_cov(x, dim):
 # Auxiliary classes #
 #-------------------#
 
+class prior:
+    """
+    Class to store the NIG/NIW prior parameters
+    See https://www.cs.ubc.ca/~murphyk/Papers/bayesGauss.pdf
+    
+    Arguments:
+        :double k:        Normal std parameter
+        :np.ndarray mu:   Normal mean parameter
+        :int nu:          Gamma df parameter
+        :np.ndarray L:    Gamma scale matrix
+    
+    Returns:
+        :prior: instance of prior class
+    """
+    def __init__(self, k, L, nu, mu):
+        self.k = k
+        self.L = L
+        self.mu = mu
+        self.nu = nu
+
 class component:
+    """
+    Class to store the relevant informations for each component in the mixture.
+    
+    Arguments:
+        :np.ndarray x: sample added to the new component
+        :prior prior:  instance of the prior class with NIG/NIW prior parameters
+    
+    Returns:
+        :component: instance of component class
+    """
     def __init__(self, x, prior):
         self.N     = 1
         self.mean  = x
@@ -147,7 +243,20 @@ class component:
         self.sigma = np.identity(x.shape[-1]).astype(np.float64)*prior.L
 
 class component_h:
-    def __init__(self, x, dim, prior, MC_draws, logL_D):
+    """
+    Class to store the relevant informations for each component in the mixture.
+    To be used in hierarchical inference.
+    
+    Arguments:
+        :np.ndarray x:  event added to the new component
+        :int dim:       number of dimensions
+        :prior prior:   instance of the prior class with NIG/NIW prior parameters
+        :double logL_D: logLikelihood denominator
+    
+    Returns:
+        :component_h: instance of component_h class
+    """
+    def __init__(self, x, dim, prior, logL_D):
         self.dim    = dim
         self.N      = 1
         self.events = [x]
@@ -231,13 +340,6 @@ class mixture:
             for i, n in zip(ctr.keys(), ctr.values()):
                 samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i]).rvs(size = n)).T))
         return np.array(samples[1:])
-
-class prior:
-    def __init__(self, k, L, nu, mu):
-        self.k = k
-        self.L = L
-        self.mu = mu
-        self.nu = nu
         
 #-------------------#
 # Inference classes #
@@ -274,7 +376,7 @@ class DPGMM:
             self.prior = prior(*prior_pars)
         
     def add_datapoint_to_component(self, x, ss):
-        new_mean, new_cov, new_N, new_mu, new_sigma = compute_component_suffstats(x, ss.mean, ss.cov, ss.N, ss.mu, ss.sigma, self.prior.mu, self.prior.k, self.prior.nu, self.prior.L)
+        new_mean, new_cov, new_N, new_mu, new_sigma = compute_component_suffstats(x, ss.mean, ss.cov, ss.N, self.prior.mu, self.prior.k, self.prior.nu, self.prior.L)
         ss.mean  = new_mean
         ss.cov   = new_cov
         ss.N     = new_N
@@ -440,7 +542,7 @@ class HDPGMM(DPGMM):
         labels, scores = zip(*scores)
         cid = np.random.choice(labels, p=scores)
         if cid == "new":
-            self.mixture.append(component_h(x, self.dim, self.prior, self.MC_draws, logL_N[cid]))
+            self.mixture.append(component_h(x, self.dim, self.prior, logL_N[cid]))
             self.N_list.append(1.)
             self.n_cl += 1
         else:
