@@ -64,7 +64,10 @@ def main():
     
     # Load samples
     samples, name = load_single_event(options.samples_file, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol)
-    dim = len(samples[0])
+    try:
+        dim = np.shape(samples[0])[-1]
+    except IndexError:
+        dim = 1
     
     # Reconstruction
     if not options.postprocess:
@@ -76,7 +79,7 @@ def main():
             mix.density_from_samples(samples)
             draws.append(mix.build_mixture())
             mix.initialise()
-            
+
         draws = np.array(draws)
         with open(Path(options.output, 'draws_'+name+'.pkl'), 'wb') as f:
             dill.dump(draws, f)
