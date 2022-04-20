@@ -83,7 +83,7 @@ def update_alpha(alpha, n, K, burnin = 1000):
         :int burnin: MH burnin
     
     Returns:
-        :double: new concentration parametere value
+        :double: new concentration parameter value
     """
     a_old = alpha
     n_draws = burnin+np.random.randint(100)
@@ -272,6 +272,22 @@ class component_h:
         self.mu, self.sigma = build_mean_cov(sample, self.dim)
     
 class mixture:
+    """
+    Class to store a single draw from DPGMM/(H)DPGMM.
+    
+    Arguments:
+        :iterable means:    component means
+        :iterable covs:     component covariances
+        :np.ndarray w:      component weights
+        :np.ndarray bounds: bounds of probit transformation
+        :int dim:           number of dimensions
+        :int n_cl:          number of clusters in the mixture
+        :int n_draws:       number of MC draws for normalisation constant estimate
+        :bool hier_flag:    flag for hierarchical mixture (needed to fix an issue with means)
+    
+    Returns:
+        :mixture: instance of mixture class
+    """
     def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, n_draws = 1000, hier_flag = False):
         if dim > 1 and hier_flag:
             self.means = np.array([m[0] for m in means])
@@ -288,7 +304,16 @@ class mixture:
         self.norm     = self._compute_norm_const(n_draws)
         self.log_norm = np.log(self.norm)
     
-    def _compute_norm_const(self, n_draws):
+    def _compute_norm_const(self, n_draws = 1000):
+        """
+        Estimate normalisation constant via MC integration
+        
+        Arguments:
+            :int n_draws: number of MC draws
+        
+        Returns:
+            :double: normalisation constant
+        """
         p_ss     = self.sample_from_dpgmm(n_draws)
         min_vals = np.atleast_1d(p_ss.min(axis = 0))
         max_vals = np.atleast_1d(p_ss.max(axis = 0))
@@ -298,24 +323,69 @@ class mixture:
         
     @probit
     def evaluate_mixture(self, x):
+        """
+        Evaluate mixture at point(s) x
+        
+        Arguments:
+            :np.ndarray x: point(s) to evaluate the mixture at
+        
+        Returns:
+            :np.ndarray: mixture.pdf(x)
+        """
         p = np.sum(np.array([w*mn(mean, cov).pdf(x)/self.norm for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
         return p * np.exp(-probit_logJ(x, self.bounds))
 
     @probit
     def evaluate_log_mixture(self, x):
+        """
+        Evaluate log mixture at point(s) x
+        
+        Arguments:
+            :np.ndarray x: point(s) to evaluate the mixture at
+        
+        Returns:
+            :np.ndarray: mixture.logpdf(x)
+        """
         p = logsumexp(np.array([w + mn(mean, cov).logpdf(x) - self.log_norm for mean, cov, w in zip(self.means, self.covs, self.log_w)]), axis = 0)
         return p - probit_logJ(x, self.bounds)
         
     def _evaluate_mixture_in_probit(self, x):
+        """
+        Evaluate mixture at point(s) x in probit space
+        
+        Arguments:
+            :np.ndarray x: point(s) to evaluate the mixture at (in probit space)
+        
+        Returns:
+            :np.ndarray: mixture.pdf(x)
+        """
         p = np.sum(np.array([w*mn(mean, cov).pdf(x) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
         return p
 
     def _evaluate_log_mixture_in_probit(self, x):
+        """
+        Evaluate log mixture at point(s) x in probit space
+        
+        Arguments:
+            :np.ndarray x: point(s) to evaluate the mixture at (in probit space)
+        
+        Returns:
+            :np.ndarray: mixture.logpdf(x)
+        """
         p = logsumexp(np.array([w + mn(mean, cov).logpdf(x) for mean, cov, w in zip(self.means, self.covs, self.log_w)]), axis = 0)
         return p
 
     @from_probit
     def sample_from_dpgmm(self, n_samps):
+        """
+        Draw samples from mixture
+        
+        Arguments:
+            :int n_samps: number of samples to draw
+        
+        Returns:
+            :np.ndarray: samples
+        """
         idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = int(n_samps))
         ctr = Counter(idx)
         if self.dim > 1:
@@ -329,6 +399,15 @@ class mixture:
         return np.array(samples[1:])
 
     def _sample_from_dpgmm_probit(self, n_samps):
+        """
+        Draw samples from mixture in probit space
+        
+        Arguments:
+            :int n_samps: number of samples to draw
+        
+        Returns:
+            :np.ndarray: samples in probit space
+        """
         idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = n_samps)
         ctr = Counter(idx)
         if self.dim > 1:
@@ -346,6 +425,18 @@ class mixture:
 #-------------------#
 
 class DPGMM:
+    """
+    Class to infer a distribution given a set of samples.
+    
+    Arguments:
+        :iterable bounds: boundaries of the rectangle over which the distribution is defined. It should be in the format [[xmin, xmax],[ymin, ymax],...]
+        :iterable prior_pars: NIG/NIW prior parameters (k, L, nu, mu)
+        :double alpha0: initial guess for concentration parameter
+        :int n_draws_norm: number of MC draws to estimate normalisation constant while instancing mixture class
+    
+    Returns:
+        :DPGMM: instance of DPGMM class
+    """
     def __init__(self, bounds,
                        prior_pars = None,
                        alpha0     = 1.,
@@ -367,7 +458,13 @@ class DPGMM:
         self.n_draws_norm = n_draws_norm
     
     def initialise(self, prior_pars = None):
-        self.alpha = self.alpha_0
+        """
+        Initialise the mixture to initial conditions.
+        
+        Arguments:
+            :iterable prior_pars: NIG/NIW prior parameters (k, L, nu, mu). If None, old parameters are kept
+        """
+        self.alpha    = self.alpha_0
         self.mixture  = []
         self.N_list   = []
         self.n_cl     = 0
@@ -376,6 +473,16 @@ class DPGMM:
             self.prior = prior(*prior_pars)
         
     def add_datapoint_to_component(self, x, ss):
+        """
+        Update component parameters after assigning a sample to a component
+        
+        Arguments:
+            :np.ndarray x: sample
+            :component ss: component to update
+        
+        Returns:
+            :component: updated component
+        """
         new_mean, new_cov, new_N, new_mu, new_sigma = compute_component_suffstats(x, ss.mean, ss.cov, ss.N, self.prior.mu, self.prior.k, self.prior.nu, self.prior.L)
         ss.mean  = new_mean
         ss.cov   = new_cov
@@ -385,6 +492,16 @@ class DPGMM:
         return ss
     
     def log_predictive_likelihood(self, x, ss):
+        """
+        Compute log likelihood of drawing sample x from component ss given the samples that are already assigned to that component.
+        
+        Arguments:
+            :np.ndarray x: sample
+            :component ss: component to update
+        
+        Returns:
+            :double: log Likelihood
+        """
         if ss == "new":
             ss = component(np.zeros(self.dim), prior = self.prior)
             ss.N = 0.
@@ -392,6 +509,15 @@ class DPGMM:
         return student_t(df = t_df, t = x, mu = mu_n, sigma = t_shape, dim = self.dim)
 
     def cluster_assignment_distribution(self, x):
+        """
+        Compute the marginal distribution of cluster assignment for each cluster.
+        
+        Arguments:
+            :np.ndarray x: sample
+        
+        Returns:
+            :dict: p_i for each component
+        """
         scores = {}
         for i in list(np.arange(self.n_cl)) + ["new"]:
             if i == "new":
@@ -409,6 +535,12 @@ class DPGMM:
         return scores
 
     def assign_to_cluster(self, x):
+        """
+        Assign the new sample x to an existing cluster or to a new cluster according to the marginal distribution of cluster assignment.
+        
+        Arguments:
+            :np.ndarray x: sample
+        """
         scores = self.cluster_assignment_distribution(x).items()
         labels, scores = zip(*scores)
         cid = np.random.choice(labels, p=scores)
@@ -426,16 +558,37 @@ class DPGMM:
         return
     
     def density_from_samples(self, samples):
+        """
+        Reconstruct the probability density from a set of samples.
+        
+        Arguments:
+            :iterable samples: samples set
+        """
         for s in samples:
             self.add_new_point(np.atleast_2d(s))
     
     @probit
     def add_new_point(self, x):
+        """
+        Update the probability density reconstruction adding a new sample
+        
+        Arguments:
+            :np.ndarray x: sample
+        """
         self.n_pts += 1
         self.assign_to_cluster(np.atleast_2d(x))
         self.alpha = update_alpha(self.alpha, self.n_pts, self.n_cl)
     
     def sample_from_dpgmm(self, n_samps):
+        """
+        Draw samples from mixture
+        
+        Arguments:
+            :int n_samps: number of samples to draw
+        
+        Returns:
+            :np.ndarray: samples
+        """
         idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = n_samps)
         ctr = Counter(idx)
         if self.dim > 1:
@@ -449,6 +602,15 @@ class DPGMM:
         return samples[1:]
 
     def _sample_from_dpgmm_probit(self, n_samps):
+        """
+        Draw samples from mixture in probit space
+        
+        Arguments:
+            :int n_samps: number of samples to draw
+        
+        Returns:
+            :np.ndarray: samples in probit space
+        """
         idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = n_samps)
         ctr = Counter(idx)
         if self.dim > 1:
@@ -462,11 +624,29 @@ class DPGMM:
         return samples[1:]
 
     def _evaluate_mixture_in_probit(self, x):
+        """
+        Evaluate mixture at point(s) x in probit space
+        
+        Arguments:
+            :np.ndarray x: point(s) to evaluate the mixture at (in probit space)
+        
+        Returns:
+            :np.ndarray: mixture.pdf(x)
+        """
         p = np.sum(np.array([w*mn(comp.mu, comp.sigma).pdf(x) for comp, w in zip(self.mixture, self.w)]), axis = 0)
         return p
 
     @probit
     def evaluate_mixture(self, x):
+        """
+        Evaluate mixture at point(s) x
+        
+        Arguments:
+            :np.ndarray x: point(s) to evaluate the mixture at
+        
+        Returns:
+            :np.ndarray: mixture.pdf(x)
+        """
         p = np.sum(np.array([w*mn(comp.mu, comp.sigma).pdf(x) for comp, w in zip(self.mixture, self.w)]), axis = 0)
         return p
     
@@ -476,11 +656,29 @@ class DPGMM:
         return p * np.exp(-probit_logJ(x, self.bounds))
 
     def _evaluate_log_mixture_in_probit(self, x):
+        """
+        Evaluate mixture at point(s) x in probit space
+        
+        Arguments:
+            :np.ndarray x: point(s) to evaluate the mixture at (in probit space)
+        
+        Returns:
+            :np.ndarray: mixture.pdf(x)
+        """
         p = logsumexp(np.array([w + mn(comp.mu, comp.sigma).logpdf(x) for comp, w in zip(self.mixture, self.log_w)]), axis = 0)
         return p
 
     @probit
     def evaluate_log_mixture(self, x):
+        """
+        Evaluate log mixture at point(s) x
+        
+        Arguments:
+            :np.ndarray x: point(s) to evaluate the mixture at
+        
+        Returns:
+            :np.ndarray: mixture.logpdf(x)
+        """
         p = logsumexp(np.array([w + mn(comp.mu, comp.sigma).logpdf(x) for comp, w in zip(self.mixture, self.log_w)]), axis = 0)
         return p
         
