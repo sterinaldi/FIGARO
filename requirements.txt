@@ -5,3 +5,4 @@ corner
 astropy
 pyvo
 numba
+imageio
