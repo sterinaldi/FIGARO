@@ -4,12 +4,23 @@ import h5py
 import warnings
 try:
     from figaro.cosmology import CosmologicalParameters
+    lal_flag = True
 except ModuleNotFoundError:
-    warnings.warn("LAL is not installed. GW posterior samples cannot be loaded.")
+    lal_flag = False
 from pathlib import Path
 from scipy.optimize import newton
 
 def find_redshift(omega, dl):
+    """
+    Find redshift given a luminosity distance and a cosmology using Newton's method
+    
+    Arguments:
+        :CosmologicalParameters omega: cosmology (see cosmology.pyx for definition)
+        :double dl:                    luminosity distance
+    
+    Returns:
+        :double: redshift
+    """
     def objective(z, omega, dl):
         return dl - omega.LuminosityDistance_double(z)
     return newton(objective,1.0,args=(omega,dl))
@@ -45,12 +56,16 @@ def load_single_event(event, seed = 0, par = ['m1'], n_samples = -1, h = 0.674, 
         else:
             out = np.genfromtxt(event)
     else:
-        out = unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate, ext = ext)
+        if lal_flag:
+            out = unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate, ext = ext)
+        else:
+            warnings.warn("LAL is not installed. GW posterior samples cannot be loaded.")
+            exit()
     return out, name
 
 def load_data(path, seed = 0, par = ['m1'], n_samples = -1, h = 0.674, om = 0.315, ol = 0.685):
     '''
-    Loads the data from .txt files (for simulations) or .h5/.hdf5 files (posteriors from GWTC).
+    Loads the data from .txt files (for simulations) or .h5/.hdf5 files (posteriors from GWTC-x).
     Default cosmological parameters from Planck Collaboration (2021) in a flat Universe (https://www.aanda.org/articles/aa/pdf/2020/09/aa33910-18.pdf)
     
     Arguments:
@@ -93,14 +108,18 @@ def load_data(path, seed = 0, par = ['m1'], n_samples = -1, h = 0.674, om = 0.31
                 events.append(samples)
                 
         else:
-            events.append(unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate, ext = ext))
+            if lal_flag:
+                events.append(unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate, ext = ext))
+            else:
+                warnings.warn("LAL is not installed. GW posterior samples cannot be loaded.")
+                exit()
 
     return (events, np.array(names))
 
 def unpack_gw_posterior(event, par, cosmology, rdstate, ext, n_samples = -1):
     '''
     Reads data from .h5/.hdf5 GW posterior files.
-    Implemented 'm1', 'm2', 'mc', 'z', 'chi_eff'.
+    Implemented: 'm1', 'm2', 'mc', 'z', 'ra', 'dec', 'luminosity_distance', 'chi_eff' (the latter only up to GWTC-2)
     
     Arguments:
         :str event:       file to read
