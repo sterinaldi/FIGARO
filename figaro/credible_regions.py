@@ -6,16 +6,47 @@ from scipy.special import logsumexp
 # confidence calculations
 # -----------------------
 def FindNearest(ra, dec, dist, value):
+    """
+    Find the pixel that contains the triplet (ra', dec', D') stored in value.
+    
+    Arguments:
+        :np.ndarray ra:   right ascension values used to build the grid
+        :np.ndarray dec:  declination values used to build the grid
+        :np.ndarray dist: luminosity distance values used to build the grid
+        :iterable value:  triplet to locate (ra', dec', D')
+    
+    Returns:
+        :np.ndarray: grid indices of pixel
+    """
     idx = np.zeros(3, dtype = int)
     for i, (d, v) in enumerate(zip([ra, dec, dist], value)):
         idx[i] = int(np.abs(d-v).argmin())
     return idx
 
 def FindHeights(args):
+    """
+    Find height correspinding to a certain credible level given a sorted array of probabilities and the corresponding cumulative
+    
+    Arguments:
+        :tuple args: tuple containing the sorted array, the cumulative array and a double corresponding to the credible level
+    
+    Returns:
+        :double: height corresponding to the credible level
+    """
     (sortarr,cumarr,level) = args
     return sortarr[np.abs(cumarr-np.log(level)).argmin()]
 
 def FindHeightForLevel(inLogArr, adLevels):
+    """
+    Given a probability array, computes the heights corresponding to some given credible levels.
+    
+    Arguments:
+        :np.ndarray inLogArr: probability array
+        :iterable adLevels:   credible levels
+    
+    Returns:
+        :np.ndarray: heights corresponding to adLevels
+    """
     # flatten and create reversed sorted list
     adSorted = np.ascontiguousarray(np.sort(inLogArr.flatten())[::-1])
     # create a normalized cumulative distribution
@@ -30,6 +61,16 @@ def FindHeightForLevel(inLogArr, adLevels):
     return adHeights
 
 def FindLevelForHeight(inLogArr, logvalue):
+    """
+    Given a probability array, computes the credible levels corresponding to a given height.
+    
+    Arguments:
+        :np.ndarray inLogArr: log probability array
+        :double logvalue:     height
+    
+    Returns:
+        :np.ndarray: credible level corresponding to logvalue
+    """
     # flatten and create reversed sorted list
     adSorted = np.ascontiguousarray(np.sort(inLogArr.flatten())[::-1])
     # create a normalized cumulative distribution
@@ -38,7 +79,22 @@ def FindLevelForHeight(inLogArr, logvalue):
     idx = (np.abs(adSorted-logvalue)).argmin()
     return np.exp(adCum[idx])
 
-def ConfidenceVolume(log_volume_map, ra_grid, dec_grid, distance_grid, adLevels = [0.68, 0.90]):
+def ConfidenceVolume(log_volume_map, ra_grid, dec_grid, distance_grid, adLevels = [0.50, 0.90]):
+    """
+    Compute the credible volume(s) for a 3D probability distribution
+    
+    Arguments:
+        :np.ndarray log_volume_map: probability density for each pixel
+        :np.ndarray ra_grid:        right ascension values used to build the grid
+        :np.ndarray dec_grid:       declination values used to build the grid
+        :np.ndarray distance_grid:  luminosity distance values used to build the grid
+        :iterable adLevels:         credible level(s)
+    
+    Returns:
+        :np.ndarray: credible volume(s)
+        :iterable:   indices of pixels within credible volume(s)
+        :np.ndarray: height(s) corresponding to credible volume(s)
+    """
     # create a normalized cumulative distribution
     log_volume_map_sorted = np.ascontiguousarray(np.sort(log_volume_map.flatten())[::-1])
     log_volume_map_cum = fast_log_cumulative(log_volume_map_sorted)
@@ -63,8 +119,21 @@ def ConfidenceVolume(log_volume_map, ra_grid, dec_grid, distance_grid, adLevels 
     
     return volume_confidence, index, np.array(adHeights)
 
-def ConfidenceArea(log_skymap, ra_grid, dec_grid, adLevels = [0.68, 0.90]):
+def ConfidenceArea(log_skymap, ra_grid, dec_grid, adLevels = [0.50, 0.90]):
+    """
+    Compute the credible area(s) for a 2D probability distribution
     
+    Arguments:
+        :np.ndarray log_skymap: probability density for each pixel
+        :np.ndarray ra_grid:    right ascension values used to build the grid
+        :np.ndarray dec_grid:   declination values used to build the grid
+        :iterable adLevels:     credible level(s)
+    
+    Returns:
+        :np.ndarray: credible area(s)
+        :iterable:   indices of pixels within credible area(s)
+        :np.ndarray: height(s) corresponding to credible area(s)
+    """
     # create a normalized cumulative distribution
     log_skymap_sorted = np.ascontiguousarray(np.sort(log_skymap.flatten())[::-1])
     log_skymap_cum = fast_log_cumulative(log_skymap_sorted)
@@ -86,7 +155,19 @@ def ConfidenceArea(log_skymap, ra_grid, dec_grid, adLevels = [0.68, 0.90]):
     
     return area_confidence, index, np.array(adHeights)
 
-def ConfidenceInterval(probability, grid, adLevels = [0.68, 0.90]):
+def ConfidenceInterval(probability, grid, adLevels = [0.50, 0.90]):
+    """
+    Compute the credible interval(s) for a 1D probability distribution
+    
+    Arguments:
+        :np.ndarray probability: probability density for each pixel
+        :np.ndarray grid:        values used to build the grid
+        :iterable adLevels:      credible level(s)
+    
+    Returns:
+        :np.ndarray: credible interval(s)
+        :iterable:   indices of bins within credible area(s)
+    """
     dx = np.diff(grid)[0]
     cumulative_distribution = np.cumsum(probability*dx)
     values = []
