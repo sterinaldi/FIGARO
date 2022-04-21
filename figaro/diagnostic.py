@@ -8,17 +8,48 @@ import ligo.skymap.plot
 log2e = np.log2(np.e)
 
 def angular_coefficient(x, y):
+    """
+    Angular coefficient obtained from linear regression.
+    
+    Arguments:
+        :np.ndarray x: independent variables
+        :np.ndarray y: dependent variables
+    
+    Returns:
+        :double: angular coefficient
+    """
     return np.sum((x - np.mean(x))*(y - np.mean(y)))/np.sum((x - np.mean(x))**2)
     
-def compute_angular_coefficients(x, step = 500):
-    logN = np.arange(len(x))+1
-    a    = np.zeros(len(x) - int(step), dtype = np.float64)
+def compute_angular_coefficients(x, L = 500):
+    """
+    Given an array of points x, computes the angular coefficient for each adjacent chunk of length L.
+    
+    Arguments:
+        :np.ndarray x: array of points
+    
+    Returns:
+        :np.ndarray: array of angular coefficients
+    """
+    N = np.arange(len(x))+1
+    a = np.zeros(len(x) - int(L), dtype = np.float64)
     for i in range(len(a)):
-        a[i] = angular_coefficient(N[i:i+step], x[i:i+step])
+        a[i] = angular_coefficient(N[i:i+L], x[i:i+L])
     return a
 
 @jit
 def compute_autocorrelation(draws, mean, dx):
+    """
+    Computes autocorrelation of subsequent draws as <∫(draw[i]-mean)*(draw[i+t]-mean)*dx/∫(draw[i]-mean)**2*dx>
+    
+    Arguments:
+        :np.ndarray draws: evaluated mixtures (2d array)
+        :np.ndarray mean:  bin-wise mean of evaluated mixtures (1d array)
+        :double dx:        integration measure
+    
+    Returns:
+        :int: upper bound of autocorrelation length
+        :np.ndarray: autocorrelation function
+    """
     taumax          = draws.shape[0]//2
     n_draws         = draws.shape[0]
     autocorrelation = np.zeros(taumax, dtype = np.float64)
@@ -33,21 +64,19 @@ def compute_autocorrelation(draws, mean, dx):
         autocorrelation[tau] = sum
     return taumax, autocorrelation
 
-def compute_entropy_single_draw(mixture, n_draws = 1e3):
-    samples = mixture._sample_from_dpgmm_probit(int(n_draws))
-    logP    = mixture._evaluate_log_mixture_in_probit(samples)
-    entropy = np.sum(-logP)/(n_draws*log2e)
-    return entropy
-
-def compute_entropy(draws, n_draws = 1e3):
-    S = np.zeros(len(draws))
-    for i, d in enumerate(draws):
-        S[i] = compute_entropy_single_draw(d, int(n_draws))
-    return S
-
 def autocorrelation(draws, bounds = None, out_folder = '.', name = 'event', n_points = 1000, save = True, show = False):
-    # 1-d only
+    """
+    Compute autocorrelation of a set of draws and produce the relevant plot
     
+    Arguments:
+        :iterable draws:         container of mixture instances
+        :iterable bounds:        bounds of the interval over which the distributions are evaluated. It has to be passed as [[xmin,xmax]]. If None, draws bounds are used.
+        :str or Path out_folder: output folder
+        :str name:               name to be given to outputs
+        :int n_points:           number of points for linspace
+        :bool save:              whether to save the plot or not
+        :bool show:              whether to show the plot during the run or not
+    """
     all_bounds = np.atleast_2d([d.bounds[0] for d in draws])
     x_min = np.max(all_bounds[:,0])
     x_max = np.min(all_bounds[:,1])
@@ -79,8 +108,53 @@ def autocorrelation(draws, bounds = None, out_folder = '.', name = 'event', n_po
     if save:
         fig.savefig(Path(out_folder, name+'_autocorrelation.pdf'), bbox_inches = 'tight')
     plt.close()
+    
+def compute_entropy_single_draw(mixture, n_draws = 1e3):
+    """
+    Compute entropy for a single realisation of the DPGMM using Monte Carlo integration
+    
+    Arguments:
+        :mixture mixture: instance of mixture class (see mixture.py for definition)
+        :double n_draws:  number of MC draws
+    
+    Returns:
+        :double: entropy value
+    """
+    samples = mixture._sample_from_dpgmm_probit(int(n_draws))
+    logP    = mixture._evaluate_log_mixture_in_probit(samples)
+    entropy = np.sum(-logP)/(n_draws*log2e)
+    return entropy
+
+def compute_entropy(draws, n_draws = 1e3):
+    """
+    Compute entropy for a list of realisations of the DPGMM using Monte Carlo integration
+    
+    Arguments:
+        :iterable draws: container of mixture class instaces (see mixture.py for definition)
+        :double n_draws: number of MC draws
+    
+    Returns:
+        :np.ndarray: entropy values
+    """
+    S = np.zeros(len(draws))
+    for i, d in enumerate(draws):
+        S[i] = compute_entropy_single_draw(d, int(n_draws))
+    return S
 
 def entropy(draws, out_folder, name = 'event', n_draws = 1e3, step = 1, dim = 1, show = False, save = True):
+    """
+    Compute entropy of a set of draws and produce the relevant plot
+    
+    Arguments:
+        :iterable draws:         container of mixture instances
+        :str or Path out_folder: output folder
+        :str name:               name to be given to outputs
+        :int n_draws:            number of MC draws
+        :int step:               number of draws between entropy samples (if downsampled by some other method, for plotting purposes only)
+        :int dim:                number of dimensions
+        :bool save:              whether to save the plot or not
+        :bool show:              whether to show the plot during the run or not
+    """
     S = compute_entropy(draws, int(n_draws**dim))
     fig, ax = plt.subplots()
     ax.plot(np.arange(1, len(draws)+1)*step, S, ls = '--', marker = '', lw = 0.7)
@@ -93,50 +167,60 @@ def entropy(draws, out_folder, name = 'event', n_draws = 1e3, step = 1, dim = 1,
         fig.savefig(Path(out_folder, name+'_entropy.pdf'), bbox_inches = 'tight')
     plt.close()
 
-def plot_n_clusters_alpha(n_cl, alpha, out_folder, name = 'event'):
+def plot_n_clusters_alpha(n_cl, alpha, out_folder = '.', name = 'event', show = False, save = True):
+    """
+    Plot the number of clusters and the concentration parameter as functions of the number of samples.
     
+    Arguments:
+        :np.ndarray n_cl:        number of active clusters
+        :np.ndarray alpha:       concentration parameter
+        :str or Path out_folder: output folder
+        :str name:               name to be given to outputs
+        :bool save:              whether to save the plot or not
+        :bool show:              whether to show the plot during the run or not
+    """
     fig, ax = plt.subplots()
     ax1 = ax.twinx()
-    ax.plot(np.arange(1, len(draws)+1), n_cl, ls = '--', marker = '', lw = 0.7, color = 'k')
-    ax1.plot(np.arange(1, len(draws)+1), alpha, ls = '--', marker = '', lw = 0.7, color = 'r')
+    ax.plot(np.arange(1, len(n_cl)+1), n_cl, ls = '--', marker = '', lw = 0.7, color = 'k')
+    ax1.plot(np.arange(1, len(alpha)+1), alpha, ls = '--', marker = '', lw = 0.7, color = 'r')
     ax.set_xlabel('$t$')
     ax.set_ylabel('$N_{\mathrm{cl}}(t)$', color = 'k')
     ax1.set_ylabel('$\alpha(t)$', color = 'r')
     ax.grid()
-    fig.savefig(Path(out_folder, name+'_n_cl_alpha.pdf'), bbox_inches = 'tight')
+    if show:
+        plt.show()
+    if save:
+        fig.savefig(Path(out_folder, name+'_n_cl_alpha.pdf'), bbox_inches = 'tight')
     plt.close()
 
-def compute_entropy_rate_single_draw(mixture, n_draws = 1e3):
-    samples = mixture._sample_from_dpgmm_probit(int(n_draws))
-    logP    = mixture._evaluate_log_mixture_in_probit(samples)
-    entropy = np.sum(-logP)/(n_draws*mixture.n_pts*log2e)
-    return entropy
-
-def compute_entropy_rate(draws, n_draws = 1e3):
-    S = np.zeros(len(draws))
-    for i, d in enumerate(draws):
-        S[i] = compute_entropy_rate_single_draw(d, int(n_draws))
-    return S
-
-def entropy_rate(draws, out_folder, name = 'event', n_draws = 1e3, step = 1, dim = 1):
-    S = compute_entropy(draws, int(n_draws**dim))
-    fig, ax = plt.subplots()
-    ax.plot(np.arange(1, len(draws)+1)*step, S, ls = '--', marker = '', lw = 0.7)
-    ax.set_xlabel('$N$')
-    ax.set_ylabel('$R_S(N)\ [\mathrm{bits/sample}]$')
-    ax.grid()
-    fig.savefig(Path(out_folder, name+'_entropy.pdf'), bbox_inches = 'tight')
-    plt.close()
-
-def pp_plot(draws, injection, out_folder, name = 'event'):
-    median        = np.percentile(draws.T, 50, axis = 1)
-    cdf_draws     = np.array([fast_cumulative(d) for d in draws])
-    cdf_median    = fast_cumulative(median)
-    cdf_injection = fast_cumulative(injection)
+def pp_plot_cdf(draws, injection, n_points = 1000, out_folder = '.', name = 'event', show = False, save = True):
+    """
+    Make pp-plot comparing draws cdfs and injection cdf
     
-    fig= plt.figure()
-    ax = fig.add_subplot(111, projection = 'pp_plot')
-    ax.add_confidence_band(len(cdf_median), alpha=0.95, color = 'paleturquoise')
+    Arguments:
+        :iterable draws:         container of mixture instances
+        :callable injection:     injected density
+        :int n_points:           number of points for linspace
+        :str or Path out_folder: output folder
+        :str name:               name to be given to outputs
+        :bool save:              whether to save the plot or not
+        :bool show:              whether to show the plot during the run or not
+    """
+    
+    all_bounds = np.atleast_2d([d.bounds[0] for d in draws])
+    x_min = np.max(all_bounds[:,0])
+    x_max = np.min(all_bounds[:,1])
+    x = np.linspace(x_min, x_max, n_points+2)[1:-1]
+    
+    functions     = np.array([mix.evaluate_mixture(np.atleast_2d(x).T) for mix in draws])
+    median        = np.percentile(functions.T, 50, axis = 1)
+    cdf_draws     = np.array([fast_cumulative(d) for d in functions])
+    cdf_median    = fast_cumulative(median)
+    cdf_injection = fast_cumulative(injection(x))
+    
+    fig = plt.figure()
+    ax  = fig.add_subplot(111, projection = 'pp_plot')
+    ax.add_confidence_band(len(cdf_median), alpha=0.95, color = 'ghostwhite')
     ax.add_diagonal()
     for cdf in cdf_draws:
         ax.plot(cdf_injection, cdf, lw = 0.5, alpha = 0.5, color = 'darkturquoise')
@@ -144,5 +228,8 @@ def pp_plot(draws, injection, out_folder, name = 'event'):
     ax.set_xlabel('$\mathrm{Injected}$')
     ax.set_ylabel('$\mathrm{FIGARO}$')
     ax.grid()
-    fig.savefig(Path(out_folder, name+'_ppplot.pdf'), bbox_inches = 'tight')
+    if show:
+        plt.show()
+    if save:
+        fig.savefig(Path(out_folder, name+'_ppplot.pdf'), bbox_inches = 'tight')
     plt.close()
