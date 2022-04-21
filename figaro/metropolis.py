@@ -1,5 +1,4 @@
 import numpy as np
-import cpnest.model
 from numba import jit, njit, prange
 from numba.extending import get_cython_function_address
 import ctypes
