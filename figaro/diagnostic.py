@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 from numba import jit, prange
 from pathlib import Path
 from figaro.cumulative import fast_cumulative
-import ligo.skymap.plot
 
 log2e = np.log2(np.e)
 
@@ -165,71 +164,4 @@ def entropy(draws, out_folder, name = 'event', n_draws = 1e3, step = 1, dim = 1,
         plt.show()
     if save:
         fig.savefig(Path(out_folder, name+'_entropy.pdf'), bbox_inches = 'tight')
-    plt.close()
-
-def plot_n_clusters_alpha(n_cl, alpha, out_folder = '.', name = 'event', show = False, save = True):
-    """
-    Plot the number of clusters and the concentration parameter as functions of the number of samples.
-    
-    Arguments:
-        :np.ndarray n_cl:        number of active clusters
-        :np.ndarray alpha:       concentration parameter
-        :str or Path out_folder: output folder
-        :str name:               name to be given to outputs
-        :bool save:              whether to save the plot or not
-        :bool show:              whether to show the plot during the run or not
-    """
-    fig, ax = plt.subplots()
-    ax1 = ax.twinx()
-    ax.plot(np.arange(1, len(n_cl)+1), n_cl, ls = '--', marker = '', lw = 0.7, color = 'k')
-    ax1.plot(np.arange(1, len(alpha)+1), alpha, ls = '--', marker = '', lw = 0.7, color = 'r')
-    ax.set_xlabel('$t$')
-    ax.set_ylabel('$N_{\mathrm{cl}}(t)$', color = 'k')
-    ax1.set_ylabel('$\alpha(t)$', color = 'r')
-    ax.grid()
-    if show:
-        plt.show()
-    if save:
-        fig.savefig(Path(out_folder, name+'_n_cl_alpha.pdf'), bbox_inches = 'tight')
-    plt.close()
-
-def pp_plot_cdf(draws, injection, n_points = 1000, out_folder = '.', name = 'event', show = False, save = True):
-    """
-    Make pp-plot comparing draws cdfs and injection cdf
-    
-    Arguments:
-        :iterable draws:         container of mixture instances
-        :callable injection:     injected density
-        :int n_points:           number of points for linspace
-        :str or Path out_folder: output folder
-        :str name:               name to be given to outputs
-        :bool save:              whether to save the plot or not
-        :bool show:              whether to show the plot during the run or not
-    """
-    
-    all_bounds = np.atleast_2d([d.bounds[0] for d in draws])
-    x_min = np.max(all_bounds[:,0])
-    x_max = np.min(all_bounds[:,1])
-    x = np.linspace(x_min, x_max, n_points+2)[1:-1]
-    
-    functions     = np.array([mix.evaluate_mixture(np.atleast_2d(x).T) for mix in draws])
-    median        = np.percentile(functions.T, 50, axis = 1)
-    cdf_draws     = np.array([fast_cumulative(d) for d in functions])
-    cdf_median    = fast_cumulative(median)
-    cdf_injection = fast_cumulative(injection(x))
-    
-    fig = plt.figure()
-    ax  = fig.add_subplot(111, projection = 'pp_plot')
-    ax.add_confidence_band(len(cdf_median), alpha=0.95, color = 'ghostwhite')
-    ax.add_diagonal()
-    for cdf in cdf_draws:
-        ax.plot(cdf_injection, cdf, lw = 0.5, alpha = 0.5, color = 'darkturquoise')
-    ax.plot(cdf_injection, cdf, color = 'steelblue', lw = 0.7)
-    ax.set_xlabel('$\mathrm{Injected}$')
-    ax.set_ylabel('$\mathrm{FIGARO}$')
-    ax.grid()
-    if show:
-        plt.show()
-    if save:
-        fig.savefig(Path(out_folder, name+'_ppplot.pdf'), bbox_inches = 'tight')
     plt.close()
