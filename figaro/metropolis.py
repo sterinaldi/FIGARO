@@ -31,9 +31,9 @@ def log_add(x, y):
     Returns:
         :double: log(np.exp(x) + np.exp(y))
     """
-     if x >= y:
+    if x >= y:
         return x+np.log1p(np.exp(y-x))
-     else:
+    else:
         return y+np.log1p(np.exp(x-y))
 
 @jit
