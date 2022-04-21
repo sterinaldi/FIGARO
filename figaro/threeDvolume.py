@@ -50,13 +50,33 @@ rcParams["grid.alpha"] = 0.6
 
 @jit
 def log_add(x, y):
-     if x >= y:
+    """
+    Compute log(np.exp(x) + np.exp(y))
+    
+    Arguments:
+        :double x: first addend (log)
+        :double y: second addend (log)
+    
+    Returns:
+        :double: log(np.exp(x) + np.exp(y))
+    """
+    if x >= y:
         return x+np.log1p(np.exp(y-x))
-     else:
+    else:
         return y+np.log1p(np.exp(x-y))
 
 @jit
 def log_add_array(x,y):
+    """
+    Compute log(np.exp(x) + np.exp(y)) element-wise
+    
+    Arguments:
+        :np.ndarray x: first addend (log)
+        :np.ndarray y: second addend (log)
+    
+    Returns:
+        :np.ndarray: log(np.exp(x) + np.exp(y)) element-wise
+    """
     res = np.zeros(len(x), dtype = np.float64)
     for i in prange(len(x)):
         res[i] = log_add(x[i],y[i])
@@ -77,6 +97,36 @@ def natural_keys(text):
     return [ atoi(c) for c in re.split(r'(\d+)', text) ]
 
 class VolumeReconstruction(DPGMM):
+    """
+    Class to reconstruct the 3D probability density given a set of samples or during a PE run.
+    Child class of DPGMM class (defined in mixture.py)
+    
+    Arguments:
+        :double max_dist:          maximum distance (in Mpc)
+        :str or Path out_folder:   output folder
+        :tuple prior_pars:         NIW prior parameters (k, L, nu, mu - see https://www.cs.ubc.ca/~murphyk/Papers/bayesGauss.pdf)
+        :double alpha0:            initial guess for concentration parameter
+        :list-of-int n_gridpoints: number of gridpoints for each dimension (ra, dec, dist). Default is set to have a 0.25 deg^2 resolution
+        :str name:                 name to be given to output folders and files
+        :list-of-str labels:       plot labels
+        :list-of-double levels:    credible levels (between 0 and 1)
+        :bool latex:               if True, LaTeX is used for plots (if available)
+        :bool incr_plot:           if True, produce plots at fixed number of samples. Otherwise, skymaps are produced at the end of the inference only
+        :str or Path glade_file:   file containing GLADE+
+        :dict cosmology:           dictionary containing h = H0/100 km/(s*Mpc), om (matter density parameter) and ol (cosmological constant density). Default from Planck (2021)
+        :int n_gal_to_plot:        number of galaxies to include in galaxy plots
+        :double region_to_plot:    credible region to plot
+        :bool entropy:             use entropy to assess convergence and begin producing skymaps
+        :list-of-double true_host: position of the true host, if known
+        :str host_name:            host name, for plotting purposes
+        :int entropy_step:         interval (expressed as number of draws) between two subsequent entropy evaluations
+        :int entropy_ac_step:      window lenght for entropy angular coefficient
+        :int n_sign_changes:       number of zero-crossings before beginning producing skymaps (requires entropy = True)
+        :bool virtual_observatory: places the virtual observatory fov behind galaxy plots. Warning: under development, might not work
+    
+    Returns:
+        :VolumeReconstruction: instance of VolumeReconstruction class
+    """
     def __init__(self, max_dist,
                        out_folder          = '.',
                        prior_pars          = (1e-3, np.identity(3)*0.2**2, 3, np.zeros(3)),
@@ -91,7 +141,6 @@ class VolumeReconstruction(DPGMM):
                        cosmology           = {'h': 0.674, 'om': 0.315, 'ol': 0.685},
                        n_gal_to_plot       = 100,
                        region_to_plot      = 0.5,
-                       cat_bound           = 3000,
                        entropy             = False,
                        true_host           = None,
                        host_name           = 'Host',
@@ -158,8 +207,7 @@ class VolumeReconstruction(DPGMM):
         
         # Catalog
         self.catalog   = None
-        self.cat_bound = cat_bound
-        if lal_flag and glade_file is not None and self.max_dist < self.cat_bound:
+        if lal_flag and glade_file is not None:
             self.cosmology = CosmologicalParameters(cosmology['h'], cosmology['om'], cosmology['ol'], 1, 0)
             self.load_glade(glade_file)
             self.cartesian_catalog = celestial_to_cartesian(self.catalog)
@@ -189,6 +237,12 @@ class VolumeReconstruction(DPGMM):
         self.make_folders()
     
     def initialise(self, true_host = None):
+        """
+        Initialise the mixture to initial conditions to analyse a new event.
+        
+        Arguments:
+            :list-of-doubles true_host: true host for a new GW event
+        """
         self.volume_already_evaluated = False
         super().initialise()
         self.true_host   = true_host
@@ -206,7 +260,11 @@ class VolumeReconstruction(DPGMM):
         
     def load_glade(self, glade_file):
         """
+        Load GLADE+ from h5py file.
         This is tailored to GLADE+ available on March 28th at http://glade.elte.hu - compatibility with more recent versions is not ensured.
+        
+        Arguments:
+            :str or Path glade_file: glade file to be uploaded
         """
         self.glade_header =  ' '.join(['ra', 'dec', 'z', 'm_B', 'm_K', 'm_W1', 'm_bJ', 'logp'])
         with h5py.File(glade_file, 'r') as f:
@@ -224,6 +282,9 @@ class VolumeReconstruction(DPGMM):
         self.catalog_with_mag = catalog_with_mag[catalog[:,2] < self.max_dist]
 
     def make_folders(self):
+        """
+        Make folders for outputs
+        """
         if not Path(self.out_folder, 'skymaps').exists():
             Path(self.out_folder, 'skymaps').mkdir()
         if not Path(self.out_folder, 'volume').exists():
@@ -238,7 +299,7 @@ class VolumeReconstruction(DPGMM):
             self.convergence_folder.mkdir()
         if not self.skymap_folder.exists():
             self.skymap_folder.mkdir()
-        if self.max_dist < self.cat_bound and self.catalog is not None:
+        if self.catalog is not None:
             self.volume_folder = Path(self.out_folder, 'volume', self.name)
             if not self.volume_folder.exists():
                 self.volume_folder.mkdir()
@@ -255,21 +316,45 @@ class VolumeReconstruction(DPGMM):
         if not self.entropy_folder.exists():
             self.entropy_folder.mkdir()
 
-    # Overwrites parent method to avoid memory issues in 3D grid or catalog evaluation
     def _evaluate_mixture_in_probit(self, x):
+        """
+        Evaluate mixture at point(s) x in probit space.
+        Overwrites parent method to avoid memory issues in 3D grid or catalog evaluation
+        
+        Arguments:
+            :np.ndarray x: point(s) to evaluate the mixture at (in probit space)
+        
+        Returns:
+            :np.ndarray: mixture.pdf(x)
+        """
         p = np.zeros(len(x))
         for comp, wi in zip(self.mixture, self.w):
             p += wi*mn(comp.mu, comp.sigma).pdf(x)
         return p
     
-    # Overwrites parent method to avoid memory issues in 3D grid or catalog evaluation
     def _evaluate_log_mixture_in_probit(self, x):
+        """
+        Evaluate log mixture at point(s) x in probit space.
+        Overwrites parent method to avoid memory issues in 3D grid or catalog evaluation
+        
+        Arguments:
+            :np.ndarray x: point(s) to evaluate the mixture at (in probit space)
+        
+        Returns:
+            :np.ndarray: mixture.logpdf(x)
+        """
         p = -np.ones(len(x))*np.inf
         for comp, wi in zip(self.mixture, self.log_w):
             p = log_add_array(p, wi + mn(comp.mu, comp.sigma).logpdf(x))
         return p
 
     def add_sample(self, x):
+        """
+        Update the probability density reconstruction adding a new sample
+        
+        Arguments:
+            :np.ndarray x: sample
+        """
         self.volume_already_evaluated = False
         cart_x = celestial_to_cartesian(x)
         self.add_new_point(cart_x)
@@ -280,10 +365,26 @@ class VolumeReconstruction(DPGMM):
             self.make_volume_map(n_gals = self.n_gal_to_plot)
     
     def sample_from_volume(self, n_samps):
+        """
+        Draw samples from volume
+        
+        Arguments:
+            :int n_samps: number of samples to draw
+        
+        Returns:
+            :np.ndarray: samples in celestial coordinates (ra, dec, D)
+        """
         samples = self.sample_from_dpgmm(n_samps)
         return cartesian_to_celestial(samples)
     
     def plot_samples(self, n_samps, initial_samples = None):
+        """
+        Plot samples from DPGMM reconstruction along with PE samples (if available)
+        
+        Arguments:
+            :int n_samps:                number of samples to draw
+            :np.ndarray initial_samples: PE samples
+        """
         mix_samples = self.sample_from_volume(n_samps)
         if initial_samples is not None:
             if self.true_host is not None:
@@ -298,6 +399,9 @@ class VolumeReconstruction(DPGMM):
         plt.close()
     
     def evaluate_skymap(self):
+        """
+        Marginalise volume map over luminosity distance to get the 2D skymap and compute credible areas
+        """
         if not self.volume_already_evaluated:
             p_vol               = self._evaluate_mixture_in_probit(self.probit_grid) * self.inv_J
             self.norm_p_vol     = (p_vol*self.dD*self.dra*self.ddec).sum()
@@ -329,6 +433,9 @@ class VolumeReconstruction(DPGMM):
             self.areas_N[cr].append(area)
     
     def evaluate_volume_map(self):
+        """
+        Evaluate volume map and compute credbile volumes
+        """
         if not self.volume_already_evaluated:
             p_vol               = self._evaluate_mixture_in_probit(self.probit_grid) * self.inv_J
             self.norm_p_vol     = (p_vol*self.dD*self.dra*self.ddec).sum()
@@ -351,7 +458,10 @@ class VolumeReconstruction(DPGMM):
         for cr, vol in zip(self.levels, self.volumes):
             self.volumes_N[cr].append(vol)
     
-    def compute_credible_regions(self):
+    def compute_credible_levels_host(self):
+        """
+        Compute credible levels for true host (if provided)
+        """
         self.log_p_vol_host    = self.log_p_vol[self.pixel_idx[0],self.pixel_idx[1],self.pixel_idx[2]]
         self.log_p_skymap_host = self.log_p_skymap[self.pixel_idx[0], self.pixel_idx[1]]
         
@@ -360,6 +470,13 @@ class VolumeReconstruction(DPGMM):
         
     
     def evaluate_catalog(self, final_map = False):
+        """
+        Evaluate the probability of being the host for each entry in the galaxy catalog and rank it accordingly.
+        If the inference is finished, save credible areas/volumes.
+        
+        Arguments:
+            :bool final_map: flag to raise if the inference is finished
+        """
         log_p_cat                  = self._evaluate_log_mixture_in_probit(self.probit_catalog) + self.log_inv_J_cat - self.log_norm_p_vol
         self.log_p_cat_to_plot     = log_p_cat[np.where(log_p_cat > self.volume_heights[np.where(self.levels == self.region)])]
         self.p_cat_to_plot         = np.exp(self.log_p_cat_to_plot)
@@ -374,6 +491,12 @@ class VolumeReconstruction(DPGMM):
             np.savetxt(Path(self.catalog_folder, 'CR_'+self.name+'.txt'), np.array([self.areas[np.where(self.levels == self.region)], self.volumes[np.where(self.levels == self.region)]]).T, header = 'area volume')
     
     def make_skymap(self, final_map = False):
+        """
+        Produce skymap.
+        
+        Arguments:
+            :bool final_map: flag to raise if the inference is finished
+        """
         self.evaluate_skymap()
         fig = plt.figure()
         ax = fig.add_subplot(111)
@@ -401,6 +524,13 @@ class VolumeReconstruction(DPGMM):
         plt.close()
     
     def make_volume_map(self, final_map = False, n_gals = 100):
+        """
+        Produce volume map as 3D and 2D scatter plot of galaxies, if a catalog is provided.
+        
+        Arguments:
+            :bool final_map: flag to raise if the inference is finished
+            :int n_gals:     number of galaxies to plot
+        """
         self.evaluate_volume_map()
         if self.catalog is None:
             return
@@ -498,6 +628,9 @@ class VolumeReconstruction(DPGMM):
         plt.close()
         
     def make_gif(self):
+        """
+        If the inference produced updated skymaps, join them into a single .gif file
+        """
         files = [f for f in self.gif_folder.glob('3d_'+self.name + '*' + '.png')]
         if len(files) > 1:
             path_files = [str(f) for f in files]
@@ -518,6 +651,9 @@ class VolumeReconstruction(DPGMM):
         [f.unlink() for f in files]
     
     def make_entropy_plot(self):
+        """
+        Produce entropy plot and angular coefficient plot, if entropy = True
+        """
         fig, ax = plt.subplots()
         ax.plot(np.arange(len(self.R_S))*self.entropy_step, np.abs(self.R_S), color = 'steelblue', lw = 0.7)
         ax.set_ylabel('$S(N)\ [\mathrm{bits}]$')
@@ -536,12 +672,17 @@ class VolumeReconstruction(DPGMM):
         plt.close()
     
     def save_density(self):
+        """
+        Build and save density
+        """
         density = self.build_mixture()
         with open(Path(self.density_folder, self.name + '_density.pkl'), 'wb') as dill_file:
             dill.dump(density, dill_file)
     
     def volume_N_plot(self):
-        
+        """
+        Produce plot to show the evolution of credible area/volume with the number of samples
+        """
         output = [self.N]
         header = 'N '
         
@@ -567,10 +708,15 @@ class VolumeReconstruction(DPGMM):
         
         fig.savefig(Path(self.convergence_folder, self.name + '.pdf'), bbox_inches = 'tight')
         np.savetxt(Path(self.convergence_folder, self.name + '.txt'), np.array(output).T, header = header)
-        
         plt.close()
         
     def density_from_samples(self, samples):
+        """
+        Reconstruct the probability density from a set of samples.
+        
+        Arguments:
+            :iterable samples: set of volume samples
+        """
         self.ac_cntr = self.n_sign_changes
         for i in tqdm(range(len(samples)), desc=self.name):
             self.add_sample(samples[i])
@@ -603,8 +749,9 @@ class VolumeReconstruction(DPGMM):
         self.make_skymap(final_map = True)
         self.make_volume_map(final_map = True, n_gals = self.n_gal_to_plot)
         self.make_gif()
-        self.volume_N_plot()
+        if self.next_plot < np.inf:
+            self.volume_N_plot()
         if self.entropy:
             self.make_entropy_plot()
         if self.true_host is not None:
-            self.compute_credible_regions()
+            self.compute_credible_levels_host()
