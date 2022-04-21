@@ -177,12 +177,39 @@ def build_mean_cov(x, dim):
 
 @jit
 def propose_point_1d(old_point, dm, ds):
+    """
+    Propose a new point uniformly drawn in an interval [x-dx, x+dx]
+    
+    Arguments:
+        :np.ndarray old_point: old mean and std
+        :double dm:            interval width for mean
+        :double ds:            interval width for std
+    
+    Returns:
+        :np.ndarray: new point
+    """
     m = old_point[0] + (np.random.rand() - 0.5)*2*dm
     s = np.exp(np.log(old_point[1]) + (np.random.rand() - 0.5)*2*ds)
     return np.array([m,s])
 
 #@jit
 def sample_point_1d(means, covs, log_w, burnin = 1000, dm = 1, ds = 0.05, a = 2, b = 0.2):
+    """
+    1D metropolis sampling scheme to find maximum a posteriori for component mean and covariance
+    
+    Arguments:
+        :iterable means: container for means of every event associated with the component (3d array)
+        :iterable covs:  container for variances of every event associated with the component (4d array)
+        :iterable log_w: container for weights of every event associated with the component (2d array)
+        :int burnin:     number of iteration before returning the sampled point
+        :double dm:      interval width for mean
+        :double ds:      interval width for std
+        :double a:       Inverse Gamma prior shape parameter (std)
+        :double b:       Inverse Gamma prior scale parameter (std)
+    
+    Returns:
+        :np.ndarray: array storing sampled mean and std
+    """
     old_point = np.array([0., b])
     log_old = log_integrand_1d(old_point[0], old_point[1], means, covs, log_w, a, b)
     for i in range(burnin):
@@ -195,6 +222,21 @@ def sample_point_1d(means, covs, log_w, burnin = 1000, dm = 1, ds = 0.05, a = 2,
 
 #@jit
 def log_integrand_1d(mu, sigma, means, covs, log_w, a, b):
+    """
+    Probability distribution for mean and std - Eq. (46) with Inverse Gamma prior on std
+    
+    Arguments:
+        :double mu:      temptative mean
+        :double sigma:   temptative std
+        :iterable means: container for means of every event associated with the component (3d array)
+        :iterable covs:  container for variances of every event associated with the component (4d array)
+        :iterable log_w: container for weights of every event associated with the component (2d array)
+        :double a:       Inverse Gamma prior shape parameter (std)
+        :double b:       Inverse Gamma prior scale parameter (std)
+    
+    Returns:
+        :double: log probability
+    """
     logP = 0.
     for i in range(len(means)):
         logP += log_prob_mixture_1d(mu, sigma, log_w[i], means[i], covs[i])
@@ -202,12 +244,39 @@ def log_integrand_1d(mu, sigma, means, covs, log_w, a, b):
 
 @jit
 def log_prob_mixture_1d(mu, sigma, log_w, means, covs):
+    """
+    Single term of productory in Eq. (46) - Single event.
+    
+    Arguments:
+        :double mu:        temptative mean
+        :double sigma:     temptative std
+        :np.ndarray log_w: component weights
+        :np.ndarray means: component means (2d array)
+        :np.ndarray covs:  component variances (3d array)
+    
+    Returns:
+        :double: log probability
+    """
     logP = -np.inf
     for i in prange(len(means)):
         logP = log_add(logP, log_w[i] + log_norm_1d(means[i,0], mu, sigma**2 + covs[i,0,0] + (means[i,0] - mu)**2))
     return logP
 
-def MC_predictive_1d(events, n_samps = 1000, m_min = -5, m_max = 5, a = 2, b = 0.2):
+def MC_predictive_1d(events, n_samps = 1000, m_min = -7, m_max = 7, a = 2, b = 0.2):
+    """
+    Monte Carlo integration over mean and std of p(m,s|{y}) - 1D
+    
+    Arguments:
+        :iterable events: container of mixture instances (see mixture.py for the definition)
+        :int n_samps:     number of MC draws
+        :double m_min:    lower bound for uniform mean distribution
+        :double m_max:    upper bound for uniform mean distribution
+        :double a:        Inverse Gamma prior shape parameter (std)
+        :double b:        Inverse Gamma prior scale parameter (std)
+    
+    Returns:
+        :double: MC estimate of integral
+    """
     means = np.random.uniform(m_min, m_max, size = n_samps)
     variances = np.sqrt(invgamma(a, b).rvs(size = n_samps))
     logP = np.zeros(n_samps, dtype = np.float64)
@@ -218,6 +287,19 @@ def MC_predictive_1d(events, n_samps = 1000, m_min = -5, m_max = 5, a = 2, b = 0
 
 @jit
 def log_prob_mixture_1d_MC(mu, sigma, log_w, means, covs):
+    """
+    Log probability for a single event - 1D
+    
+    Arguments:
+        :np.ndarray mu:    array of temptative means
+        :np.ndarray sigma: array of temptative stds
+        :np.ndarray log_w: component weights
+        :np.ndarray means: component means (2d array)
+        :np.ndarray covs:  component variances (3d array)
+    
+    Returns:
+        :np.ndarray: log probabilities for each pair of temptative mean and std
+    """
     logP = -np.ones(len(mu), dtype = np.float64)*np.inf
     for i in prange(len(means)):
         logP = log_add_array(logP, log_w[i] + log_norm_1d(means[i,0], mu, sigma**2 + covs[i,0,0] + (means[i,0] - mu)**2))
@@ -229,12 +311,43 @@ def log_prob_mixture_1d_MC(mu, sigma, log_w, means, covs):
 
 @jit
 def propose_point(old_point, dm, ds, dr, dim):
+    """
+    Propose a new point uniformly drawn in an interval [x-dx, x+dx]
+    
+    Arguments:
+        :np.ndarray old_point: old mean and covariance
+        :double dm:            interval width for mean
+        :double ds:            interval width for covariance matrix diagonal elements
+        :double dr:            interval width for covariance matrix off-diagonal elements
+        :int dim:              number of dimensions
+    
+    Returns:
+        :np.ndarray: new point
+    """
     m = [old_point[i] + (np.random.rand() - 0.5)*2*dm for i in range(dim)]
     s = [old_point[i+dim] + (np.random.rand() - 0.5)*2*ds for i in range(dim)]
     r = [old_point[i+2*dim] + (np.random.rand() - 0.5)*2*dr for i in range(int(dim*(dim-1)/2.))]
     return np.array(m+r+s)
 
-def sample_point(means, covs, log_w, dim, s_min = 0, s_max = 1, burnin = 10000, dm = 1, ds = 0.05, dr = 0.05, a = 2, b = 0.2**2):
+def sample_point(means, covs, log_w, dim, burnin = 1000, dm = 1, ds = 0.05, dr = 0.05, a = 2, b = 0.2**2):
+    """
+    Multidimensional metropolis sampling scheme to find maximum a posteriori for component mean and covariance matrix
+    
+    Arguments:
+        :iterable means: container for means of every event associated with the component (3d array)
+        :iterable covs:  container for variances of every event associated with the component (4d array)
+        :iterable log_w: container for weights of every event associated with the component (2d array)
+        :int dim:        number of dimensions
+        :int burnin:     number of iteration before returning the sampled point
+        :double dm:      interval width for mean
+        :double ds:      interval width for diagonal elements
+        :double dr:      interval width for off-diagonal elements
+        :double a:       Inverse Wishart prior shape parameter (std)
+        :double b:       Inverse Wishart prior scale matrix (std)
+    
+    Returns:
+        :np.ndarray: array storing sampled mean and covariance matrix
+    """
     mu = np.zeros(dim)
     if type(b) is float:
         cov = np.identity(dim)*b
@@ -255,6 +368,19 @@ def sample_point(means, covs, log_w, dim, s_min = 0, s_max = 1, burnin = 10000, 
 
 #@jit
 def log_integrand(mu, sigma, means, covs, log_w):
+    """
+    Probability distribution for mean and std - Eq. (46) with Inverse Wishart prior on std
+    
+    Arguments:
+        :double mu:      temptative mean
+        :double sigma:   temptative covariance matrix
+        :iterable means: container for means of every event associated with the component (3d array)
+        :iterable covs:  container for covariances of every event associated with the component (4d array)
+        :iterable log_w: container for weights of every event associated with the component (2d array)
+    
+    Returns:
+        :double: log probability
+    """
     logP = 0.
     for i in range(len(means)):
         logP += log_prob_mixture(mu, sigma, means[i], covs[i], log_w[i])
@@ -262,12 +388,40 @@ def log_integrand(mu, sigma, means, covs, log_w):
 
 @jit
 def log_prob_mixture(mu, cov, means, sigmas, log_w):
+    """
+    Single term of productory in Eq. (46) - Single event, multidimensional.
+    
+    Arguments:
+        :double mu:        temptative mean
+        :double sigma:     temptative covariance matrix
+        :np.ndarray means: component means (2d array)
+        :np.ndarray covs:  component covariances (3d array)
+        :np.ndarray log_w: component weights
+    
+    Returns:
+        :double: log probability
+    """
     logP = -np.inf
     for i in range(len(means)):
         logP = log_add(logP, log_w[i] + log_norm(means[i], mu, sigmas[i] + cov + (means[i] - mu).T@(means[i] - mu)))
     return logP
 
-def MC_predictive(events, dim, n_samps = 10000, m_min = -7, m_max = 7, a = 2, b = np.array([0.2])):
+def MC_predictive(events, dim, n_samps = 1000, m_min = -7, m_max = 7, a = 2, b = np.array([0.2])):
+    """
+    Monte Carlo integration over mean and std of p(m,s|{y}) - multidimensional
+    
+    Arguments:
+        :iterable events: container of mixture instances (see mixture.py for the definition)
+        :int dim:         number of dimensions
+        :int n_samps:     number of MC draws
+        :double m_min:    lower bound for uniform mean distribution
+        :double m_max:    upper bound for uniform mean distribution
+        :double a:        Inverse Wishart prior shape parameter
+        :double b:        Inverse Wishart prior scale matrix
+    
+    Returns:
+        :double: MC estimate of integral
+    """
     means = np.random.uniform(m_min, m_max, size = (n_samps, dim))
     if len(b) == 1:
         b = np.identity(dim)*b
@@ -280,6 +434,19 @@ def MC_predictive(events, dim, n_samps = 10000, m_min = -7, m_max = 7, a = 2, b 
 
 @jit
 def log_prob_mixture_MC(mu, cov, log_w, means, covs):
+    """
+    Log probability for a single event - multidimensional
+    
+    Arguments:
+        :np.ndarray mu:    array of temptative means
+        :np.ndarray sigma: array of temptative covariances
+        :np.ndarray log_w: component weights
+        :np.ndarray means: component means (2d array)
+        :np.ndarray covs:  component covariances (3d array)
+    
+    Returns:
+        :np.ndarray: log probabilities for each pair of temptative mean and std
+    """
     logP = -np.ones(len(mu), dtype = np.float64)*np.inf
     for i in prange(len(means)):
         logP = log_add_array(logP, log_w[i] + log_norm_array(means[i], mu, covs[i] + cov + (means[i] - mu).T@(means[i] - mu)))
