@@ -6,6 +6,7 @@ from distutils.spawn import find_executable
 from matplotlib import rcParams
 from corner import corner
 from collections import Counter
+import ligo.skymap.plot
 
 if find_executable('latex'):
     rcParams["text.usetex"] = True
@@ -31,6 +32,7 @@ def is_opt_provided(parser, dest):
     Arguments:
         :obj parser: an instance of optparse.OptionParser with the user-provided options
         :str dest:   name of the option
+        
     Returns:
         :bool: True if the option is provided, false otherwise
     """
@@ -60,7 +62,23 @@ def save_options(options):
 #-------------#
 
 def plot_median_cr(draws, injected = None, samples = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True):
+    """
+    Plot the recovered 1D distribution along with the injected distribution and samples from the true distribution (both if available).
     
+    Arguments:
+        :iterable draws:                  container for mixture instances
+        :callable or np.ndarray injected: injected distribution (if available)
+        :np.ndarray samples:              samples from the true distribution (if available)
+        :iterable bounds:                 bounds for the recovered distribution. If None, bounds from mixture instances are used.
+        :str or Path out_folder:          output folder
+        :str name:                        name to be given to outputs
+        :int n_pts:                       number of points for linspace
+        :str label:                       LaTeX-style quantity label, for plotting purposes
+        :str unit:                        LaTeX-style quantity unit, for plotting purposes
+        :bool hierarchical:               hierarchical inference, for plotting purposes
+        :bool save:                       whether to save the plot or not
+        :bool show:                       whether to show the plot during the run or not
+    """
     if hierarchical:
         rec_label = '\mathrm{(H)DPGMM}'
     else:
@@ -134,7 +152,21 @@ def plot_median_cr(draws, injected = None, samples = None, bounds = None, out_fo
         np.savetxt(Path(out_folder, 'prob_{0}.txt'.format(name)), np.array([x, p[50], p[5], p[16], p[84], p[95]]).T, header = 'x 50 5 16 84 95')
 
 def plot_multidim(draws, dim, samples = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True):
-
+    """
+    Plot the recovered multidimensional distribution along with samples from the true distribution (if available).
+    
+    Arguments:
+        :iterable draws:         container for mixture instances
+        :int dim:                number of dimensions
+        :np.ndarray samples:     samples from the true distribution (if available)
+        :str or Path out_folder: output folder
+        :str name:               name to be given to outputs
+        :list-of-str labels:     LaTeX-style quantity label, for plotting purposes
+        :list-of-str units:      LaTeX-style quantity unit, for plotting purposes
+        :bool hierarchical:      hierarchical inference, for plotting purposes
+        :bool save:              whether to save the plot or not
+        :bool show:              whether to show the plot during the run or not
+    """
     if hierarchical:
         rec_label = '\mathrm{(H)DPGMM}'
     else:
@@ -173,3 +205,69 @@ def plot_multidim(draws, dim, samples = None, out_folder = '.', name = 'density'
         plt.show()
     if save:
         c.savefig(Path(out_folder, '{0}.pdf'.format(name)), bbox_inches = 'tight')
+
+def plot_n_clusters_alpha(n_cl, alpha, out_folder = '.', name = 'event', show = False, save = True):
+    """
+    Plot the number of clusters and the concentration parameter as functions of the number of samples.
+    
+    Arguments:
+        :np.ndarray n_cl:        number of active clusters
+        :np.ndarray alpha:       concentration parameter
+        :str or Path out_folder: output folder
+        :str name:               name to be given to outputs
+        :bool save:              whether to save the plot or not
+        :bool show:              whether to show the plot during the run or not
+    """
+    fig, ax = plt.subplots()
+    ax1 = ax.twinx()
+    ax.plot(np.arange(1, len(n_cl)+1), n_cl, ls = '--', marker = '', lw = 0.7, color = 'k')
+    ax1.plot(np.arange(1, len(alpha)+1), alpha, ls = '--', marker = '', lw = 0.7, color = 'r')
+    ax.set_xlabel('$t$')
+    ax.set_ylabel('$N_{\mathrm{cl}}(t)$', color = 'k')
+    ax1.set_ylabel('$\alpha(t)$', color = 'r')
+    ax.grid()
+    if show:
+        plt.show()
+    if save:
+        fig.savefig(Path(out_folder, name+'_n_cl_alpha.pdf'), bbox_inches = 'tight')
+    plt.close()
+
+def pp_plot_cdf(draws, injection, n_points = 1000, out_folder = '.', name = 'event', show = False, save = True):
+    """
+    Make pp-plot comparing draws cdfs and injection cdf
+    
+    Arguments:
+        :iterable draws:         container of mixture instances
+        :callable injection:     injected density
+        :int n_points:           number of points for linspace
+        :str or Path out_folder: output folder
+        :str name:               name to be given to outputs
+        :bool save:              whether to save the plot or not
+        :bool show:              whether to show the plot during the run or not
+    """
+    all_bounds = np.atleast_2d([d.bounds[0] for d in draws])
+    x_min = np.max(all_bounds[:,0])
+    x_max = np.min(all_bounds[:,1])
+    x = np.linspace(x_min, x_max, n_points+2)[1:-1]
+    
+    functions     = np.array([mix.evaluate_mixture(np.atleast_2d(x).T) for mix in draws])
+    median        = np.percentile(functions.T, 50, axis = 1)
+    cdf_draws     = np.array([fast_cumulative(d) for d in functions])
+    cdf_median    = fast_cumulative(median)
+    cdf_injection = fast_cumulative(injection(x))
+    
+    fig = plt.figure()
+    ax  = fig.add_subplot(111, projection = 'pp_plot')
+    ax.add_confidence_band(len(cdf_median), alpha=0.95, color = 'ghostwhite')
+    ax.add_diagonal()
+    for cdf in cdf_draws:
+        ax.plot(cdf_injection, cdf, lw = 0.5, alpha = 0.5, color = 'darkturquoise')
+    ax.plot(cdf_injection, cdf, color = 'steelblue', lw = 0.7)
+    ax.set_xlabel('$\mathrm{Injected}$')
+    ax.set_ylabel('$\mathrm{FIGARO}$')
+    ax.grid()
+    if show:
+        plt.show()
+    if save:
+        fig.savefig(Path(out_folder, name+'_ppplot.pdf'), bbox_inches = 'tight')
+    plt.close()
