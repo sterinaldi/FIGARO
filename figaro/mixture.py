@@ -580,6 +580,7 @@ class DPGMM:
         self._assign_to_cluster(np.atleast_2d(x))
         self.alpha = update_alpha(self.alpha, self.n_pts, self.n_cl)
     
+    @from_probit
     def sample_from_dpgmm(self, n_samps):
         """
         Draw samples from mixture
