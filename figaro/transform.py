@@ -4,6 +4,11 @@ from scipy.special import erfinv, erf
 
 log2PI = np.log(2.0*np.pi)
 
+"""
+Scipy's implementation of ERF: https://docs.scipy.org/doc/scipy/reference/generated/scipy.special.erf.html
+See notes there for cumulative of the unit normal distribution.
+"""
+
 def transform_to_probit(x, bounds):
     '''
     Coordinate change into probit space.
@@ -15,6 +20,7 @@ def transform_to_probit(x, bounds):
     
     Arguments:
         :float or np.ndarray samples: sample(s) to transform
+        
     Returns:
         :float or np.ndarray: sample(s)
     '''
@@ -31,10 +37,9 @@ def transform_from_probit(x, bounds):
     
     Arguments:
         :float or np.ndarray samples: sample(s) to antitransform
+        
     Returns:
         :float or np.ndarray: sample(s)
-        
-        1/2[1 + erf(z/sqrt(2))].
     '''
     cdf = 0.5*(1.0+erf(x/np.sqrt(2.0)))
     o = bounds[:,0]+(bounds[:,1]-bounds[:,0])*cdf
