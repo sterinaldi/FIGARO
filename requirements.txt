@@ -4,3 +4,4 @@ dill
 corner
 astropy
 pyvo
+numba
