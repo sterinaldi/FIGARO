@@ -2,15 +2,15 @@ from __future__ import division
 import numpy as np
 
 def cartesian_to_spherical(vector):
-    """Convert the Cartesian vector [x, y, z] to spherical coordinates [r, theta, phi].
-
+    """
+    Convert the Cartesian vector [x, y, z] to spherical coordinates [r, theta, phi].
     The parameter r is the radial distance, theta is the polar angle, and phi is the azimuth.
-
-
-    @param vector:  The Cartesian vector [x, y, z].
-    @type vector:   numpy rank-1, 3D array
-    @return:        The spherical coordinate vector [r, theta, phi].
-    @rtype:         numpy rank-1, 3D array
+    
+    Arguments:
+        :np.ndarray: cartesian vector [x, y, z]
+        
+    Returns:
+        :np.ndarray: spherical coordinate vector [r, theta, phi]
     """
     r = np.linalg.norm(vector, axis = -1)
     unit = np.array([v/np.linalg.norm(v) for v in vector])
@@ -22,15 +22,15 @@ def cartesian_to_spherical(vector):
 
 
 def spherical_to_cartesian(vector):
-    """Convert the spherical coordinate vector [r, theta, phi] to the Cartesian vector [x, y, z].
-
-    The parameter r is the radial distance, theta is the polar angle, and phi is the azimuth.
-
-
-    @param spherical_vect:  The spherical coordinate vector [r, theta, phi].
-    @type spherical_vect:   3D array or list
-    @param cart_vect:       The Cartesian vector [x, y, z].
-    @type cart_vect:        3D array or list
+    """
+    Convert the spherical coordinate vector [r, theta, phi] to the Cartesian vector [x, y, z].
+    The parameter r is the radial distance, theta is the polar angle, and phi is the azimuth
+    
+    Arguments:
+        :np.ndarray vector: spherical coordinate vector [r, theta, phi]
+        
+    Returns:
+        :np.ndarray: cartesian vector [x, y, z]
     """
     # Trig alias.
     cos_theta = np.cos(vector[:,1])
@@ -41,12 +41,28 @@ def spherical_to_cartesian(vector):
     return np.array([x,y,z]).T
     
 def celestial_to_cartesian(celestial_vect):
-    """Convert the spherical coordinate vector [r, dec, ra] to the Cartesian vector [x, y, z]."""
+    """
+    Convert the spherical coordinate vector [ra, dec, D] to the Cartesian vector [x, y, z]
+    
+    Arguments:
+        :np.ndarray celestial_vect: celestial coordinate vector [r, dec, D]
+        
+    Returns:
+        :np.ndarray: cartesian vector [x, y, z]
+    """
     celestial_vect = np.atleast_2d(celestial_vect)
     return spherical_to_cartesian(celestial_vect)
 
 def cartesian_to_celestial(cartesian_vect):
-    """Convert the Cartesian vector [x, y, z] to the celestial coordinate vector [r, dec, ra]."""
+    """
+    Convert the Cartesian vector [x, y, z] to the celestial coordinate vector [ra, dec, D]
+    
+    Arguments:
+        :np.ndarray cartesian_vect: cartesian vector [x, y, z]
+    
+    Returns:
+        :np.ndarray: celestial coordinate vector [ra, dec, D]
+    """
     cartesian_vect = np.atleast_2d(cartesian_vect)
     spherical_vect = cartesian_to_spherical(cartesian_vect)
     D   = spherical_vect[:,0]
@@ -55,26 +71,40 @@ def cartesian_to_celestial(cartesian_vect):
     return np.array([ra, dec, D]).T
 
 def Jacobian(cartesian_vect):
-    cartesian_vect = np.atleast_2d(cartesian_vect)
-    return Jacobian_in_celestial(cartesian_to_celestial(cartesian_vect))
+    """
+    Computes the jacobian of celestial transformation for a cartesian vector
+    
+    Arguments:
+        :np.ndarray cartesian_vect: cartesian vector [x, y, z]
+    
+    Returns:
+        :np.ndarray: Jacobian of the transformation
+    """
+    return Jacobian_in_celestial(cartesian_to_celestial(np.atleast_2d(cartesian_vect)))
 
 def inv_Jacobian(celestial_vect):
-    celestial_vect = np.atleast_2d(celestial_vect)
-    detJ = Jacobian_in_celestial(celestial_vect)
+    """
+    Computes the inverse jacobian of celestial transformation for a celestial vector
+    
+    Arguments:
+        :np.ndarray cartesian_vect: cartesian vector [ra, dec, D]
+    
+    Returns:
+        :np.ndarray: inverse Jacobian of the transformation
+    """
+    detJ = Jacobian_in_celestial(np.atleast_2d(celestial_vect))
     return 1/detJ
     
 def Jacobian_in_celestial(celestial_vect):
+    """
+    Computes the jacobian of celestial transformation
+    
+    Arguments:
+        :np.ndarray cartesian_vect: cartesian vector [ra, dec, D]
+    
+    Returns:
+        :np.ndarray: Jacobian of the transformation
+    """
     d = celestial_vect[:,2]
     theta = celestial_vect[:,1]
     return d*d*np.cos(theta)
-
-def Jacobian_distance(cartesian_vect):
-    cartesian_vect = np.atleast_2d(cartesian_vect)
-    d = np.linalg.norm(cartesian_vect, axis = -1)
-    return d
-
-def inv_Jacobian_distance(celestial_vect):
-    return 1/celestial_vect[:,2]
-
-def log_inv_Jacobian_distance(celestial_vect):
-    return -np.log(celestial_vect[:,2])
