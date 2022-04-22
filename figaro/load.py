@@ -50,7 +50,7 @@ def load_single_event(event, seed = False, par = ['m1'], n_samples = -1, h = 0.6
     name, ext = str(event).split('/')[-1].split('.')
     if ext == 'txt':
         if n_samples > -1:
-            samples = np.genfromtxt(event)
+            samples = np.atleast_1d(np.genfromtxt(event))
             s = int(min([n_samples, len(samples)]))
             out = samples[rdstate.choice(np.arange(len(samples)), size = s, replace = False)]
         else:
@@ -81,17 +81,16 @@ def load_data(path, seed = False, par = ['m1'], n_samples = -1, h = 0.674, om = 
         :np.ndarray:    samples
         :np.ndarray:    names
     '''
-    if seed:
-        rdstate = np.random.RandomState(seed = 1)
-    else:
-        rdstate = np.random.RandomState()
-        
     event_files = [Path(path,f) for f in os.listdir(path) if not (f.startswith('.') or f.startswith('empty_files'))]
     events      = []
     names       = []
     n_events    = len(event_files)
     
     for i, event in enumerate(event_files):
+        if seed:
+            rdstate = np.random.RandomState(seed = 1)
+        else:
+            rdstate = np.random.RandomState()
         print('\r{0}/{1} event(s)'.format(i+1, n_events), end = '')
         name, ext = str(event).split('/')[-1].split('.')
         names.append(name)
