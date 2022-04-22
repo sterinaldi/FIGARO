@@ -5,7 +5,7 @@ import ctypes
 from scipy.stats import invgamma, invwishart
 from scipy.special import logsumexp
 
-LOGSQRT2 = np.log(2*np.pi)
+LOG2PI = np.log(2*np.pi)
 
 _PTR = ctypes.POINTER
 _dble = ctypes.c_double
@@ -58,19 +58,19 @@ def numba_gammaln(x):
     return gammaln_float64(x)
 
 @jit
-def log_invgamma(var, a, b):
+def log_invgamma(x, a, b):
     """
     Inverse Gamma logpdf
     
     Arguments:
-        :double var: value
-        :double a:   shape parameter
-        :double b:   scale parameter
+        :double x: value
+        :double a: shape parameter
+        :double b: scale parameter
     
     Returns:
         :double: InverseGamma(a,b).logpdf(var^2)
     """
-    return a*np.log(b) - (a+1)*np.log(var**2) - b/var**2 - numba_gammaln(a)
+    return a*np.log(b) - (a+1)*np.log(x**2) - b/x**2 - numba_gammaln(a)
 
 @jit
 def log_norm_1d(x, m, s):
@@ -80,12 +80,12 @@ def log_norm_1d(x, m, s):
     Arguments:
         :double x: value
         :double m: mean
-        :double s: std
+        :double s: var
     
     Returns:
         Normal(m,s).logpdf(x)
     """
-    return -(x-m)**2/(2*s) - 0.5*np.log(2*np.pi) - 0.5*np.log(s)
+    return -(x-m)**2/(2*s) - 0.5*np.log(2*np.pi*s)
 
 @njit
 def inv_jit(M):
@@ -129,7 +129,7 @@ def log_norm(x, mu, cov):
     """
     inv_cov  = inv_jit(cov)
     exponent = -0.5*triple_product(x-mu, inv_cov, len(mu))
-    lognorm  = LOGSQRT2-0.5*logdet_jit(inv_cov)
+    lognorm  = 0.5*len(mu)*LOG2PI+0.5*logdet_jit(cov)
     return -lognorm+exponent
 
 @jit
@@ -155,7 +155,7 @@ def build_mean_cov(x, dim):
     Build mean and covariance matrix from array.
     
     Arguments:
-        :np.ndarray x: values for mean and covariance. Mean values are the first dim entries, stds are the second dim entries and off-diagonal elements are the remaining dim*(dim-1)/2 entries.
+        :np.ndarray x: values for mean and covariance. Mean values are the first dim entries, stds are the second dim entries and correlation coefficients are the remaining dim*(dim-1)/2 entries.
         :int dim:      number of dimensions
     
     Returns:
