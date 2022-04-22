@@ -75,6 +75,9 @@ def autocorrelation(draws, bounds = None, out_folder = '.', name = 'event', n_po
         :int n_points:           number of points for linspace
         :bool save:              whether to save the plot or not
         :bool show:              whether to show the plot during the run or not
+    
+    Returns:
+        :np.ndarray: autocorrelation
     """
     all_bounds = np.atleast_2d([d.bounds[0] for d in draws])
     x_min = np.max(all_bounds[:,0])
@@ -107,6 +110,7 @@ def autocorrelation(draws, bounds = None, out_folder = '.', name = 'event', n_po
     if save:
         fig.savefig(Path(out_folder, name+'_autocorrelation.pdf'), bbox_inches = 'tight')
     plt.close()
+    return ac
     
 def compute_entropy_single_draw(mixture, n_draws = 1e3):
     """
@@ -153,6 +157,9 @@ def entropy(draws, out_folder = '.', name = 'event', n_draws = 1e3, step = 1, di
         :int dim:                number of dimensions
         :bool save:              whether to save the plot or not
         :bool show:              whether to show the plot during the run or not
+    
+    Return:
+        :np.ndarray: entropy
     """
     S = compute_entropy(draws, int(n_draws**dim))
     fig, ax = plt.subplots()
@@ -165,6 +172,7 @@ def entropy(draws, out_folder = '.', name = 'event', n_draws = 1e3, step = 1, di
     if save:
         fig.savefig(Path(out_folder, name+'_entropy.pdf'), bbox_inches = 'tight')
     plt.close()
+    return S
 
 def plot_angular_coefficient(entropy, L = 500, out_folder = '.', name = 'event', step = 1, show = False, save = True):
     """
@@ -178,6 +186,9 @@ def plot_angular_coefficient(entropy, L = 500, out_folder = '.', name = 'event',
         :int step:               number of draws between entropy samples (if downsampled by some other method, for plotting purposes only)
         :bool save:              whether to save the plot or not
         :bool show:              whether to show the plot during the run or not
+    
+    Returns:
+        :np.ndarray: angular coefficients
     """
     S = compute_angular_coefficients(entropy, L = L)
     fig, ax = plt.subplots()
@@ -190,3 +201,4 @@ def plot_angular_coefficient(entropy, L = 500, out_folder = '.', name = 'event',
     if save:
         fig.savefig(Path(out_folder, name+'_angular_coefficient.pdf'), bbox_inches = 'tight')
     plt.close()
+    return S
