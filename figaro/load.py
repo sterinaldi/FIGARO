@@ -10,7 +10,7 @@ except ModuleNotFoundError:
 from pathlib import Path
 from scipy.optimize import newton
 
-def find_redshift(omega, dl):
+def _find_redshift(omega, dl):
     """
     Find redshift given a luminosity distance and a cosmology using Newton's method
     
@@ -116,7 +116,7 @@ def load_data(path, seed = 0, par = ['m1'], n_samples = -1, h = 0.674, om = 0.31
 
     return (events, np.array(names))
 
-def unpack_gw_posterior(event, par, cosmology, rdstate, ext, n_samples = -1):
+def _unpack_gw_posterior(event, par, cosmology, rdstate, ext, n_samples = -1):
     '''
     Reads data from .h5/.hdf5 GW posterior files.
     Implemented: 'm1', 'm2', 'mc', 'z', 'ra', 'dec', 'luminosity_distance', 'chi_eff' (the latter only up to GWTC-2)
@@ -170,7 +170,7 @@ def unpack_gw_posterior(event, par, cosmology, rdstate, ext, n_samples = -1):
                 ra        = data['right_ascension']
                 dec       = data['declination']
                 LD        = data['luminosity_distance_Mpc']
-                z         = np.array([find_redshift(omega, l) for l in LD])
+                z         = np.array([_find_redshift(omega, l) for l in LD])
                 m1_detect = data['m1_detector_frame_Msun']
                 m2_detect = data['m2_detector_frame_Msun']
                 m1        = m1_detect/(1+z)
@@ -217,7 +217,7 @@ def unpack_gw_posterior(event, par, cosmology, rdstate, ext, n_samples = -1):
         ra        = data['ra']
         dec       = data['dec']
         LD        = data['luminosity_distance']
-        z         = np.array([find_redshift(omega, l) for l in LD])
+        z         = np.array([_find_redshift(omega, l) for l in LD])
         m1_detect = data['mass_1']
         m2_detect = data['mass_2']
         m1        = m1_detect/(1+z)
