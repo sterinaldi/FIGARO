@@ -168,15 +168,14 @@ def entropy(draws, out_folder = '.', name = 'event', n_draws = 1e3, step = 1, di
 
 def plot_angular_coefficient(entropy, L = 500, out_folder = '.', name = 'event', step = 1, show = False, save = True):
     """
-    Compute entropy of a set of draws and produce the relevant plot
+    Compute entropy angular coefficient and produce the relevant plot
     
     Arguments:
-        :iterable draws:         container of mixture instances
+        :iterable entropy:       container of mixture instances
+        :int L:                  window lenght
         :str or Path out_folder: output folder
         :str name:               name to be given to outputs
-        :int n_draws:            number of MC draws
         :int step:               number of draws between entropy samples (if downsampled by some other method, for plotting purposes only)
-        :int dim:                number of dimensions
         :bool save:              whether to save the plot or not
         :bool show:              whether to show the plot during the run or not
     """
