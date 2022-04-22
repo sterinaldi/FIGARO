@@ -182,7 +182,7 @@ def plot_angular_coefficient(entropy, L = 500, out_folder = '.', name = 'event',
     """
     S = compute_angular_coefficients(entropy, L = L)
     fig, ax = plt.subplots()
-    ax.plot(np.arange(len(S))+L, S, ls = '--', marker = '', color = 'steelblue', lw = 0.7)
+    ax.plot(np.arange(len(S))*step+L, S, ls = '--', marker = '', color = 'steelblue', lw = 0.7)
     ax.set_ylabel('$\\frac{dS(N)}{dN}$')
     ax.set_xlabel('$N$')
     ax.grid()
