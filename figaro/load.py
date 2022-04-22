@@ -25,7 +25,7 @@ def _find_redshift(omega, dl):
         return dl - omega.LuminosityDistance_double(z)
     return newton(objective,1.0,args=(omega,dl))
 
-def load_single_event(event, seed = 0, par = ['m1'], n_samples = -1, h = 0.674, om = 0.315, ol = 0.685):
+def load_single_event(event, seed = False, par = ['m1'], n_samples = -1, h = 0.674, om = 0.315, ol = 0.685):
     '''
     Loads the data from .txt files (for simulations) or .h5/.hdf5 files (posteriors from GWTC) for a single event.
     Default cosmological parameters from Planck Collaboration (2021) in a flat Universe (https://www.aanda.org/articles/aa/pdf/2020/09/aa33910-18.pdf)
@@ -43,7 +43,7 @@ def load_single_event(event, seed = 0, par = ['m1'], n_samples = -1, h = 0.674, 
         :np.ndarray:    samples
         :np.ndarray:    name
     '''
-    if not seed == 0:
+    if seed:
         rdstate = np.random.RandomState(seed = 1)
     else:
         rdstate = np.random.RandomState()
@@ -63,7 +63,7 @@ def load_single_event(event, seed = 0, par = ['m1'], n_samples = -1, h = 0.674, 
             exit()
     return out, name
 
-def load_data(path, seed = 0, par = ['m1'], n_samples = -1, h = 0.674, om = 0.315, ol = 0.685):
+def load_data(path, seed = False, par = ['m1'], n_samples = -1, h = 0.674, om = 0.315, ol = 0.685):
     '''
     Loads the data from .txt files (for simulations) or .h5/.hdf5 files (posteriors from GWTC-x).
     Default cosmological parameters from Planck Collaboration (2021) in a flat Universe (https://www.aanda.org/articles/aa/pdf/2020/09/aa33910-18.pdf)
@@ -81,7 +81,7 @@ def load_data(path, seed = 0, par = ['m1'], n_samples = -1, h = 0.674, om = 0.31
         :np.ndarray:    samples
         :np.ndarray:    names
     '''
-    if not seed == 0:
+    if seed:
         rdstate = np.random.RandomState(seed = 1)
     else:
         rdstate = np.random.RandomState()
