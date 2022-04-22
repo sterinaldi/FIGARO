@@ -19,11 +19,11 @@ def transform_to_probit(x, bounds):
 
     
     Arguments:
-        :float or np.ndarray x: sample(s) to transform (2d array)
+        :np.ndarray x: sample(s) to transform (2d array)
         :np.ndarray bounds:     limits for each dimension (2d array, [[xmin, xmax], [ymin, ymax]...])
         
     Returns:
-        :float or np.ndarray: sample(s)
+        :np.ndarray: sample(s)
     '''
     cdf = (x - bounds[:,0])/(bounds[:,1]-bounds[:,0])
     o = np.sqrt(2.0)*erfinv(2*cdf-1)
@@ -37,11 +37,11 @@ def transform_from_probit(x, bounds):
     x(t) = xmin + (xmax-xmin)*cdf_normal(t|0,1)
     
     Arguments:
-        :float or np.ndarray x: sample(s) to antitransform (2d array)
+        :np.ndarray x: sample(s) to antitransform (2d array)
         :np.ndarray bounds:     limits for each dimension (2d array, [[xmin, xmax], [ymin, ymax]...])
         
     Returns:
-        :float or np.ndarray: sample(s)
+        :np.ndarray: sample(s)
     '''
     cdf = 0.5*(1.0+erf(x/np.sqrt(2.0)))
     o = bounds[:,0]+(bounds[:,1]-bounds[:,0])*cdf
