@@ -1,7 +1,6 @@
 from __future__ import division
 import numpy as np
 cimport numpy as np
-from libc.math cimport log,exp,sqrt,cos,fabs,sin,sinh
 cimport cython
 
 cdef class CosmologicalParameters:
@@ -92,54 +91,3 @@ cdef class CosmologicalParameters:
     def DestroyCosmologicalParameters(self):
         self._DestroyCosmologicalParameters()
         return
-
-cdef class CosmologicalRateParameters:
-
-    def __cinit__(self, double r0, double W, double R, double Q):
-        self.r0 = r0
-        self.W = W
-        self.R = R
-        self.Q = Q
-        
-    cpdef double StarFormationDensity(self, double z):
-        return self.r0*(1.0+self.W)*exp(self.Q*z)/(exp(self.R*z)+self.W)
-
-def StarFormationDensity(const double z, const double r0, const double W, const double R, const double Q):
-    return _StarFormationDensity(z, r0, W, R, Q)
-
-cdef double _StarFormationDensity(const double z,
-                                  const double r0,
-                                  const double W,
-                                  const double R,
-                                  const double Q) nogil:
-    return r0*(1.0+W)*exp(Q*z)/(exp(R*z)+W)
-
-def IntegrateRateWeightedComovingVolumeDensity(const double r0,
-                                               const double W,
-                                               const double R,
-                                               const double Q,
-                                               CosmologicalParameters omega,
-                                               const double zmin = 0.0,
-                                               const double zmax = 1.0):
-    return _IntegrateRateWeightedComovingVolumeDensity(r0, W, R, Q, omega, zmin, zmax)
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-@cython.nonecheck(False)
-@cython.cdivision(True)
-cdef double _IntegrateRateWeightedComovingVolumeDensity(const double r0,
-                                                        const double W,
-                                                        const double R,
-                                                        const double Q,
-                                                        CosmologicalParameters omega,
-                                                        const double zmin,
-                                                        const double zmax) nogil:
-    cdef int i = 0
-    cdef int N = 32
-    cdef double I = 0
-    cdef double dz = (zmax-zmin)/N
-    cdef double z  = zmin
-    for i in range(N):
-        I += _StarFormationDensity(z, r0, W, R, Q)*omega._UniformComovingVolumeDensity(z)
-        z += dz
-    return I*dz
