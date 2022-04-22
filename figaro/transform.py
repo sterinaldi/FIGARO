@@ -19,7 +19,8 @@ def transform_to_probit(x, bounds):
 
     
     Arguments:
-        :float or np.ndarray samples: sample(s) to transform
+        :float or np.ndarray x: sample(s) to transform (2d array)
+        :np.ndarray bounds:     limits for each dimension (2d array, [[xmin, xmax], [ymin, ymax]...])
         
     Returns:
         :float or np.ndarray: sample(s)
@@ -36,7 +37,8 @@ def transform_from_probit(x, bounds):
     x(t) = xmin + (xmax-xmin)*cdf_normal(t|0,1)
     
     Arguments:
-        :float or np.ndarray samples: sample(s) to antitransform
+        :float or np.ndarray x: sample(s) to antitransform (2d array)
+        :np.ndarray bounds:     limits for each dimension (2d array, [[xmin, xmax], [ymin, ymax]...])
         
     Returns:
         :float or np.ndarray: sample(s)
@@ -46,5 +48,5 @@ def transform_from_probit(x, bounds):
     return o
 
 def probit_logJ(x, bounds):
-    res = np.sum(-0.5*x**2-0.5*log2PI-np.log(bounds[:,1]-bounds[:,0]), axis = -1)
+    res = np.sum(-0.5*x**2-0.5*log2PI+np.log(bounds[:,1]-bounds[:,0]), axis = -1)
     return res
