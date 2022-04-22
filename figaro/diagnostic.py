@@ -140,7 +140,7 @@ def compute_entropy(draws, n_draws = 1e3):
         S[i] = compute_entropy_single_draw(d, int(n_draws))
     return S
 
-def entropy(draws, out_folder, name = 'event', n_draws = 1e3, step = 1, dim = 1, show = False, save = True):
+def entropy(draws, out_folder = '.', name = 'event', n_draws = 1e3, step = 1, dim = 1, show = False, save = True):
     """
     Compute entropy of a set of draws and produce the relevant plot
     
@@ -164,4 +164,30 @@ def entropy(draws, out_folder, name = 'event', n_draws = 1e3, step = 1, dim = 1,
         plt.show()
     if save:
         fig.savefig(Path(out_folder, name+'_entropy.pdf'), bbox_inches = 'tight')
+    plt.close()
+
+def plot_angular_coefficient(entropy, L = 500, out_folder = '.', name = 'event', step = 1, dim = 1, show = False, save = True):
+    """
+    Compute entropy of a set of draws and produce the relevant plot
+    
+    Arguments:
+        :iterable draws:         container of mixture instances
+        :str or Path out_folder: output folder
+        :str name:               name to be given to outputs
+        :int n_draws:            number of MC draws
+        :int step:               number of draws between entropy samples (if downsampled by some other method, for plotting purposes only)
+        :int dim:                number of dimensions
+        :bool save:              whether to save the plot or not
+        :bool show:              whether to show the plot during the run or not
+    """
+    S = compute_angular_coefficients(entropy, L = L)
+    fig, ax = plt.subplots()
+    ax.plot(np.arange(len(S))+L, S, ls = '--', marker = '', color = 'steelblue', lw = 0.7)
+    ax.set_ylabel('$\\frac{dS(N)}{dN}$')
+    ax.set_xlabel('$N$')
+    ax.grid()
+    if show:
+        plt.show()
+    if save:
+        fig.savefig(Path(out_folder, name+'_angular_coefficient.pdf'), bbox_inches = 'tight')
     plt.close()
