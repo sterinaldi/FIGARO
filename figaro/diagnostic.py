@@ -166,7 +166,7 @@ def entropy(draws, out_folder = '.', name = 'event', n_draws = 1e3, step = 1, di
         fig.savefig(Path(out_folder, name+'_entropy.pdf'), bbox_inches = 'tight')
     plt.close()
 
-def plot_angular_coefficient(entropy, L = 500, out_folder = '.', name = 'event', step = 1, dim = 1, show = False, save = True):
+def plot_angular_coefficient(entropy, L = 500, out_folder = '.', name = 'event', step = 1, show = False, save = True):
     """
     Compute entropy of a set of draws and produce the relevant plot
     
