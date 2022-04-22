@@ -52,7 +52,7 @@ def load_single_event(event, seed = 0, par = ['m1'], n_samples = -1, h = 0.674, 
         if n_samples > -1:
             samples = np.genfromtxt(event)
             s = int(min([n_samples, len(samples)]))
-            out = rdstate.choice(samples, size = s, replace = False)
+            out = samples[rdstate.choice(np.arange(len(samples)), size = s, replace = False)]
         else:
             out = np.genfromtxt(event)
     else:
@@ -101,7 +101,7 @@ def load_data(path, seed = 0, par = ['m1'], n_samples = -1, h = 0.674, om = 0.31
             if n_samples > -1:
                 samples = np.atleast_1d(np.genfromtxt(event))
                 s = int(min([n_samples, len(samples)]))
-                events.append(rdstate.choice(samples, size = s, replace = False))
+                events.append(samples[rdstate.choice(np.arange(len(samples)), size = s, replace = False)])
                     
             else:
                 samples = np.atleast_1d(np.genfromtxt(event))
@@ -162,7 +162,7 @@ def unpack_gw_posterior(event, par, cosmology, rdstate, ext, n_samples = -1):
 
                 if n_samples > -1:
                     s = int(min([n_samples, len(samples)]))
-                    return rdstate.choice(samples, size = s, replace = False)
+                    return samples[rdstate.choice(np.arange(len(samples)), size = s, replace = False)]
                 else:
                     return samples
             except:
@@ -206,7 +206,7 @@ def unpack_gw_posterior(event, par, cosmology, rdstate, ext, n_samples = -1):
 
                 if n_samples > -1:
                     s = int(min([n_samples, len(samples)]))
-                    return rdstate.choice(samples, size = s, replace = False)
+                    return samples[rdstate.choice(np.arange(len(samples)), size = s, replace = False)]
                 else:
                     return samples
     else:
@@ -246,6 +246,6 @@ def unpack_gw_posterior(event, par, cosmology, rdstate, ext, n_samples = -1):
         
         if n_samples > -1:
             s = int(min([n_samples, len(samples)]))
-            return rdstate.choice(samples, size = s, replace = False)
+            return samples[rdstate.choice(np.arange(len(samples)), size = s, replace = False)]
         else:
             return samples
