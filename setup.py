@@ -66,7 +66,6 @@ if lal_flag:
 
 setup(
     name = 'figaro',
-    use_scm_version=True,
     description = 'FIGARO: Fast Inference for GW Astronomy, Research & Observations',
     author = 'Walter Del Pozzo, Stefano Rinaldi',
     author_email = 'walter.delpozzo@unipi.it, stefano.rinaldi@phd.unipi.it',
@@ -74,8 +73,8 @@ setup(
     python_requires = '>=3.7',
     packages = ['figaro'],
     install_requires=requirements,
-    include_dirs = [numpy.get_include()],
-    setup_requires=['numpy', 'cython', 'setuptools_scm'],
+    include_dirs = ['figaro', numpy.get_include()],
+    setup_requires=['numpy', 'cython'],
     entry_points={},
     package_data={"": ['*.c', '*.pyx', '*.pxd']},
     ext_modules=ext_modules,
