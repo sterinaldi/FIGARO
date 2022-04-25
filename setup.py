@@ -8,14 +8,10 @@ from distutils.extension import Extension
 import os
 import warnings
 
-if not("LAL_PREFIX" in os.environ):
-    warnings.warn("No LAL installation found, please install LAL from source or source your LAL installation, see https://wiki.ligo.org/Computing/LALSuiteInstall. Some functions - GW posterior samples loading and catalog loading - won't be available and errors might be raised.")
+if not("LAL_DATADIR" in os.environ):
     lal_flag = False
 else:
-    lal_prefix = os.environ.get("LAL_PREFIX")
     lal_flag   = True
-    lal_includes = lal_prefix+"/include"
-    lal_libs = lal_prefix+"/lib"
     
 try:
     from Cython.Build import cythonize
@@ -46,9 +42,8 @@ if lal_flag:
     ext_modules.append(Extension("figaro.cosmology",
                        sources=[os.path.join("figaro","cosmology.pyx")],
                        libraries=["m", "lal"], # Unix-like specific
-                       library_dirs = [lal_libs],
                        extra_compile_args=["-O3","-ffast-math"],
-                       include_dirs=['figaro', lal_includes, numpy.get_include()]
+                       include_dirs=['figaro', numpy.get_include()]
                        ))
 
 ext_modules = cythonize(ext_modules, compiler_directives={'language_level' : "3"})
@@ -79,3 +74,6 @@ setup(
     package_data={"": ['*.c', '*.pyx', '*.pxd']},
     ext_modules=ext_modules,
     )
+
+if not lal_flag:
+    warnings.warn("No LAL installation found, please install LAL - see https://wiki.ligo.org/Computing/LALSuiteInstall. Some functions - GW posterior samples loading and catalog loading - won't be available and errors might be raised.")
