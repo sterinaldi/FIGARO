@@ -57,7 +57,7 @@ def load_single_event(event, seed = False, par = ['m1'], n_samples = -1, h = 0.6
             out = np.genfromtxt(event)
     else:
         if lal_flag:
-            out = unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate, ext = ext)
+            out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate, ext = ext)
         else:
             warnings.warn("LAL is not installed. GW posterior samples cannot be loaded.")
             exit()
@@ -108,7 +108,7 @@ def load_data(path, seed = False, par = ['m1'], n_samples = -1, h = 0.674, om = 
                 
         else:
             if lal_flag:
-                events.append(unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate, ext = ext))
+                events.append(_unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate, ext = ext))
             else:
                 warnings.warn("LAL is not installed. GW posterior samples cannot be loaded.")
                 exit()
