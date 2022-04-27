@@ -224,6 +224,15 @@ def sample_point_1d(means, covs, log_w, burnin = 1000, dm = 1, ds = 0.05, a = 2,
             log_old   = log_new
     return old_point
 
+def expected_vals_MC_1d(means, covs, log_w, n_samps = 1000, m_min = -7, m_max = 7, a = 2, b = 0.2):
+    mu = np.random.norm(size = n_samps)
+    sigma = np.sqrt(invgamma(a, scale = b).rvs(size = n_samps))
+    P = np.zeros(n_samps, dtype = np.float64)
+    for i in range(n_samps):
+        P[i] = np.exp(log_integrand_1d(mu[i], sigma[i], means, covs, log_w, a, b))
+    norm = np.sum(P)
+    return np.array([np.average(mu, weights = P/norm, axis = 0), np.average(sigma, weights = P/norm, axis = 0)])
+
 #@jit
 def log_integrand_1d(mu, sigma, means, covs, log_w, a, b):
     """
@@ -244,7 +253,7 @@ def log_integrand_1d(mu, sigma, means, covs, log_w, a, b):
     logP = 0.
     for i in range(len(means)):
         logP += log_prob_mixture_1d(mu, sigma, log_w[i], means[i], covs[i])
-    return logP + log_invgamma(sigma, a, b)
+    return logP
 
 @jit
 def log_prob_mixture_1d(mu, sigma, log_w, means, covs):
@@ -263,7 +272,7 @@ def log_prob_mixture_1d(mu, sigma, log_w, means, covs):
     """
     logP = -np.inf
     for i in prange(len(means)):
-        logP = log_add(logP, log_w[i] + log_norm_1d(means[i,0], mu, sigma**2 + covs[i,0,0] + (means[i,0] - mu)**2))
+        logP = log_add(logP, log_w[i] + log_norm_1d(means[i,0], mu, sigma**2 + covs[i,0,0]))
     return logP
 
 def MC_predictive_1d(events, n_samps = 1000, m_min = -7, m_max = 7, a = 2, b = 0.2):
@@ -282,7 +291,7 @@ def MC_predictive_1d(events, n_samps = 1000, m_min = -7, m_max = 7, a = 2, b = 0
         :double: MC estimate of integral
     """
     means = np.random.uniform(m_min, m_max, size = n_samps)
-    variances = np.sqrt(invgamma(a, b).rvs(size = n_samps))
+    variances = np.sqrt(invgamma(a, scale = b).rvs(size = n_samps))
     logP = np.zeros(n_samps, dtype = np.float64)
     for ev in events:
         logP += log_prob_mixture_1d_MC(means, variances, ev.log_w, ev.means, ev.covs)
@@ -306,7 +315,7 @@ def log_prob_mixture_1d_MC(mu, sigma, log_w, means, covs):
     """
     logP = -np.ones(len(mu), dtype = np.float64)*np.inf
     for i in prange(len(means)):
-        logP = log_add_array(logP, log_w[i] + log_norm_1d(means[i,0], mu, sigma**2 + covs[i,0,0] + (means[i,0] - mu)**2))
+        logP = log_add_array(logP, log_w[i] + log_norm_1d(means[i,0], mu, sigma**2 + covs[i,0,0]))
     return logP
 
 #------------#
