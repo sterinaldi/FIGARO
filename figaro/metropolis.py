@@ -180,19 +180,33 @@ def build_mean_cov(x, dim):
 #------------#
 
 def expected_vals_MC_1d(means, covs, log_w, n_samps = 1000, a = 2, b = 0.2):
+    """
+    Computes the expected values for mean and variance via Monte Carlo integration
+    
+    Arguments:
+        :iterable means: container for means of every event associated with the component (3d array)
+        :iterable covs:  container for variances of every event associated with the component (4d array)
+        :iterable log_w: container for weights of every event associated with the component (2d array)
+        :int n_samps:    number of MC draws
+        :double a:       Inverse Gamma prior shape parameter (std)
+        :double b:       Inverse Gamma prior scale parameter (std)
+    
+    Returns:
+        :np.ndarray: mean
+        :np.ndarray: variance
+    """
     mu = np.random.normal(size = n_samps)
     sigma = invgamma(a, scale = b).rvs(size = n_samps)
     P = np.zeros(n_samps, dtype = np.float64)
     for i in range(n_samps):
-        P[i] = log_integrand_1d(mu[i], sigma[i], means, covs, log_w, a, b)
+        P[i] = log_integrand_1d(mu[i], sigma[i], means, covs, log_w)
     P = np.exp(P)
     norm = np.sum(P)
     return np.atleast_2d(np.average(mu, weights = P/norm, axis = 0)), np.atleast_2d(np.average(sigma, weights = P/norm, axis = 0))
 
-#@jit
-def log_integrand_1d(mu, sigma, means, covs, log_w, a, b):
+def log_integrand_1d(mu, sigma, means, covs, log_w):
     """
-    Probability distribution for mean and std
+    Probability distribution for mean and variance
     
     Arguments:
         :double mu:      temptative mean
@@ -200,8 +214,6 @@ def log_integrand_1d(mu, sigma, means, covs, log_w, a, b):
         :iterable means: container for means of every event associated with the component (3d array)
         :iterable covs:  container for variances of every event associated with the component (4d array)
         :iterable log_w: container for weights of every event associated with the component (2d array)
-        :double a:       Inverse Gamma prior shape parameter (std)
-        :double b:       Inverse Gamma prior scale parameter (std)
     
     Returns:
         :double: log probability
@@ -279,6 +291,21 @@ def log_prob_mixture_1d_MC(mu, sigma, log_w, means, covs):
 #------------#
 
 def expected_vals_MC(means, covs, log_w, dim, n_samps = 1000, m_min = -7, m_max = 7, a = 2, b = np.array([0.2])):
+    """
+    Computes the expected values for mean vector and covariance matrix via Monte Carlo integration
+    
+    Arguments:
+        :iterable means: container for means of every event associated with the component (3d array)
+        :iterable covs:  container for variances of every event associated with the component (4d array)
+        :iterable log_w: container for weights of every event associated with the component (2d array)
+        :int n_samps:    number of MC draws
+        :double a:       Inverse Wishart prior shape parameter
+        :double b:       Inverse Wishart prior scale matrix
+    
+    Returns:
+        :np.ndarray: mean vector
+        :np.ndarray: covariance matrix
+    """
     mu = multivariate_normal(np.zeros(dim), np.identity(dim)).rvs(size = n_samps)
     if len(b) == 1:
         b = np.identity(dim)*b
@@ -290,10 +317,9 @@ def expected_vals_MC(means, covs, log_w, dim, n_samps = 1000, m_min = -7, m_max 
     norm = np.sum(P)
     return np.atleast_2d(np.average(mu, weights = P/norm, axis = 0)), np.atleast_2d(np.average(sigma, weights = P/norm, axis = 0))
 
-#@jit
 def log_integrand(mu, sigma, means, covs, log_w):
     """
-    Probability distribution for mean and std
+    Probability distribution for mean and covariance
     
     Arguments:
         :double mu:      temptative mean
