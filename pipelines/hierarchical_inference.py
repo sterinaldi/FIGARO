@@ -19,7 +19,7 @@ def main():
     parser = op.OptionParser()
     # Input/output
     parser.add_option("-i", "--input", type = "string", dest = "samples_folder", help = "Folder with single-event samples files")
-    parser.add_option("-b", "--bounds", type = "string", dest = "bounds", help = "Density bounds. Must be a string formatted as '[[xmin, xmax], [ymin, ymax],...]'. For 1D distributions use '[[xmin, xmax]]'", default = None)
+    parser.add_option("-b", "--bounds", type = "string", dest = "bounds", help = "Density bounds. Must be a string formatted as '[[xmin, xmax], [ymin, ymax],...]'. For 1D distributions use '[[xmin, xmax]]'. Quotation marks are required and scientific notation is accepted", default = None)
     parser.add_option("-o", "--output", type = "string", dest = "output", help = "Output folder. Default: same directory as samples folder", default = None)
     parser.add_option("--inj_density", type = "string", dest = "inj_density_file", help = "Python module with injected density - please name the method 'density'", default = None)
     parser.add_option("--parameter", type = "string", dest = "par", help = "GW parameter(s) to be read from files", default = 'm1')
@@ -86,7 +86,7 @@ def main():
     
     # Load samples
     events, names = load_data(options.samples_folder, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol)
-    all_samples   = np.concatenate(events)
+    all_samples = np.atleast_2d(np.concatenate(events)).T
     try:
         dim = np.shape(events[0][0])[-1]
     except IndexError:
@@ -113,15 +113,16 @@ def main():
                 name = names[i]
                 # Variance prior from samples
                 probit_samples = transform_to_probit(ev, options.bounds)
-                sigma = (np.std(probit_samples)/5)**2
-                mix.initialise(prior_pars = (1e-1, np.identity(dim)*sigma, dim, np.zeros(dim)))
+                sigma = np.atleast_2d(np.var(probit_samples, axis = 0)/25)
+                mix.initialise(prior_pars = (1e-1, sigma/25, dim, np.zeros(dim)))
                 # Draw samples
                 draws = []
                 for _ in range(options.n_se_draws):
                     np.random.shuffle(ev)
                     mix.density_from_samples(ev)
                     draws.append(mix.build_mixture())
-                    mix.initialise()
+                    n = np.random.uniform(1.5, 8)
+                    mix.initialise(prior_pars = (1e-1, sigma/n**2, dim, np.zeros(dim)))
                 posteriors.append(draws)
                 # Make plots
                 if dim == 1:
@@ -144,15 +145,16 @@ def main():
                 print("No posteriors_single_event.pkl file found. Please provide it or re-run the single-event inference")
                 exit()
         probit_samples = transform_to_probit(all_samples, options.bounds)
-        sigma = (np.std(probit_samples)/5)**2
-        mix = HDPGMM(options.bounds, prior_pars = (1e-1, np.identity(dim)*sigma, dim, np.zeros(dim)))
+        sigma = np.atleast_2d(np.var(probit_samples, axis = 0))
+        mix = HDPGMM(options.bounds, prior_pars = (1e-1, sigma/25, dim, np.zeros(dim)))
         draws = []
         # Run hierarchical analysis
         for _ in tqdm(range(options.n_draws), desc = 'Hierarchical'):
             np.random.shuffle(posteriors)
             mix.density_from_samples(posteriors)
             draws.append(mix.build_mixture())
-            mix.initialise()
+            n = np.random.uniform(1.5, 8)
+            mix.initialise(prior_pars = (1e-1, sigma/n**2, dim, np.zeros(dim)))
         draws = np.array(draws)
         with open(Path(output_pkl, 'draws_'+options.h_name+'.pkl'), 'wb') as f:
             dill.dump(draws, f)
