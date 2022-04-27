@@ -11,7 +11,7 @@ from scipy.stats import invwishart
 
 from figaro.decorators import *
 from figaro.transform import *
-from figaro.metropolis import MC_predictive_1d, MC_predictive, expected_vals_MC_1d, expected_vals_MC
+from figaro.montecarlo import MC_predictive_1d, MC_predictive, expected_vals_MC_1d, expected_vals_MC
 from figaro.exceptions import except_hook
 
 from numba import jit, njit, prange
