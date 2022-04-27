@@ -243,17 +243,15 @@ def log_prob_mixture_1d(mu, sigma, log_w, means, covs):
         logP = log_add(logP, log_w[i] + log_norm_1d(means[i,0], mu, sigma + covs[i,0,0]))
     return logP
 
-def MC_predictive_1d(events, n_samps = 1000, m_min = -7, m_max = 7, a = 2, b = 0.2):
+def MC_predictive_1d(events, n_samps = 1000, a = 2, b = 0.2):
     """
     Monte Carlo integration over mean and std of p(m,s|{y}) - 1D
     
     Arguments:
         :iterable events: container of mixture instances (see mixture.py for the definition)
         :int n_samps:     number of MC draws
-        :double m_min:    lower bound for uniform mean distribution
-        :double m_max:    upper bound for uniform mean distribution
-        :double a:        Inverse Gamma prior shape parameter (std)
-        :double b:        Inverse Gamma prior scale parameter (std)
+        :double a:        Inverse Gamma prior shape parameter
+        :double b:        Inverse Gamma prior scale parameter
     
     Returns:
         :double: MC estimate of integral
@@ -290,7 +288,7 @@ def log_prob_mixture_1d_MC(mu, sigma, log_w, means, covs):
 # ND methods #
 #------------#
 
-def expected_vals_MC(means, covs, log_w, dim, n_samps = 1000, m_min = -7, m_max = 7, a = 2, b = np.array([0.2])):
+def expected_vals_MC(means, covs, log_w, dim, n_samps = 1000, a = 2, b = np.array([0.2])):
     """
     Computes the expected values for mean vector and covariance matrix via Monte Carlo integration
     
@@ -308,8 +306,8 @@ def expected_vals_MC(means, covs, log_w, dim, n_samps = 1000, m_min = -7, m_max 
     """
     mu = multivariate_normal(np.zeros(dim), np.identity(dim)).rvs(size = n_samps)
     if len(b) == 1:
-        b = np.identity(dim)*b
-    sigma  = invwishart(df = np.max(a,dim), scale = b).rvs(size = n_samps)
+        b = np.identity(dim)*b[0]
+    sigma  = invwishart(df = np.max([a,dim]), scale = b).rvs(size = n_samps)
     P = np.zeros(n_samps, dtype = np.float64)
     for i in range(n_samps):
         P[i] = log_integrand(mu[i], sigma[i], means, covs, log_w)
@@ -353,10 +351,10 @@ def log_prob_mixture(mu, cov, means, sigmas, log_w):
     """
     logP = -np.inf
     for i in range(len(means)):
-        logP = log_add(logP, log_w[i] + log_norm(means[i], mu, sigmas[i] + cov + (means[i] - mu).T@(means[i] - mu)))
+        logP = log_add(logP, log_w[i] + log_norm(means[i], mu, sigmas[i] + cov))
     return logP
 
-def MC_predictive(events, dim, n_samps = 1000, m_min = -7, m_max = 7, a = 2, b = np.array([0.2])):
+def MC_predictive(events, dim, n_samps = 1000, a = 2, b = np.array([0.2])):
     """
     Monte Carlo integration over mean and std of p(m,s|{y}) - multidimensional
     
@@ -364,8 +362,6 @@ def MC_predictive(events, dim, n_samps = 1000, m_min = -7, m_max = 7, a = 2, b =
         :iterable events: container of mixture instances (see mixture.py for the definition)
         :int dim:         number of dimensions
         :int n_samps:     number of MC draws
-        :double m_min:    lower bound for uniform mean distribution
-        :double m_max:    upper bound for uniform mean distribution
         :double a:        Inverse Wishart prior shape parameter
         :double b:        Inverse Wishart prior scale matrix
     
@@ -374,8 +370,8 @@ def MC_predictive(events, dim, n_samps = 1000, m_min = -7, m_max = 7, a = 2, b =
     """
     means = multivariate_normal(np.zeros(dim), np.identity(dim)).rvs(size = n_samps)
     if len(b) == 1:
-        b = np.identity(dim)*b
-    variances = invwishart(df = np.max(a,dim), scale = b).rvs(size = n_samps)
+        b = np.identity(dim)*b[0]
+    variances = invwishart(df = np.max([a,dim]), scale = b).rvs(size = n_samps)
     logP = np.zeros(n_samps, dtype = np.float64)
     for ev in events:
         logP += log_prob_mixture_MC(means, variances, ev.log_w, ev.means, ev.covs)
@@ -399,5 +395,5 @@ def log_prob_mixture_MC(mu, cov, log_w, means, covs):
     """
     logP = -np.ones(len(mu), dtype = np.float64)*np.inf
     for i in prange(len(means)):
-        logP = log_add_array(logP, log_w[i] + log_norm_array(means[i], mu, covs[i] + cov + (means[i] - mu).T@(means[i] - mu)))
+        logP = log_add_array(logP, log_w[i] + log_norm_array(means[i], mu, covs[i] + cov))
     return logP
