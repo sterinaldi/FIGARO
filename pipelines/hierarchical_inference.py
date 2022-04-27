@@ -139,7 +139,7 @@ def main():
             # Load pre-computed posteriors
             try:
                 with open(Path(output_pkl, 'posteriors_single_event.pkl'), 'rb') as f:
-                    draws = dill.load(f)
+                    posteriors = dill.load(f)
             except FileNotFoundError:
                 print("No posteriors_single_event.pkl file found. Please provide it or re-run the single-event inference")
                 exit()
