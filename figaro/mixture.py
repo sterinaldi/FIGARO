@@ -11,7 +11,7 @@ from scipy.stats import invwishart
 
 from figaro.decorators import *
 from figaro.transform import *
-from figaro.metropolis import sample_point, sample_point_1d, MC_predictive_1d, MC_predictive
+from figaro.metropolis import sample_point, sample_point_1d, MC_predictive_1d, MC_predictive, expected_vals_MC_1d
 from figaro.exceptions import except_hook
 
 from numba import jit, njit, prange
@@ -266,7 +266,7 @@ class component_h:
         self.logL_D = logL_D
         
         if self.dim == 1:
-            sample = sample_point_1d(self.means, self.covs, self.log_w, a = prior.nu+1, b = prior.L[0,0])
+            sample = expected_vals_MC_1d(self.means, self.covs, self.log_w, a = prior.nu+1, b = prior.L[0,0])
         else:
             sample = sample_point(self.means, self.covs, self.log_w, self.dim, a = prior.nu, b = prior.L)
         self.mu, self.sigma = build_mean_cov(sample, self.dim)
@@ -864,7 +864,7 @@ class HDPGMM(DPGMM):
         ss.logL_D = logL_D
         
         if self.dim == 1:
-            sample = sample_point_1d(ss.means, ss.covs, ss.log_w, a = self.prior.nu+1, b = self.prior.L[0,0])
+            sample = expected_vals_MC_1d(ss.means, ss.covs, ss.log_w, a = self.prior.nu+1, b = self.prior.L[0,0])
         else:
             sample = sample_point(ss.means, ss.covs, ss.log_w, self.dim, a = self.prior.nu, b = self.prior.L)
         ss.mu, ss.sigma = build_mean_cov(sample, self.dim)
