@@ -34,7 +34,7 @@ def main():
     parser.add_option("--se_draws", type = "int", dest = "n_se_draws", help = "Number of draws for single-event distribution. Default: same as hierarchical distribution", default = None)
     parser.add_option("--n_samples_dsp", type = "int", dest = "n_samples_dsp", help = "Number of samples to analyse (downsampling). Default: all", default = -1)
     parser.add_option("--cosmology", type = "string", dest = "cosmology", help = "Cosmological parameters (h, om, ol). Default values from Planck (2021)", default = '0.674,0.315,0.685')
-    parser.add_option("-e", "--events", dest = "run_events", action = 'store_false', help = "Run single-event analysis", default = True)
+    parser.add_option("-e", "--events", dest = "run_events", action = 'store_false', help = "Skip single-event analysis", default = True)
 
     (options, args) = parser.parse_args()
 
@@ -86,6 +86,7 @@ def main():
     
     # Load samples
     events, names = load_data(options.samples_folder, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol)
+    all_samples   = np.concatenate(events)
     try:
         dim = np.shape(events[0][0])[-1]
     except IndexError:
@@ -138,11 +139,13 @@ def main():
             # Load pre-computed posteriors
             try:
                 with open(Path(output_pkl, 'posteriors_single_event.pkl'), 'rb') as f:
-                    draws = dill.load(f)
+                    posteriors = dill.load(f)
             except FileNotFoundError:
                 print("No posteriors_single_event.pkl file found. Please provide it or re-run the single-event inference")
                 exit()
-        mix = HDPGMM(options.bounds)
+        probit_samples = transform_to_probit(all_samples, options.bounds)
+        sigma = (np.std(probit_samples)/5)**2
+        mix = HDPGMM(options.bounds, prior_pars = (1e-1, np.identity(dim)*sigma, dim, np.zeros(dim)))
         draws = []
         # Run hierarchical analysis
         for _ in tqdm(range(options.n_draws), desc = 'Hierarchical'):
