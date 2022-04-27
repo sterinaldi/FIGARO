@@ -86,7 +86,7 @@ def main():
     
     # Load samples
     events, names = load_data(options.samples_folder, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol)
-    all_samples = np.concatenate(events)
+    all_samples = np.atleast_2d(np.concatenate(events)).T
     try:
         dim = np.shape(events[0][0])[-1]
     except IndexError:
@@ -113,15 +113,16 @@ def main():
                 name = names[i]
                 # Variance prior from samples
                 probit_samples = transform_to_probit(ev, options.bounds)
-                sigma = np.var(probit_samples, axis = 0)/25
-                mix.initialise(prior_pars = (1e-1, sigma, dim, np.zeros(dim)))
+                sigma = np.atleast_2d(np.var(probit_samples, axis = 0)/25)
+                mix.initialise(prior_pars = (1e-1, sigma/25, dim, np.zeros(dim)))
                 # Draw samples
                 draws = []
                 for _ in range(options.n_se_draws):
                     np.random.shuffle(ev)
                     mix.density_from_samples(ev)
                     draws.append(mix.build_mixture())
-                    mix.initialise()
+                    n = np.random.uniform(1.5, 8)
+                    mix.initialise(prior_pars = (1e-1, sigma/n**2, dim, np.zeros(dim)))
                 posteriors.append(draws)
                 # Make plots
                 if dim == 1:
@@ -144,15 +145,16 @@ def main():
                 print("No posteriors_single_event.pkl file found. Please provide it or re-run the single-event inference")
                 exit()
         probit_samples = transform_to_probit(all_samples, options.bounds)
-        sigma = np.var(probit_samples, axis = 0)/25
-        mix = HDPGMM(options.bounds, prior_pars = (1e-1, sigma, dim, np.zeros(dim)))
+        sigma = np.atleast_2d(np.var(probit_samples, axis = 0))
+        mix = HDPGMM(options.bounds, prior_pars = (1e-1, sigma/25, dim, np.zeros(dim)))
         draws = []
         # Run hierarchical analysis
         for _ in tqdm(range(options.n_draws), desc = 'Hierarchical'):
             np.random.shuffle(posteriors)
             mix.density_from_samples(posteriors)
             draws.append(mix.build_mixture())
-            mix.initialise()
+            n = np.random.uniform(1.5, 8)
+            mix.initialise(prior_pars = (1e-1, sigma/n**2, dim, np.zeros(dim)))
         draws = np.array(draws)
         with open(Path(output_pkl, 'draws_'+options.h_name+'.pkl'), 'wb') as f:
             dill.dump(draws, f)
