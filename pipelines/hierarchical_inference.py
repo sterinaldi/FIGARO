@@ -86,6 +86,7 @@ def main():
     
     # Load samples
     events, names = load_data(options.samples_folder, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol)
+    all_samples = np.concatenate(events)
     try:
         dim = np.shape(events[0][0])[-1]
     except IndexError:
@@ -112,8 +113,8 @@ def main():
                 name = names[i]
                 # Variance prior from samples
                 probit_samples = transform_to_probit(ev, options.bounds)
-                sigma = (np.std(probit_samples)/5)**2
-                mix.initialise(prior_pars = (1e-1, np.identity(dim)*sigma, dim, np.zeros(dim)))
+                sigma = np.var(probit_samples, axis = 0)/25
+                mix.initialise(prior_pars = (1e-1, sigma, dim, np.zeros(dim)))
                 # Draw samples
                 draws = []
                 for _ in range(options.n_se_draws):
@@ -142,7 +143,9 @@ def main():
             except FileNotFoundError:
                 print("No posteriors_single_event.pkl file found. Please provide it or re-run the single-event inference")
                 exit()
-        mix = HDPGMM(options.bounds)
+        probit_samples = transform_to_probit(all_samples, options.bounds)
+        sigma = np.var(probit_samples, axis = 0)/25
+        mix = HDPGMM(options.bounds, prior_pars = (1e-1, sigma, dim, np.zeros(dim)))
         draws = []
         # Run hierarchical analysis
         for _ in tqdm(range(options.n_draws), desc = 'Hierarchical'):
