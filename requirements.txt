@@ -1,4 +1,6 @@
-tqdm
+numpy
+scipy
+matplotlib
 cython
 dill
 corner
@@ -6,3 +8,6 @@ astropy
 pyvo
 numba
 imageio
+h5py
+tqdm
+ligo.skymap
