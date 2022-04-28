@@ -3,7 +3,7 @@
 
 https://www.youtube.com/watch?v=uJeJ4YiVFz8
 
-To install the package, run `python setup.py install` and `python setup.py build_ext --inplace`.
+To install FIGARO, run `python setup.py install` and `python setup.py build_ext --inplace`.   
 An introductive guide on how to use FIGARO can be found in the `introductive_guide.ipynb` notebook.
 
 We recommend using the `igwn-py39` conda environment, which includes all the required packages apart from ImageIO.
