@@ -1,5 +1,4 @@
 import numpy as np
-from itertools import product
 import h5py
 import re
 import warnings
@@ -173,8 +172,19 @@ class VolumeReconstruction(DPGMM):
         self.dD   = np.diff(self.dist)[0]
         self.dra  = np.diff(self.ra)[0]
         self.ddec = np.diff(self.dec)[0]
-        self.grid = np.array([np.array(v) for v in product(*(self.ra,self.dec,self.dist))])
-        self.grid2d = np.array([np.array(v) for v in product(*(self.ra,self.dec))])
+        # For loops
+        grid = []
+        for ra_i in self.ra:
+            for dec_i in self.dec:
+                for d_i in self.dist:
+                    grid.append(np.array([ra_i, dec_i, d_i]))
+        self.grid = np.array(grid)
+        grid2d = []
+        for ra_i in self.ra:
+            for dec_i in self.dec:
+                grid2d.append(np.array([ra_i, dec_i]))
+        self.grid2d = np.array(grid2d)
+        # Meshgrid
         self.ra_2d, self.dec_2d = np.meshgrid(self.ra, self.dec)
         self.cartesian_grid = celestial_to_cartesian(self.grid)
         self.probit_grid = transform_to_probit(self.cartesian_grid, self.bounds)
