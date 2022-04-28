@@ -261,13 +261,12 @@ class mixture:
         :np.ndarray bounds: bounds of probit transformation
         :int dim:           number of dimensions
         :int n_cl:          number of clusters in the mixture
-        :int n_draws:       number of MC draws for normalisation constant estimate
         :bool hier_flag:    flag for hierarchical mixture (needed to fix an issue with means)
     
     Returns:
         :mixture: instance of mixture class
     """
-    def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, n_draws = 1000, hier_flag = False):
+    def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, hier_flag = False):
         if dim > 1 and hier_flag:
             self.means = np.array([m[0] for m in means])
         else:
@@ -279,26 +278,6 @@ class mixture:
         self.dim      = dim
         self.n_cl     = n_cl
         self.n_pts    = n_pts
-        self.norm     = 1.
-        self.norm     = self._compute_norm_const(n_draws)
-        self.log_norm = np.log(self.norm)
-    
-    def _compute_norm_const(self, n_draws = 1000):
-        """
-        Estimate normalisation constant via MC integration
-        
-        Arguments:
-            :int n_draws: number of MC draws
-        
-        Returns:
-            :double: normalisation constant
-        """
-        p_ss     = self.sample_from_dpgmm(n_draws)
-        min_vals = np.atleast_1d(p_ss.min(axis = 0))
-        max_vals = np.atleast_1d(p_ss.max(axis = 0))
-        volume   = np.prod(np.diff(np.array([min_vals, max_vals]).T))
-        ss       = np.random.uniform(min_vals, max_vals, size = (n_draws, self.dim))
-        return self.evaluate_mixture(np.atleast_2d(ss)).sum()*volume/n_draws
         
     @probit
     def evaluate_mixture(self, x):
@@ -311,7 +290,7 @@ class mixture:
         Returns:
             :np.ndarray: mixture.pdf(x)
         """
-        p = np.sum(np.array([w*mn(mean, cov).pdf(x)/self.norm for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
+        p = np.sum(np.array([w*mn(mean, cov).pdf(x) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
         return p * np.exp(-probit_logJ(x, self.bounds))
 
     @probit
@@ -325,7 +304,7 @@ class mixture:
         Returns:
             :np.ndarray: mixture.logpdf(x)
         """
-        p = logsumexp(np.array([w + mn(mean, cov).logpdf(x) - self.log_norm for mean, cov, w in zip(self.means, self.covs, self.log_w)]), axis = 0)
+        p = logsumexp(np.array([w + mn(mean, cov).logpdf(x) for mean, cov, w in zip(self.means, self.covs, self.log_w)]), axis = 0)
         return p - probit_logJ(x, self.bounds)
         
     def _evaluate_mixture_in_probit(self, x):
@@ -412,7 +391,6 @@ class DPGMM:
         :iterable prior_pars:    NIG/NIW prior parameters (k, L, nu, mu)
         :double alpha0:          initial guess for concentration parameter
         :str or Path out_folder: folder for outputs
-        :int n_draws_norm:       number of MC draws to estimate normalisation constant while instancing mixture class
     
     Returns:
         :DPGMM: instance of DPGMM class
@@ -421,7 +399,6 @@ class DPGMM:
                        prior_pars = None,
                        alpha0     = 1.,
                        out_folder = '.',
-                       n_draws_norm = 1000,
                        ):
         self.bounds   = np.array(bounds)
         self.dim      = len(self.bounds)
@@ -435,7 +412,6 @@ class DPGMM:
         self.N_list     = []
         self.n_cl       = 0
         self.n_pts      = 0
-        self.n_draws_norm = n_draws_norm
     
     def initialise(self, prior_pars = None):
         """
@@ -701,7 +677,7 @@ class DPGMM:
         Returns:
             :mixture: the inferred distribution
         """
-        return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, self.n_pts, n_draws = self.n_draws_norm)
+        return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, self.n_pts)
 
 
 class HDPGMM(DPGMM):
@@ -714,7 +690,6 @@ class HDPGMM(DPGMM):
         :iterable prior_pars:    NIG/NIW prior parameters (k, L, nu, mu)
         :double alpha0:          initial guess for concentration parameter
         :str or Path out_folder: folder for outputs
-        :int n_draws_norm:       number of MC draws to estimate normalisation constant while instancing mixture class
     
     Returns:
         :HDPGMM: instance of HDPGMM class
@@ -724,12 +699,11 @@ class HDPGMM(DPGMM):
                        out_folder = '.',
                        prior_pars = None,
                        MC_draws   = 1e3,
-                       n_draws_norm = 1000
                        ):
         dim = len(bounds)
         if prior_pars == None:
             prior_pars = (1e-1, np.identity(dim)*0.2**2, dim, np.zeros(dim))
-        super().__init__(bounds = bounds, prior_pars = prior_pars, alpha0 = alpha0, out_folder = out_folder, n_draws_norm = n_draws_norm)
+        super().__init__(bounds = bounds, prior_pars = prior_pars, alpha0 = alpha0, out_folder = out_folder)
         self.MC_draws = int(MC_draws)
     
     def add_new_point(self, ev):
@@ -867,4 +841,4 @@ class HDPGMM(DPGMM):
         Returns:
             :mixture: the inferred distribution
         """
-        return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, self.n_pts, n_draws = self.n_draws_norm, hier_flag = True)
+        return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, self.n_pts, hier_flag = True)
