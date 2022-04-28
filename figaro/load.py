@@ -29,7 +29,7 @@ def _find_redshift(omega, dl):
 
 def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.315, ol = 0.685):
     '''
-    Loads the data from .txt files (for simulations) or .h5/.hdf5 files (posteriors from GWTC) for a single event.
+    Loads the data from .txt files (for simulations) or .h5/.hdf5/.dat files (posteriors from GWTC) for a single event.
     Default cosmological parameters from Planck Collaboration (2021) in a flat Universe (https://www.aanda.org/articles/aa/pdf/2020/09/aa33910-18.pdf)
     
     Arguments:
@@ -76,7 +76,7 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674
 
 def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.315, ol = 0.685):
     '''
-    Loads the data from .txt files (for simulations) or .h5/.hdf5 files (posteriors from GWTC-x).
+    Loads the data from .txt files (for simulations) or .h5/.hdf5/.dat files (posteriors from GWTC-x).
     Default cosmological parameters from Planck Collaboration (2021) in a flat Universe (https://www.aanda.org/articles/aa/pdf/2020/09/aa33910-18.pdf)
     
     Arguments:
