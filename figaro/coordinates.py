@@ -1,4 +1,3 @@
-from __future__ import division
 import numpy as np
 
 def cartesian_to_spherical(vector):
