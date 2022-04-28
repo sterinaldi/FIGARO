@@ -155,26 +155,6 @@ def log_norm_array(x, mu, cov):
         vect[i] = log_norm(x, mu[i], cov[i])
     return vect
 
-def build_mean_cov(x, dim):
-    """
-    Build mean and covariance matrix from array.
-    
-    Arguments:
-        :np.ndarray x: values for mean and covariance. Mean values are the first dim entries, stds are the second dim entries and correlation coefficients are the remaining dim*(dim-1)/2 entries.
-        :int dim:      number of dimensions
-    
-    Returns:
-        :np.ndarray: mean
-        :np.ndarray: covariance matrix
-    """
-    mean  = x[:dim]
-    corr  = np.identity(dim)/2.
-    corr[np.triu_indices(dim, 1)] = x[2*dim:]
-    corr  = corr + corr.T
-    sigma = x[dim:2*dim]
-    cov_mat = np.multiply(corr, np.outer(sigma, sigma))
-    return mean, cov_mat
-
 #------------#
 # 1D methods #
 #------------#
