@@ -10,6 +10,8 @@ except ModuleNotFoundError:
 from pathlib import Path
 from scipy.optimize import newton
 
+supported_extensions = ['h5', 'hdf5', 'txt', 'dat']
+
 def _find_redshift(omega, dl):
     """
     Find redshift given a luminosity distance and a cosmology using Newton's method
@@ -25,30 +27,35 @@ def _find_redshift(omega, dl):
         return dl - omega.LuminosityDistance_double(z)
     return newton(objective,1.0,args=(omega,dl))
 
-def load_single_event(event, seed = False, par = ['m1'], n_samples = -1, h = 0.674, om = 0.315, ol = 0.685):
+def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.315, ol = 0.685):
     '''
     Loads the data from .txt files (for simulations) or .h5/.hdf5 files (posteriors from GWTC) for a single event.
     Default cosmological parameters from Planck Collaboration (2021) in a flat Universe (https://www.aanda.org/articles/aa/pdf/2020/09/aa33910-18.pdf)
     
     Arguments:
-        :str file:      file with samples
-        :bool seed:     fixes the seed to a default value (1) for reproducibility
-        :str par:       parameter to extract from GW posteriors (m1, m2, mc, z, chi_effective)
-        :int n_samples: number of samples for (random) downsampling. Default -1: all samples
-        :double h:      Hubble constant H0/100 [km/(s*Mpc)]
-        :double om:     matter density parameter
-        :double ol:     cosmological constant density parameter
+        :str file:        file with samples
+        :bool seed:       fixes the seed to a default value (1) for reproducibility
+        :list-of-str par: list with parameter(s) to extract from GW posteriors (m1, m2, mc, z, chi_effective)
+        :int n_samples:   number of samples for (random) downsampling. Default -1: all samples
+        :double h:        Hubble constant H0/100 [km/(s*Mpc)]
+        :double om:       matter density parameter
+        :double ol:       cosmological constant density parameter
     
     Returns:
-        :np.ndarray:    samples
-        :np.ndarray:    name
+        :np.ndarray: samples
+        :np.ndarray: name
     '''
     if seed:
         rdstate = np.random.RandomState(seed = 1)
     else:
         rdstate = np.random.RandomState()
+    event = Path(event).resolve()
     name, ext = str(event).split('/')[-1].split('.')
+    if not ext in supported_extensions:
+        raise TypeError("File {0}.{1} is not supported".format(name, ext))
     if ext == 'txt':
+        if par is not None:
+            warnings.warn("Par names are ignored for .txt files")
         if n_samples > -1:
             samples = np.atleast_1d(np.genfromtxt(event))
             s = int(min([n_samples, len(samples)]))
@@ -56,32 +63,36 @@ def load_single_event(event, seed = False, par = ['m1'], n_samples = -1, h = 0.6
         else:
             out = np.genfromtxt(event)
     else:
+        if par is None:
+            raise TypeError("Please provide a list of parameter names you want to load (e.g. ['m1']).")
         if lal_flag:
             out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate, ext = ext)
         else:
-            warnings.warn("LAL is not installed. GW posterior samples cannot be loaded.")
-            exit()
+            raise Exception("LAL is not installed. GW posterior samples cannot be loaded.")
+
+    if len(np.shape(out)) == 1:
+        out = np.atleast_2d(out).T
     return out, name
 
-def load_data(path, seed = False, par = ['m1'], n_samples = -1, h = 0.674, om = 0.315, ol = 0.685):
+def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.315, ol = 0.685):
     '''
     Loads the data from .txt files (for simulations) or .h5/.hdf5 files (posteriors from GWTC-x).
     Default cosmological parameters from Planck Collaboration (2021) in a flat Universe (https://www.aanda.org/articles/aa/pdf/2020/09/aa33910-18.pdf)
     
     Arguments:
-        :str path:      folder with data files
-        :bool seed:     fixes the seed to a default value (1) for reproducibility
-        :str par:       parameter to extract from GW posteriors (m1, m2, mc, z, chi_effective)
-        :int n_samples: number of samples for (random) downsampling. Default -1: all samples
-        :double h:      Hubble constant H0/100 [km/(s*Mpc)]
-        :double om:     matter density parameter
-        :double ol:     cosmological constant density parameter
+        :str path:        folder with data files
+        :bool seed:       fixes the seed to a default value (1) for reproducibility
+        :list-of-str par: list with parameter(s) to extract from GW posteriors (m1, m2, mc, z, chi_effective)
+        :int n_samples:   number of samples for (random) downsampling. Default -1: all samples
+        :double h:        Hubble constant H0/100 [km/(s*Mpc)]
+        :double om:       matter density parameter
+        :double ol:       cosmological constant density parameter
     
     Returns:
-        :np.ndarray:    samples
-        :np.ndarray:    names
+        :np.ndarray: samples
+        :np.ndarray: names
     '''
-    event_files = [Path(path,f) for f in os.listdir(path) if not (f.startswith('.') or f.startswith('empty_files'))]
+    event_files = [Path(path,f).resolve() for f in os.listdir(path) if not (f.startswith('.') or f.startswith('empty_files'))]
     events      = []
     names       = []
     n_events    = len(event_files)
@@ -94,24 +105,33 @@ def load_data(path, seed = False, par = ['m1'], n_samples = -1, h = 0.674, om = 
         print('\r{0}/{1} event(s)'.format(i+1, n_events), end = '')
         name, ext = str(event).split('/')[-1].split('.')
         names.append(name)
-
+        if not ext in supported_extensions:
+            raise TypeError("File {0}.{1} is not supported".format(name, ext))
         
         if ext == 'txt':
+            if par is not None:
+                warnings.warn("Par names are ignored for .txt files")
             if n_samples > -1:
                 samples = np.atleast_1d(np.genfromtxt(event))
                 s = int(min([n_samples, len(samples)]))
-                events.append(samples[rdstate.choice(np.arange(len(samples)), size = s, replace = False)])
+                samples_subset = samples[rdstate.choice(np.arange(len(samples)), size = s, replace = False)]
+                if len(np.shape(samples_subset)) == 1:
+                    samples_subset = np.atleast_2d(samples_subset).T
+                events.append(samples_subset)
                     
             else:
                 samples = np.atleast_1d(np.genfromtxt(event))
+                if len(np.shape(samples)) == 1:
+                    samples = np.atleast_2d(samples).T
                 events.append(samples)
                 
         else:
+            if par is None:
+                raise TypeError("Please provide a list of parameter names you want to load (e.g. ['m1']).")
             if lal_flag:
                 events.append(_unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate, ext = ext))
             else:
-                warnings.warn("LAL is not installed. GW posterior samples cannot be loaded.")
-                exit()
+                raise Exception("LAL is not installed. GW posterior samples cannot be loaded.")
 
     return (events, np.array(names))
 
@@ -134,30 +154,44 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, ext, n_samples = -1):
     if ext == 'h5' or ext == 'hdf5':
         with h5py.File(Path(event), 'r') as f:
             samples = []
+            
+            loaded_pars = []
+            
             try:
                 data = f['PublicationSamples']['posterior_samples']
                 if 'm1' in par:
                     samples.append(data['mass_1_source'])
+                    loaded_pars.append('m1')
                 if 'm2' in par:
                     samples.append(data['mass_2_source'])
+                    loaded_pars.append('m2')
                 if 'mc' in par:
                     samples.append(data['chirp_mass'])
+                    loaded_pars.append('mc')
                 if 'z' in par:
                     samples.append(data['redshift'])
+                    loaded_pars.append('z')
                 if 'chi_eff' in par:
                     samples.append(data['chi_eff'])
+                    loaded_pars.append('chi_eff')
                 if 'ra' in par:
                     samples.append(data['ra'])
+                    loaded_pars.append('ra')
                 if 'dec' in par:
                     samples.append(data['dec'])
+                    loaded_pars.append('dec')
                 if 'luminosity_distance' in par:
                     samples.append(data['luminosity_distance'])
+                    loaded_pars.append('luminosity_distance')
                 
                 if len(par) == 1:
-                    samples = np.array(samples)
-                    samples = samples.flatten()
+                    samples = np.atleast_2d(samples).T
                 else:
-                    samples = np.array(samples).T
+                    par = np.array(par)
+                    loaded_pars = np.array(loaded_pars)
+                    samples = np.array(samples)
+                    samples = samples[np.array([np.where(pi == par) for pi in loaded_pars]).flatten()]
+                    samples = samples.T
 
                 if n_samples > -1:
                     s = int(min([n_samples, len(samples)]))
@@ -175,14 +209,20 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, ext, n_samples = -1):
                 m1        = m1_detect/(1+z)
                 m2        = m2_detect/(1+z)
                 
+                loaded_pars = []
+                
                 if 'z' in par:
                     samples.append(z)
+                    loaded_pars.append('z')
                 if 'm1' in par:
-                     samples.append(m1)
+                    samples.append(m1)
+                    loaded_pars.append('m1')
                 if 'm2' in par:
                     samples.append(m2)
+                    loaded_pars.append('m2')
                 if 'mc' in par:
                     samples.append((m1*m2)**(3./5.)/(m1+m2)**(1./5.))
+                    loaded_pars.append('mc')
                 if 'chi_eff' in par:
                     s1   = data['spin1']
                     s2   = data['spin2']
@@ -190,18 +230,25 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, ext, n_samples = -1):
                     cos2 = data['costilt2']
                     q    = m2/m1
                     samples.append((s1*cos1 + q*s2*cos2)/(1+q))
+                    loaded_pars.append('chi_eff')
                 if 'ra' in par:
                     samples.append(ra)
+                    loaded_pars.append('ra')
                 if 'dec' in par:
                     samples.append(dec)
+                    loaded_pars.append('dec')
                 if 'luminosity_distance' in par:
                     samples.append(LD)
+                    loaded_pars.append('luminosity_distance')
                 
                 if len(par) == 1:
-                    samples = np.array(samples)
-                    samples = samples.flatten()
+                    samples = np.atleast_2d(samples).T
                 else:
-                    samples = np.array(samples).T
+                    par = np.array(par)
+                    loaded_pars = np.array(loaded_pars)
+                    samples = np.array(samples)
+                    samples = samples[np.array([np.where(pi == par) for pi in loaded_pars]).flatten()]
+                    samples = samples.T
 
                 if n_samples > -1:
                     s = int(min([n_samples, len(samples)]))
@@ -222,26 +269,38 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, ext, n_samples = -1):
         m1        = m1_detect/(1+z)
         m2        = m2_detect/(1+z)
         
+        loaded_pars = []
+        
         if 'z' in par:
             samples.append(z)
+            loaded_pars.append('z')
         if 'm1' in par:
             samples.append(m1)
+            loaded_pars.append('m1')
         if 'm2' in par:
             samples.append(m2)
+            loaded_pars.append('m2')
         if 'mc' in par:
             samples.append((m1*m2)**(3./5.)/(m1+m2)**(1./5.))
+            loaded_pars.append('mc')
         if 'ra' in par:
             samples.append(ra)
+            loaded_pars.append('ra')
         if 'dec' in par:
             samples.append(dec)
+            loaded_pars.append('dec')
         if 'luminosity_distance' in par:
             samples.append(LD)
+            loaded_pars.append('luminosity_distance')
         
         if len(par) == 1:
-            samples = np.array(samples)
-            samples = samples.flatten()
+            samples = np.atleast_2d(samples).T
         else:
-            samples = np.array(samples).T
+            par = np.array(par)
+            loaded_pars = np.array(loaded_pars)
+            samples = np.array(samples)
+            samples = samples[np.array([np.where(pi == par) for pi in loaded_pars]).flatten()]
+            samples = samples.T
         
         if n_samples > -1:
             s = int(min([n_samples, len(samples)]))
