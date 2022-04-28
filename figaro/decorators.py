@@ -47,5 +47,5 @@ def celestial(func):
     """
     def f_transf(ref, x, *args, **kwargs):
         y = cartesian_to_celestial(x)
-        return func(y, *args)
+        return func(ref, y, *args)
     return f_transf
