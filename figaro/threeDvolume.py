@@ -111,7 +111,7 @@ class VolumeReconstruction(DPGMM):
         :list-of-double levels:    credible levels (between 0 and 1)
         :bool latex:               if True, LaTeX is used for plots (if available)
         :bool incr_plot:           if True, produce plots at fixed number of samples. Otherwise, skymaps are produced at the end of the inference only
-        :str or Path glade_file:   file containing GLADE+
+        :str or Path glade_file:   file containing GLADE+ (hdf5 file created using the create_glade.py pipeline)
         :dict cosmology:           dictionary containing h = H0/100 km/(s*Mpc), om (matter density parameter) and ol (cosmological constant density). Default from Planck (2021)
         :int n_gal_to_plot:        number of galaxies to include in galaxy plots
         :double region_to_plot:    credible region to plot
@@ -270,8 +270,8 @@ class VolumeReconstruction(DPGMM):
         
     def load_glade(self, glade_file):
         """
-        Load GLADE+ from h5py file.
-        This is tailored to GLADE+ available on March 28th at http://glade.elte.hu - compatibility with more recent versions is not ensured.
+        Load GLADE+ from hdf5 file.
+        This is tailored to the GLADE+ hdf5 file created by the create_glade.py pipeline.
         
         Arguments:
             :str or Path glade_file: glade file to be uploaded
