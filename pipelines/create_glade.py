@@ -1,11 +1,11 @@
-from astropy.table import Table
+#from astropy.table import Table
 import matplotlib.pyplot as plt
 import numpy as np
-from tqdm import tqdm
-import healpy as hp
+#from tqdm import tqdm
+#import healpy as hp
 import h5py
 import pandas as pd
-from tqdm import tqdm
+#from tqdm import tqdm
 from pathlib import Path
 import optparse as op
 import configparser
