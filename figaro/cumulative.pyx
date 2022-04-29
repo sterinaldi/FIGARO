@@ -2,7 +2,6 @@
 # cython: profile=False
 # cython: linetrace=False
 # cython: language_level=3, cdivision=True, boundscheck=False, wraparound=False, binding=True, embedsignature=True
-from __future__ import division
 import numpy as np
 cimport numpy as np
 from libc.math cimport log,exp
