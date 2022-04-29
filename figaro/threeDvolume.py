@@ -138,7 +138,7 @@ class VolumeReconstruction(DPGMM):
                        incr_plot           = False,
                        glade_file          = None,
                        cosmology           = {'h': 0.674, 'om': 0.315, 'ol': 0.685},
-                       n_gal_to_plot       = 100,
+                       n_gal_to_plot       = -1,
                        region_to_plot      = 0.5,
                        entropy             = False,
                        true_host           = None,
@@ -167,7 +167,7 @@ class VolumeReconstruction(DPGMM):
         
         # Grid
         self.ra   = np.linspace(0,2*np.pi, n_gridpoints[0])
-        self.dec  = np.linspace(-np.pi/2, np.pi/2., n_gridpoints[1]+2)[1:1]
+        self.dec  = np.linspace(-np.pi/2, np.pi/2., n_gridpoints[1]+2)[1:-1]
         self.dist = np.linspace(0, max_dist, n_gridpoints[2]+2)[1:-1]
         self.dD   = np.diff(self.dist)[0]
         self.dra  = np.diff(self.ra)[0]
@@ -224,7 +224,10 @@ class VolumeReconstruction(DPGMM):
             self.probit_catalog    = transform_to_probit(self.cartesian_catalog, self.bounds)
             self.log_inv_J_cat     = -np.log(inv_Jacobian(self.catalog)) - probit_logJ(self.probit_catalog, self.bounds)
             self.inv_J_cat         = np.exp(self.log_inv_J)
-        self.n_gal_to_plot = n_gal_to_plot
+        if n_gal_to_plot == -1 and self.catalog is not None:
+            self.n_gal_to_plot = len(self.catalog)
+        else:
+            self.n_gal_to_plot = n_gal_to_plot
         if region_to_plot in self.levels:
             self.region = region_to_plot
         else:
@@ -552,7 +555,7 @@ class VolumeReconstruction(DPGMM):
         ax = fig.add_subplot(111, projection = '3d')
         ax.scatter(self.cat_to_plot_cartesian[:,0], self.cat_to_plot_cartesian[:,1], self.cat_to_plot_cartesian[:,2], c = self.p_cat_to_plot, marker = '.', alpha = 0.7, s = 0.5, cmap = 'Reds')
         vol_str = ['${0:.0f}\\%'.format(100*self.levels[-i])+ '\ \mathrm{CR}:'+'{0:.0f}'.format(self.volumes[-i]) + '\ \mathrm{Mpc}^3$' for i in range(len(self.volumes))]
-        vol_str = '\n'.join(vol_str + ['$N_{\mathrm{gal}}\ \mathrm{in}\ '+'{0:.0f}\\%'.format(100*self.levels[np.where(self.levels == self.region)][0])+ '\ \mathrm{CR}:'+'{0}$'.format(len(self.cat_to_plot_cartesian))])
+        vol_str = '\n'.join(vol_str + ['${0}'.format(len(self.cat_to_plot_cartesian)) + '\ \mathrm{galaxies}\ \mathrm{in}\ '+'{0:.0f}\\%'.format(100*self.levels[np.where(self.levels == self.region)][0])+ '\ \mathrm{CR}$'])
         ax.text2D(0.05, 0.95, vol_str, transform=ax.transAxes)
         ax.set_xlabel('$x$')
         ax.set_ylabel('$y$')
@@ -568,7 +571,7 @@ class VolumeReconstruction(DPGMM):
         ax = fig.add_subplot(111, projection = '3d')
         ax.scatter(self.cat_to_plot_celestial[:,0], self.cat_to_plot_celestial[:,1], self.cat_to_plot_celestial[:,2], c = self.p_cat_to_plot, marker = '.', alpha = 0.7, s = 0.5, cmap = 'Reds')
         vol_str = ['${0:.0f}\\%'.format(100*self.levels[-i])+ '\ \mathrm{CR}:'+'{0:.0f}'.format(self.volumes[-i]) + '\ \mathrm{Mpc}^3$' for i in range(len(self.volumes))]
-        vol_str = '\n'.join(vol_str + ['$\mathrm{Galaxies}\ \mathrm{in}\ '+'{0:.0f}\\%'.format(100*self.levels[np.where(self.levels == self.region)][0])+ '\ \mathrm{CR}:'+'{0}$'.format(len(self.cat_to_plot_celestial))])
+        vol_str = '\n'.join(vol_str + ['${0}'.format(len(self.cat_to_plot_celestial)) + '\ \mathrm{galaxies}\ \mathrm{in}\ '+'{0:.0f}\\%'.format(100*self.levels[np.where(self.levels == self.region)][0])+ '\ \mathrm{CR}$'])
         ax.text2D(0.05, 0.95, vol_str, transform=ax.transAxes)
         ax.set_xlabel('$\\alpha$')
         ax.set_ylabel('$\\delta$')
@@ -581,14 +584,14 @@ class VolumeReconstruction(DPGMM):
         plt.close()
         
         # 2D galaxy plot
-        # Limits for VO image
-        fig_b = plt.figure()
-        ax_b  = fig_b.add_subplot(111)
-        c = ax_b.scatter(self.sorted_cat[:,0][:-int(n_gals):-1]*180./np.pi, self.sorted_cat[:,1][:-int(n_gals):-1]*180./np.pi, c = self.sorted_p_cat_to_plot[:-int(n_gals):-1], marker = '+', cmap = 'coolwarm', linewidths = 1)
-        x_lim = ax_b.get_xlim()
-        y_lim = ax_b.get_ylim()
-        fig = plt.figure()
         if self.virtual_observatory:
+        # Limits for VO image
+            fig_b = plt.figure()
+            ax_b  = fig_b.add_subplot(111)
+            c = ax_b.scatter(self.sorted_cat[:,0][:-int(n_gals):-1]*180./np.pi, self.sorted_cat[:,1][:-int(n_gals):-1]*180./np.pi, c = self.sorted_p_cat_to_plot[:-int(n_gals):-1], marker = '+', cmap = 'coolwarm', linewidths = 1)
+            x_lim = ax_b.get_xlim()
+            y_lim = ax_b.get_ylim()
+            fig = plt.figure()
             # Download background
             if self.true_host is not None:
                 pos = SkyCoord(self.true_host[0]*180./np.pi, self.true_host[1]*180./np.pi, unit = 'deg')
@@ -616,8 +619,11 @@ class VolumeReconstruction(DPGMM):
                 ax.scatter([self.true_host[0]*180./np.pi], [self.true_host[1]*180./np.pi], s=80, facecolors='none', edgecolors='g', label = '$\mathrm{' + self.host_name + '}$', transform=ax.get_transform('world'), zorder = 101)
             leg_col = 'white'
         else:
+            fig = plt.figure()
             ax = fig.add_subplot(111)
             c = ax.scatter(self.sorted_cat[:,0][:-int(n_gals):-1], self.sorted_cat[:,1][:-int(n_gals):-1], c = self.sorted_p_cat_to_plot[:-int(n_gals):-1], marker = '+', cmap = 'coolwarm', linewidths = 1)
+            x_lim = ax.get_xlim()
+            y_lim = ax.get_ylim()
             c1 = ax.contour(self.ra_2d, self.dec_2d, self.log_p_skymap.T, np.sort(self.skymap_heights), colors = 'black', linewidths = 0.5, linestyles = 'solid')
             if self.true_host is not None:
                 ax.scatter([self.true_host[0]], [self.true_host[1]], s=80, facecolors='none', edgecolors='g', label = '$\mathrm{' + self.host_name + '}$')
@@ -625,11 +631,17 @@ class VolumeReconstruction(DPGMM):
         for i in range(len(self.areas)):
             c1.collections[i].set_label('${0:.0f}\\%'.format(100*self.levels[-i])+ '\ \mathrm{CR}:'+'{0:.1f}'.format(self.areas[-i]) + '\ \mathrm{deg}^2$')
         handles, labels = ax.get_legend_handles_labels()
-        patch = mpatches.Patch(color='grey', label='${0}'.format(len(self.cat_to_plot_celestial))+'\ \mathrm{galaxies}$', alpha = 0)
+        if self.n_gal_to_plot == -1:
+            lab_ngal = '${0}'.format(len(self.cat_to_plot_celestial)) + '\ \mathrm{galaxies}\ \mathrm{in}\ '+'{0:.0f}\\%'.format(100*self.levels[np.where(self.levels == self.region)][0])+ '\ \mathrm{CR}$'
+        else:
+            lab_ngal = '${0}'.format(len(self.cat_to_plot_celestial)) + '\ \mathrm{galaxies}\ \mathrm{in}\ '+'{0:.0f}\\%'.format(100*self.levels[np.where(self.levels == self.region)][0])+ '\ \mathrm{CR}$\n'+'$({0}'.format(self.n_gal_to_plot)+'\ \mathrm{shown})$'
+        patch = mpatches.Patch(color='grey', label=lab_ngal, alpha = 0)
         handles.append(patch)
         plt.colorbar(c, label = '$p_{host}$')
         ax.set_xlabel('$\\alpha$')
         ax.set_ylabel('$\\delta$')
+        ax.set_xlim(x_lim)
+        ax.set_ylim(y_lim)
         ax.legend(handles = handles, loc = 2, frameon = False, fontsize = 10, handlelength=0, labelcolor = leg_col)
         if final_map:
             fig.savefig(Path(self.skymap_folder, 'galaxies_'+self.name+'_all.pdf'), bbox_inches = 'tight')
