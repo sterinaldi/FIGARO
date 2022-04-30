@@ -62,9 +62,9 @@ if lal_flag:
 setup(
     name = 'figaro',
     description = 'FIGARO: Fast Inference for GW Astronomy, Research & Observations',
-    author = 'Walter Del Pozzo, Stefano Rinaldi',
-    author_email = 'walter.delpozzo@unipi.it, stefano.rinaldi@phd.unipi.it',
-    url = 'https://git.ligo.org/stefano.rinaldi/online-localisation',
+    author = 'Stefano Rinaldi, Walter Del Pozzo',
+    author_email = 'stefano.rinaldi@phd.unipi.it, walter.delpozzo@unipi.it',
+    url = 'https://github.com/sterinaldi/figaro',
     python_requires = '>=3.7',
     packages = ['figaro'],
     install_requires=requirements,
