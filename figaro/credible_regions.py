@@ -36,21 +36,22 @@ def FindHeights(args):
     (sortarr,cumarr,level) = args
     return sortarr[np.abs(cumarr-np.log(level)).argmin()]
 
-def FindHeightForLevel(inLogArr, adLevels):
+def FindHeightForLevel(inLogArr, adLevels, logdd):
     """
     Given a probability array, computes the heights corresponding to some given credible levels.
     
     Arguments:
         :np.ndarray inLogArr: probability array
         :iterable adLevels:   credible levels
-    
+        :double logdd:        variables log differential (∑ log(dx_i))
+        
     Returns:
         :np.ndarray: heights corresponding to adLevels
     """
     # flatten and create reversed sorted list
     adSorted = np.ascontiguousarray(np.sort(inLogArr.flatten())[::-1])
     # create a normalized cumulative distribution
-    adCum = fast_log_cumulative(adSorted)
+    adCum = fast_log_cumulative(adSorted + logdd)
     # find values closest to levels
     adHeights = []
     adLevels = np.ravel([adLevels])
@@ -60,13 +61,14 @@ def FindHeightForLevel(inLogArr, adLevels):
     adHeights = np.array(adHeights)
     return adHeights
 
-def FindLevelForHeight(inLogArr, logvalue):
+def FindLevelForHeight(inLogArr, logvalue, logdd):
     """
     Given a probability array, computes the credible levels corresponding to a given height.
     
     Arguments:
         :np.ndarray inLogArr: log probability array
         :double logvalue:     height
+        :double logdd:        variables log differential (∑ log(dx_i))
     
     Returns:
         :np.ndarray: credible level corresponding to logvalue
@@ -74,7 +76,7 @@ def FindLevelForHeight(inLogArr, logvalue):
     # flatten and create reversed sorted list
     adSorted = np.ascontiguousarray(np.sort(inLogArr.flatten())[::-1])
     # create a normalized cumulative distribution
-    adCum = fast_log_cumulative(adSorted)
+    adCum = fast_log_cumulative(adSorted + logdd)
     # find index closest to value
     idx = (np.abs(adSorted-logvalue)).argmin()
     return np.exp(adCum[idx])
@@ -95,18 +97,18 @@ def ConfidenceVolume(log_volume_map, ra_grid, dec_grid, distance_grid, adLevels 
         :iterable:   indices of pixels within credible volume(s)
         :np.ndarray: height(s) corresponding to credible volume(s)
     """
+    dd  = np.diff(distance_grid)[0]
+    ddec = np.diff(dec_grid)[0]
+    dra = np.diff(ra_grid)[0]
     # create a normalized cumulative distribution
     log_volume_map_sorted = np.ascontiguousarray(np.sort(log_volume_map.flatten())[::-1])
-    log_volume_map_cum = fast_log_cumulative(log_volume_map_sorted)
+    log_volume_map_cum = fast_log_cumulative(log_volume_map_sorted + np.log(dra) + np.log(ddec) + np.log(dd))
     
     # find the indeces  corresponding to the given CLs
     adLevels = np.ravel([adLevels])
     args = [(log_volume_map_sorted, log_volume_map_cum, level) for level in adLevels]
     adHeights = [FindHeights(a) for a in args]
     heights = {str(lev):hei for lev,hei in zip(adLevels,adHeights)}
-    dd  = np.diff(distance_grid)[0]
-    ddec = np.diff(dec_grid)[0]
-    dra = np.diff(ra_grid)[0]
     volumes         = []
     index           = []
     for height in adHeights:
@@ -135,14 +137,14 @@ def ConfidenceArea(log_skymap, ra_grid, dec_grid, adLevels = [0.50, 0.90]):
         :np.ndarray: height(s) corresponding to credible area(s)
     """
     # create a normalized cumulative distribution
+    ddec = np.diff(dec_grid)[0]
+    dra = np.diff(ra_grid)[0]
     log_skymap_sorted = np.ascontiguousarray(np.sort(log_skymap.flatten())[::-1])
-    log_skymap_cum = fast_log_cumulative(log_skymap_sorted)
+    log_skymap_cum = fast_log_cumulative(log_skymap_sorted + np.log(dra) + np.log(ddec))
     # find the indeces  corresponding to the given CLs
     adLevels = np.ravel([adLevels])
     args = [(log_skymap_sorted, log_skymap_cum, level) for level in adLevels]
     adHeights = [FindHeights(a) for a in args]
-    ddec = np.diff(dec_grid)[0]
-    dra = np.diff(ra_grid)[0]
     areas = []
     index = []
                 
