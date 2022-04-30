@@ -225,7 +225,10 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1):
 
         # GWTC-1
         except KeyError:
-            data = f['Overall_posterior']
+            try:
+                data = f['Overall_posterior']
+            except KeyError:
+                data = f['IMRPhenomPv2NRT_lowSpin_posterior']
             
             # Provided quantities
             names_GWTC1 = {'m1_detect'          : 'm1_detector_frame_Msun',
