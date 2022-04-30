@@ -1,5 +1,4 @@
 import numpy as np
-import os
 import h5py
 import warnings
 try:
@@ -57,13 +56,13 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674
     Not all GW parameters are implemented: run figaro.load.available_gw_pars() for a list of the available parameters.
     
     Arguments:
-        :str file:        file with samples
-        :bool seed:       fixes the seed to a default value (1) for reproducibility
-        :list-of-str par: list with parameter(s) to extract from GW posteriors (m1, m2, mc, z, chi_effective)
-        :int n_samples:   number of samples for (random) downsampling. Default -1: all samples
-        :double h:        Hubble constant H0/100 [km/(s*Mpc)]
-        :double om:       matter density parameter
-        :double ol:       cosmological constant density parameter
+        :str or Path file: file with samples
+        :bool seed:        fixes the seed to a default value (1) for reproducibility
+        :list-of-str par:  list with parameter(s) to extract from GW posteriors (m1, m2, mc, z, chi_effective)
+        :int n_samples:    number of samples for (random) downsampling. Default -1: all samples
+        :double h:         Hubble constant H0/100 [km/(s*Mpc)]
+        :double om:        matter density parameter
+        :double ol:        cosmological constant density parameter
     
     Returns:
         :np.ndarray: samples
@@ -112,19 +111,20 @@ def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.
     Not all GW parameters are implemented: run figaro.load.available_gw_pars() for a list of available parameters.
     
     Arguments:
-        :str path:        folder with data files
-        :bool seed:       fixes the seed to a default value (1) for reproducibility
-        :list-of-str par: list with parameter(s) to extract from GW posteriors
-        :int n_samples:   number of samples for (random) downsampling. Default -1: all samples
-        :double h:        Hubble constant H0/100 [km/(s*Mpc)]
-        :double om:       matter density parameter
-        :double ol:       cosmological constant density parameter
+        :str or Path path: folder with data files
+        :bool seed:        fixes the seed to a default value (1) for reproducibility
+        :list-of-str par:  list with parameter(s) to extract from GW posteriors
+        :int n_samples:    number of samples for (random) downsampling. Default -1: all samples
+        :double h:         Hubble constant H0/100 [km/(s*Mpc)]
+        :double om:        matter density parameter
+        :double ol:        cosmological constant density parameter
     
     Returns:
         :np.ndarray: samples
         :np.ndarray: names
     '''
-    event_files = [Path(path,f).resolve() for f in os.listdir(path) if not (f.startswith('.') or f.startswith('empty_files'))]
+    folder      = Path(path).resolve()
+    event_files = [Path(folder,f) for f in folder.glob('[!.]*')] # Ignores hidden files
     events      = []
     names       = []
     n_events    = len(event_files)
