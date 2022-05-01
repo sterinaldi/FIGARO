@@ -9,7 +9,7 @@ def cartesian_to_celestial(vector):
         :np.ndarray: cartesian vector [x, y, z]
         
     Returns:
-        :np.ndarray: spherical coordinate vector [r, theta, phi]
+        :np.ndarray: spherical coordinate vector [phi, theta, r]
     """
     vector = np.atleast_2d(vector)
     D = np.linalg.norm(vector, axis = -1)
@@ -22,7 +22,7 @@ def cartesian_to_celestial(vector):
 
 def celestial_to_cartesian(vector):
     """
-    Convert the celestial coordinate vector [r, theta, phi] to the Cartesian vector [x, y, z].
+    Convert the celestial coordinate vector [phi, theta, r] to the Cartesian vector [x, y, z].
     The parameter r is the radial distance, theta is the polar angle, and phi is the azimuth
     
     Arguments:
