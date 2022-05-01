@@ -166,7 +166,7 @@ class VolumeReconstruction(DPGMM):
         self.latex = latex
         
         # Grid
-        self.ra   = np.linspace(0,2*np.pi, n_gridpoints[0])
+        self.ra   = np.linspace(0,2*np.pi, n_gridpoints[0], endpoint = False)
         self.dec  = np.linspace(-np.pi/2, np.pi/2., n_gridpoints[1]+2)[1:-1]
         self.dist = np.linspace(0, max_dist, n_gridpoints[2]+2)[1:-1]
         self.dD   = np.diff(self.dist)[0]
@@ -174,16 +174,26 @@ class VolumeReconstruction(DPGMM):
         self.ddec = np.diff(self.dec)[0]
         # For loops
         grid = []
+        measure_3d = []
+        distance_measure_3d = []
         for ra_i in self.ra:
             for dec_i in self.dec:
+                cosdec = np.cos(dec_i)
                 for d_i in self.dist:
                     grid.append(np.array([ra_i, dec_i, d_i]))
+                    measure_3d.append(cosdec*d_i**2)
+                    distance_measure_3d.append(d_i**2)
         self.grid = np.array(grid)
+        self.log_measure_3d = np.log(measure_3d).reshape(len(self.ra), len(self.dec), len(self.dist))
+        self.distance_measure_3d = np.array(distance_measure_3d).reshape(len(self.ra), len(self.dec), len(self.dist))
         grid2d = []
+        measure_2d = []
         for ra_i in self.ra:
             for dec_i in self.dec:
                 grid2d.append(np.array([ra_i, dec_i]))
+                measure_2d.append(np.cos(dec_i))
         self.grid2d = np.array(grid2d)
+        self.log_measure_2d = np.log(measure_2d).reshape(len(self.ra), len(self.dec))
         # Meshgrid
         self.ra_2d, self.dec_2d = np.meshgrid(self.ra, self.dec)
         self.cartesian_grid = celestial_to_cartesian(self.grid)
@@ -417,7 +427,7 @@ class VolumeReconstruction(DPGMM):
         """
         if not self.volume_already_evaluated:
             p_vol               = self._evaluate_mixture_in_probit(self.probit_grid) * self.inv_J
-            self.norm_p_vol     = (p_vol*self.dD*self.dra*self.ddec).sum()
+            self.norm_p_vol     = (p_vol*np.exp(self.log_measure_3d.reshape(p_vol.shape))*self.dD*self.dra*self.ddec).sum()
             self.log_norm_p_vol = np.log(self.norm_p_vol)
             self.p_vol          = p_vol/self.norm_p_vol
             
@@ -432,16 +442,16 @@ class VolumeReconstruction(DPGMM):
             self.log_p_vol = self.log_p_vol.reshape(len(self.ra), len(self.dec), len(self.dist))
             self.volume_already_evaluated = True
 
-        self.p_skymap = (self.p_vol*self.dD).sum(axis = -1)
+        self.p_skymap = (self.p_vol*self.dD*self.distance_measure_3d).sum(axis = -1)
         
         # By default computes log(p_skymap). If -infs are present, computes log_p_skymap
         with np.errstate(divide='raise'):
             try:
                 self.log_p_skymap = np.log(self.p_skymap)
             except FloatingPointError:
-                self.log_p_skymap = logsumexp(self.log_p_vol + np.log(self.dD), axis = -1)
+                self.log_p_skymap = logsumexp(self.log_p_vol + np.log(self.dD) + np.log(self.distance_measure_3d), axis = -1)
 
-        self.areas, self.skymap_idx_CR, self.skymap_heights = ConfidenceArea(self.log_p_skymap, self.ra, self.dec, adLevels = self.levels)
+        self.areas, self.skymap_idx_CR, self.skymap_heights = ConfidenceArea(self.log_p_skymap, self.log_measure_2d, self.ra, self.dec, adLevels = self.levels)
         for cr, area in zip(self.levels, self.areas):
             self.areas_N[cr].append(area)
     
@@ -451,7 +461,7 @@ class VolumeReconstruction(DPGMM):
         """
         if not self.volume_already_evaluated:
             p_vol               = self._evaluate_mixture_in_probit(self.probit_grid) * self.inv_J
-            self.norm_p_vol     = (p_vol*self.dD*self.dra*self.ddec).sum()
+            self.norm_p_vol     = (p_vol*np.exp(self.log_measure_3d.reshape(p_vol.shape))*self.dD*self.dra*self.ddec).sum()
             self.log_norm_p_vol = np.log(self.norm_p_vol)
             self.p_vol          = p_vol/self.norm_p_vol
             
@@ -466,7 +476,7 @@ class VolumeReconstruction(DPGMM):
             self.log_p_vol = self.log_p_vol.reshape(len(self.ra), len(self.dec), len(self.dist))
             self.volume_already_evaluated = True
             
-        self.volumes, self.idx_CR, self.volume_heights = ConfidenceVolume(self.log_p_vol, self.ra, self.dec, self.dist, adLevels = self.levels)
+        self.volumes, self.idx_CR, self.volume_heights = ConfidenceVolume(self.log_p_vol, self.log_measure_3d, self.ra, self.dec, self.dist, adLevels = self.levels)
         
         for cr, vol in zip(self.levels, self.volumes):
             self.volumes_N[cr].append(vol)
