@@ -320,15 +320,15 @@ class VolumeReconstruction(DPGMM):
         """
         self.skymap_folder = Path(self.out_folder, 'skymaps', self.name)
         if not self.skymap_folder.exists():
-            self.skymap_folder.mkdir(parent=True)
+            self.skymap_folder.mkdir(parents=True)
         if self.catalog is not None:
             self.volume_folder = Path(self.out_folder, 'volume', self.name)
             if not self.volume_folder.exists():
-                self.volume_folder.mkdir(parent=True)
+                self.volume_folder.mkdir(parents=True)
             self.catalog_folder = Path(self.out_folder, 'catalogs', self.name)
             if not self.catalog_folder.exists():
-                self.catalog_folder.mkdir(parent=True)
-        if self.incr_plot:
+                self.catalog_folder.mkdir(parents=True)
+        if self.next_plot < np.inf:
             self.convergence_folder = Path(self.out_folder, 'convergence')
             if not Path(self.out_folder, 'convergence').exists():
                 Path(self.out_folder, 'convergence').mkdir()
@@ -793,8 +793,8 @@ class VolumeReconstruction(DPGMM):
         self.plot_samples(self.n_pts, initial_samples = samples)
         self.make_skymap(final_map = True)
         self.make_volume_map(final_map = True, n_gals = self.n_gal_to_plot)
-        self.make_gif()
         if self.next_plot < np.inf:
+            self.make_gif()
             self.volume_N_plot()
         if self.entropy:
             self.make_entropy_plot()
