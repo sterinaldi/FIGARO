@@ -263,7 +263,7 @@ class VolumeReconstruction(DPGMM):
             self.out_folder.mkdir()
         self.make_folders()
     
-    def initialise(self, true_host = None, out_folder = None, incr_plot = None, entropy = None):
+    def initialise(self, true_host = None, out_folder = None, incr_plot = None, entropy = None, name = None):
         """
         Initialise the mixture to initial conditions to analyse a new event.
         
@@ -280,6 +280,8 @@ class VolumeReconstruction(DPGMM):
         self.volumes_N   = {cr:[] for cr in self.levels}
         self.N           = []
         self.flag_skymap = True
+        if name is not None:
+            self.name = name
         if entropy is not None:
             self.entropy = entropy
         if self.entropy == True:
