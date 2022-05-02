@@ -136,9 +136,9 @@ def ConfidenceArea(log_skymap, log_measure, ra_grid, dec_grid, adLevels = [0.50,
     # create a normalized cumulative distribution
     ddec = np.diff(dec_grid)[0]
     dra = np.diff(ra_grid)[0]
-    log_skymap_sorted = np.ascontiguousarray(np.sort(log_skymap.flatten())[::-1])
+    log_skymap_sorted  = np.ascontiguousarray(np.sort(log_skymap.flatten())[::-1])
     log_measure_sorted = np.ascontiguousarray(log_measure.flatten()[np.argsort(log_skymap.flatten())][::-1])
-    log_skymap_cum = fast_log_cumulative(log_skymap_sorted + log_measure_sorted.flatten() + np.log(dra) + np.log(ddec))
+    log_skymap_cum     = fast_log_cumulative(log_skymap_sorted + log_measure_sorted.flatten() + np.log(dra) + np.log(ddec))
     # find the indeces  corresponding to the given CLs
     adLevels = np.ravel([adLevels])
     args = [(log_skymap_sorted, log_skymap_cum, level) for level in adLevels]
@@ -152,29 +152,4 @@ def ConfidenceArea(log_skymap, log_measure, ra_grid, dec_grid, adLevels = [0.50,
     area_confidence = np.array(areas)
     
     return area_confidence, index, np.array(adHeights)
-
-def ConfidenceInterval(probability, measure, grid, adLevels = [0.50, 0.90]):
-    """
-    Compute the credible interval(s) for a 1D probability distribution
-    
-    Arguments:
-        :np.ndarray probability: probability density for each pixel
-        :np.ndarray grid:        values used to build the grid
-        :iterable adLevels:      credible level(s)
-    
-    Returns:
-        :np.ndarray: credible interval(s)
-        :iterable:   indices of bins within credible area(s)
-    """
-    dx = np.diff(grid)[0]
-    cumulative_distribution = np.cumsum(probability*dx*measure)
-    values = []
-    index  = []
-    for cl in adLevels:
-        idx = np.abs(cumulative_distribution-cl).argmin()
-        values.append(grid[idx])
-        index.append(idx)
-    values_confidence = np.array(values)
-
-    return values_confidence, index
 
