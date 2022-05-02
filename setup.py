@@ -39,7 +39,6 @@ ext_modules=[
             ]
 if lal_flag:
     if "LAL_PREFIX" in os.environ.keys():
-        print('old version')
         # Older LAL installations requires this
         lal_prefix     = os.environ.get("LAL_PREFIX")
         lal_includes   = lal_prefix+"/include"
@@ -58,7 +57,7 @@ if lal_flag:
                            extra_compile_args=["-O3","-ffast-math"],
                            include_dirs=['figaro', numpy.get_include()]
                            ))
-print('done')
+
 ext_modules = cythonize(ext_modules, compiler_directives={'language_level' : "3"})
 setup(
       name = 'figaro/cumulative',
