@@ -38,7 +38,7 @@ ext_modules=[
                        ),
             ]
 if lal_flag:
-    if "LAL_PREFIX" in os.environ.keys():
+    if "LAL_PREFIX" in os.environ:
         # Older LAL installations requires this
         lal_prefix     = os.environ.get("LAL_PREFIX")
         lal_includes   = lal_prefix+"/include"
