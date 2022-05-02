@@ -52,17 +52,11 @@ setup(
       include_dirs=['figaro', numpy.get_include()]
       )
 if lal_flag:
-    try:
-        setup(
-              name = 'figaro/cosmology',
-              ext_modules = cythonize(ext_modules, language_level = "3"),
-              include_dirs=['figaro', numpy.get_include()]
-              )
-    except:
+    if "LAL_PREFIX" in os.environ.keys():
         # Older LAL installations might require this
-        lal_prefix = os.environ.get("LAL_PREFIX")
-        lal_includes = lal_prefix+"/include"
-        lal_libs = lal_prefix+"/lib"
+        lal_prefix     = os.environ.get("LAL_PREFIX")
+        lal_includes   = lal_prefix+"/include"
+        lal_libs       = lal_prefix+"/lib"
         ext_modules[1] = Extension("figaro.cosmology",
                          sources=[os.path.join("figaro","cosmology.pyx")],
                          libraries=["m", "lal"], # Unix-like specific
@@ -70,6 +64,13 @@ if lal_flag:
                          extra_compile_args=["-O3","-ffast-math"],
                          include_dirs=['figaro', lal_includes, numpy.get_include()]
                          )
+        ext_modules = cythonize(ext_modules, compiler_directives={'language_level' : "3"})
+        setup(
+              name = 'figaro/cosmology',
+              ext_modules = cythonize(ext_modules, language_level = "3"),
+              include_dirs=['figaro', numpy.get_include()]
+              )
+    else:
         setup(
               name = 'figaro/cosmology',
               ext_modules = cythonize(ext_modules, language_level = "3"),
