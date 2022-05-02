@@ -44,13 +44,13 @@ if lal_flag:
         lal_prefix     = os.environ.get("LAL_PREFIX")
         lal_includes   = lal_prefix+"/include"
         lal_libs       = lal_prefix+"/lib"
-        ext_modules[1] = Extension("figaro.cosmology",
-                         sources=[os.path.join("figaro","cosmology.pyx")],
-                         libraries=["m", "lal"], # Unix-like specific
-                         library_dirs = [lal_libs],
-                         extra_compile_args=["-O3","-ffast-math"],
-                         include_dirs=['figaro', lal_includes, numpy.get_include()]
-                         )
+        ext_modules.append(Extension("figaro.cosmology",
+                          sources=[os.path.join("figaro","cosmology.pyx")],
+                          libraries=["m", "lal"], # Unix-like specific
+                          library_dirs = [lal_libs],
+                          extra_compile_args=["-O3","-ffast-math"],
+                          include_dirs=['figaro', lal_includes, numpy.get_include()]
+                          ))
     else:
         ext_modules.append(Extension("figaro.cosmology",
                            sources=[os.path.join("figaro","cosmology.pyx")],
