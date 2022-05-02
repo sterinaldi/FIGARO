@@ -287,11 +287,6 @@ class VolumeReconstruction(DPGMM):
         if self.true_host is not None:
             self.pixel_idx  = FindNearest(self.ra, self.dec, self.dist, self.true_host)
             self.true_pixel = np.array([self.ra[self.pixel_idx[0]], self.dec[self.pixel_idx[1]], self.dist[self.pixel_idx[2]]])
-        if out_folder is not None:
-            self.out_folder = Path(out_folder).resolve()
-            if not self.out_folder.exists():
-                self.out_folder.mkdir()
-            self.make_folders()
         if incr_plot is not None:
             if incr_plot:
                 self.next_plot = 20
@@ -300,6 +295,11 @@ class VolumeReconstruction(DPGMM):
         else:
             if self.next_plot < np.inf:
                 self.next_plot = 20
+        if out_folder is not None:
+            self.out_folder = Path(out_folder).resolve()
+            if not self.out_folder.exists():
+                self.out_folder.mkdir()
+            self.make_folders()
         
     def load_glade(self, glade_file):
         """
