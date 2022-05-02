@@ -227,7 +227,7 @@ class VolumeReconstruction(DPGMM):
             self.flag_skymap = False
         
         # Catalog
-        self.catalog   = None
+        self.catalog = None
         if lal_flag and glade_file is not None:
             self.cosmology = CosmologicalParameters(cosmology['h'], cosmology['om'], cosmology['ol'], 1, 0)
             self.load_glade(glade_file)
@@ -263,12 +263,13 @@ class VolumeReconstruction(DPGMM):
             self.out_folder.mkdir()
         self.make_folders()
     
-    def initialise(self, true_host = None):
+    def initialise(self, true_host = None, out_folder = None):
         """
         Initialise the mixture to initial conditions to analyse a new event.
         
         Arguments:
             :list-of-doubles true_host: true host for a new GW event
+            :str or Path out_folder:    new output folder
         """
         self.volume_already_evaluated = False
         super().initialise()
@@ -284,6 +285,11 @@ class VolumeReconstruction(DPGMM):
         if self.true_host is not None:
             self.pixel_idx  = FindNearest(self.ra, self.dec, self.dist, self.true_host)
             self.true_pixel = np.array([self.ra[self.pixel_idx[0]], self.dec[self.pixel_idx[1]], self.dist[self.pixel_idx[2]]])
+        if out_folder is not None:
+            self.out_folder = Path(out_folder).resolve()
+            if not self.out_folder.exists():
+                self.out_folder.mkdir()
+            self.make_folders()
         
     def load_glade(self, glade_file):
         """
@@ -312,36 +318,31 @@ class VolumeReconstruction(DPGMM):
         """
         Make folders for outputs
         """
-        if not Path(self.out_folder, 'skymaps').exists():
-            Path(self.out_folder, 'skymaps').mkdir()
-        if not Path(self.out_folder, 'volume').exists():
-            Path(self.out_folder, 'volume').mkdir()
-        if not Path(self.out_folder, 'catalogs').exists():
-            Path(self.out_folder, 'catalogs').mkdir()
-        if not Path(self.out_folder, 'convergence').exists():
-            Path(self.out_folder, 'convergence').mkdir()
         self.skymap_folder = Path(self.out_folder, 'skymaps', self.name)
-        self.convergence_folder = Path(self.out_folder, 'convergence')
-        if not self.convergence_folder.exists():
-            self.convergence_folder.mkdir()
         if not self.skymap_folder.exists():
-            self.skymap_folder.mkdir()
+            self.skymap_folder.mkdir(parent=True)
         if self.catalog is not None:
             self.volume_folder = Path(self.out_folder, 'volume', self.name)
             if not self.volume_folder.exists():
-                self.volume_folder.mkdir()
-        self.catalog_folder = Path(self.out_folder, 'catalogs', self.name)
-        if not self.catalog_folder.exists():
-            self.catalog_folder.mkdir()
+                self.volume_folder.mkdir(parent=True)
+            self.catalog_folder = Path(self.out_folder, 'catalogs', self.name)
+            if not self.catalog_folder.exists():
+                self.catalog_folder.mkdir(parent=True)
+        if self.incr_plot:
+            self.convergence_folder = Path(self.out_folder, 'convergence')
+            if not Path(self.out_folder, 'convergence').exists():
+                Path(self.out_folder, 'convergence').mkdir()
+            self.gif_folder = Path(self.out_folder, 'gif')
+            if not self.gif_folder.exists():
+                self.gif_folder.mkdir()
+        if self.entropy:
+            self.entropy_folder = Path(self.out_folder, 'entropy')
+            if not self.entropy_folder.exists():
+                self.entropy_folder.mkdir()
         self.density_folder = Path(self.out_folder, 'density')
         if not self.density_folder.exists():
             self.density_folder.mkdir()
-        self.gif_folder = Path(self.out_folder, 'gif')
-        if not self.gif_folder.exists():
-            self.gif_folder.mkdir()
-        self.entropy_folder = Path(self.out_folder, 'entropy')
-        if not self.entropy_folder.exists():
-            self.entropy_folder.mkdir()
+
 
     def _evaluate_mixture_in_probit(self, x):
         """
