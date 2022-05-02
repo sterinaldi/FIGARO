@@ -59,17 +59,6 @@ if lal_flag:
                            ))
 
 ext_modules = cythonize(ext_modules, compiler_directives={'language_level' : "3"})
-setup(
-      name = 'figaro/cumulative',
-      ext_modules = cythonize(ext_modules, language_level = "3"),
-      include_dirs=['figaro', numpy.get_include()]
-      )
-if lal_flag:
-    setup(
-          name = 'figaro/cosmology',
-          ext_modules = cythonize(ext_modules, language_level = "3"),
-          include_dirs=['figaro', numpy.get_include()]
-          )
 
 setup(
     name = 'figaro',
@@ -86,6 +75,19 @@ setup(
     package_data={"": ['*.c', '*.pyx', '*.pxd']},
     ext_modules=ext_modules,
     )
+
+setup(
+      name = 'figaro/cumulative',
+      ext_modules = cythonize(ext_modules, language_level = "3"),
+      include_dirs=['figaro', numpy.get_include()]
+      )
+if lal_flag:
+    setup(
+          name = 'figaro/cosmology',
+          ext_modules = cythonize(ext_modules, language_level = "3"),
+          include_dirs=['figaro', numpy.get_include()]
+          )
+
 
 if not lal_flag:
     warnings.warn("No LAL installation found, please install LAL - see https://wiki.ligo.org/Computing/LALSuiteInstall. Some functions - GW posterior samples loading and catalog loading - won't be available and errors might be raised.")
