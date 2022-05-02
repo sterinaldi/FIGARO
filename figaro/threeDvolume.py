@@ -374,6 +374,7 @@ class VolumeReconstruction(DPGMM):
     def add_sample(self, x):
         """
         Update the probability density reconstruction adding a new sample
+        Sample must be in celestial coordinate and in the following order: [ra, dec, dist].
         
         Arguments:
             :np.ndarray x: sample
@@ -745,10 +746,17 @@ class VolumeReconstruction(DPGMM):
     def density_from_samples(self, samples):
         """
         Reconstruct the probability density from a set of samples.
+        Samples must be in celestial coordinate and in the following order: [ra, dec, dist].
         
         Arguments:
             :iterable samples: set of volume samples
         """
+        # Checking the posteriors are properly ordered:
+        check_ra   = np.logical_and(samples[:,0] > 0, samples[:,0] < 2*np.pi).all()
+        check_dec  = np.logical_and(samples[:,0] > -np.pi/2., samples[:,0] < np.pi/2.).all()
+        check_dist = np.logical_and(samples[:,0] > 0, samples[:,0] < self.max_dist).all()
+        if not (check_ra and check_dec and check_dist):
+            raise Exception("Samples are not in [RA, dec, DL] order or one or more points are outside the [[0, 2π], [-π/2, π/2], [0,{0:.0f}]] boundaries".format(self.max_dist))
         self.ac_cntr = self.n_sign_changes
         for i in tqdm(range(len(samples)), desc=self.name):
             self.add_sample(samples[i])
