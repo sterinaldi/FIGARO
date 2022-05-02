@@ -546,10 +546,12 @@ class VolumeReconstruction(DPGMM):
         ax.legend(handles = handles, loc = 0, frameon = False, fontsize = 10, handlelength=0, handletextpad=0, markerscale=0)
         if final_map:
             fig.savefig(Path(self.skymap_folder, self.name+'_all.pdf'), bbox_inches = 'tight')
-            fig.savefig(Path(self.gif_folder, self.name+'_all.png'), bbox_inches = 'tight')
+            if self.next_plot < np.inf:
+                fig.savefig(Path(self.gif_folder, self.name+'_all.png'), bbox_inches = 'tight')
         else:
             fig.savefig(Path(self.skymap_folder, self.name+'_{0}'.format(self.n_pts)+'.pdf'), bbox_inches = 'tight')
-            fig.savefig(Path(self.gif_folder, self.name+'_{0}'.format(self.n_pts)+'.png'), bbox_inches = 'tight')
+            if self.next_plot < np.inf:
+                fig.savefig(Path(self.gif_folder, self.name+'_{0}'.format(self.n_pts)+'.png'), bbox_inches = 'tight')
         plt.close()
     
     def make_volume_map(self, final_map = False, n_gals = 100):
@@ -593,10 +595,12 @@ class VolumeReconstruction(DPGMM):
         ax.set_ylabel('$\\delta$')
         if final_map:
             fig.savefig(Path(self.volume_folder, self.name+'_all.pdf'), bbox_inches = 'tight')
-            fig.savefig(Path(self.gif_folder, '3d_'+self.name+'_all.png'), bbox_inches = 'tight')
+            if self.next_plot < np.inf:
+                fig.savefig(Path(self.gif_folder, '3d_'+self.name+'_all.png'), bbox_inches = 'tight')
         else:
             fig.savefig(Path(self.volume_folder, self.name+'_{0}'.format(self.n_pts)+'.pdf'), bbox_inches = 'tight')
-            fig.savefig(Path(self.gif_folder, '3d_'+self.name+'_{0}'.format(self.n_pts)+'.png'), bbox_inches = 'tight')
+            if self.next_plot < np.inf:
+                fig.savefig(Path(self.gif_folder, '3d_'+self.name+'_{0}'.format(self.n_pts)+'.png'), bbox_inches = 'tight')
         plt.close()
         
         # 2D galaxy plot
