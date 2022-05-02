@@ -291,7 +291,7 @@ class VolumeReconstruction(DPGMM):
             if incr_plot:
                 self.next_plot = 20
             else:
-                incr_plot = np.inf
+                self.next_plot = np.inf
         else:
             if self.next_plot < np.inf:
                 self.next_plot = 20
