@@ -299,7 +299,7 @@ class VolumeReconstruction(DPGMM):
             self.out_folder = Path(out_folder).resolve()
             if not self.out_folder.exists():
                 self.out_folder.mkdir()
-            self.make_folders()
+        self.make_folders()
         
     def load_glade(self, glade_file):
         """
