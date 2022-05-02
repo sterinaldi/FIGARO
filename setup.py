@@ -38,14 +38,32 @@ ext_modules=[
                        ),
             ]
 if lal_flag:
-    ext_modules.append(Extension("figaro.cosmology",
-                       sources=[os.path.join("figaro","cosmology.pyx")],
-                       libraries=["m", "lal"], # Unix-like specific
-                       extra_compile_args=["-O3","-ffast-math"],
-                       include_dirs=['figaro', numpy.get_include()]
-                       ))
+    try:
+        ext_modules.append(Extension("figaro.cosmology",
+                           sources=[os.path.join("figaro","cosmology.pyx")],
+                           libraries=["m", "lal"], # Unix-like specific
+                           extra_compile_args=["-O3","-ffast-math"],
+                           include_dirs=['figaro', numpy.get_include()]
+                           ))
+        ext_modules = cythonize(ext_modules, compiler_directives={'language_level' : "3"})
+        
+    except:
+        # Older LAL installations might require this
+        lal_prefix = os.environ.get("LAL_PREFIX")
+        lal_includes = lal_prefix+"/include"
+        lal_libs = lal_prefix+"/lib"
+        ext_modules.append(Extension("figaro.cosmology",
+                           sources=[os.path.join("figaro","cosmology.pyx")],
+                           libraries=["m", "lal"], # Unix-like specific
+                           library_dirs = [lal_libs],
+                           extra_compile_args=["-O3","-ffast-math"],
+                           include_dirs=['figaro', lal_includes, numpy.get_include()]
+                           ))
+        ext_modules = cythonize(ext_modules, compiler_directives={'language_level' : "3"})
 
-ext_modules = cythonize(ext_modules, compiler_directives={'language_level' : "3"})
+else:
+    ext_modules = cythonize(ext_modules, compiler_directives={'language_level' : "3"})
+
 setup(
       name = 'figaro/cumulative',
       ext_modules = cythonize(ext_modules, language_level = "3"),
