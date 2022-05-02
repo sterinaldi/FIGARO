@@ -141,6 +141,7 @@ class VolumeReconstruction(DPGMM):
                        n_gal_to_plot       = -1,
                        region_to_plot      = 0.5,
                        entropy             = False,
+                       n_entropy_MC_draws  = 1e3,
                        true_host           = None,
                        host_name           = 'Host',
                        entropy_step        = 1,
@@ -245,18 +246,21 @@ class VolumeReconstruction(DPGMM):
         self.virtual_observatory = virtual_observatory
         
         # Entropy
-        self.entropy         = entropy
-        self.entropy_step    = entropy_step
-        self.entropy_ac_step = entropy_ac_step
-        self.N_for_ac        = np.arange(self.entropy_ac_step)*self.entropy_step
-        self.R_S             = []
-        self.ac              = []
-        self.n_sign_changes  = n_sign_changes
+        self.entropy            = entropy
+        self.entropy_step       = entropy_step
+        self.entropy_ac_step    = entropy_ac_step
+        self.N_for_ac           = np.arange(self.entropy_ac_step)*self.entropy_step
+        self.n_entropy_MC_draws = int(n_entropy_MC_draws)
+        self.R_S                = []
+        self.ac                 = []
+        self.n_sign_changes     = n_sign_changes
         
         # Output
         self.name       = name
         self.labels     = labels
         self.out_folder = Path(out_folder).resolve()
+        if not self.out_folder.exists():
+            self.out_folder.mkdir()
         self.make_folders()
     
     def initialise(self, true_host = None):
@@ -753,8 +757,8 @@ class VolumeReconstruction(DPGMM):
         """
         # Checking the posteriors are properly ordered:
         check_ra   = np.logical_and(samples[:,0] > 0, samples[:,0] < 2*np.pi).all()
-        check_dec  = np.logical_and(samples[:,0] > -np.pi/2., samples[:,0] < np.pi/2.).all()
-        check_dist = np.logical_and(samples[:,0] > 0, samples[:,0] < self.max_dist).all()
+        check_dec  = np.logical_and(samples[:,1] > -np.pi/2., samples[:,1] < np.pi/2.).all()
+        check_dist = np.logical_and(samples[:,2] > 0, samples[:,2] < self.max_dist).all()
         if not (check_ra and check_dec and check_dist):
             raise Exception("Samples are not in [RA, dec, DL] order or one or more points are outside the [[0, 2π], [-π/2, π/2], [0,{0:.0f}]] boundaries".format(self.max_dist))
         self.ac_cntr = self.n_sign_changes
@@ -762,7 +766,7 @@ class VolumeReconstruction(DPGMM):
             self.add_sample(samples[i])
             if self.entropy:
                 if i%self.entropy_step == 0:
-                    R_S = compute_entropy_single_draw(self)
+                    R_S = compute_entropy_single_draw(self, self.n_entropy_MC_draws)
                     self.R_S.append(R_S)
                     if self.n_pts//self.entropy_ac_step >= 1:
                         ac = angular_coefficient(self.N_for_ac + self.n_pts, self.R_S[-self.entropy_ac_step:])
