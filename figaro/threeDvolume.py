@@ -263,7 +263,7 @@ class VolumeReconstruction(DPGMM):
             self.out_folder.mkdir()
         self.make_folders()
     
-    def initialise(self, true_host = None, out_folder = None):
+    def initialise(self, true_host = None, out_folder = None, incr_plot = None, entropy = None):
         """
         Initialise the mixture to initial conditions to analyse a new event.
         
@@ -280,6 +280,8 @@ class VolumeReconstruction(DPGMM):
         self.volumes_N   = {cr:[] for cr in self.levels}
         self.N           = []
         self.flag_skymap = True
+        if entropy is not None:
+            self.entropy = entropy
         if self.entropy == True:
             self.flag_skymap = False
         if self.true_host is not None:
@@ -290,6 +292,14 @@ class VolumeReconstruction(DPGMM):
             if not self.out_folder.exists():
                 self.out_folder.mkdir()
             self.make_folders()
+        if incr_plot is not None:
+            if incr_plot:
+                self.next_plot = 20
+            else:
+                incr_plot = np.inf
+        else:
+            if self.next_plot < np.inf:
+                self.next_plot = 20
         
     def load_glade(self, glade_file):
         """
