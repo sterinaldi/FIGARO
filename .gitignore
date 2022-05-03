@@ -1,6 +1,7 @@
 # Project-specific files
-gen_simulation.py
-simulations/
+*.pdf
+*.pkl
+notebooks/skymap_*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
