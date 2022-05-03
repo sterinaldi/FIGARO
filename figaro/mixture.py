@@ -7,11 +7,11 @@ from pathlib import Path
 
 from scipy.special import gammaln, logsumexp
 from scipy.stats import multivariate_normal as mn
-from scipy.stats import invwishart
+from scipy.stats import invgamma, invwishart
 
 from figaro.decorators import *
 from figaro.transform import *
-from figaro.montecarlo import MC_predictive_1d, MC_predictive, expected_vals_MC_1d, expected_vals_MC
+from figaro.montecarlo import compute_probability, compute_probability_1d
 from figaro.exceptions import except_hook
 
 from numba import jit, njit, prange
@@ -241,7 +241,7 @@ class component_h:
     Returns:
         :component_h: instance of component_h class
     """
-    def __init__(self, x, dim, prior, logL_D):
+    def __init__(self, x, dim, prior, logL_D, mu_MC, sigma_MC):
         self.dim    = dim
         self.N      = 1
         self.events = [x]
@@ -250,11 +250,12 @@ class component_h:
         self.log_w  = [x.log_w]
         self.logL_D = logL_D
         
-        if self.dim == 1:
-            self.mu, self.sigma = expected_vals_MC_1d(self.means, self.covs, self.log_w, a = prior.nu+1, b = prior.L[0,0])
-        else:
-            self.mu, self.sigma = expected_vals_MC(self.means, self.covs, self.log_w, self.dim, a = prior.nu, b = prior.L)
-    
+        self.mu    = np.average(mu_MC, weights = np.exp(logL_D), axis = 0)
+        self.sigma = np.average(sigma_MC, weights = np.exp(logL_D), axis = 0)
+        if dim == 1:
+            self.mu = np.atleast_2d(self.mu).T
+            self.sigma = np.atleast_2d(self.sigma).T
+            
 class mixture:
     """
     Class to store a single draw from DPGMM/(H)DPGMM.
@@ -707,9 +708,15 @@ class HDPGMM(DPGMM):
                        ):
         dim = len(bounds)
         if prior_pars == None:
-            prior_pars = (1e-1, np.identity(dim)*0.2**2, dim, np.zeros(dim))
+            prior_pars = (1e-1, np.identity(dim)*0.1**2, dim, np.zeros(dim))
         super().__init__(bounds = bounds, prior_pars = prior_pars, alpha0 = alpha0, out_folder = out_folder)
         self.MC_draws = int(MC_draws)
+        if self.dim == 1:
+            self.mu_MC    = np.random.normal(size = self.MC_draws)
+            self.sigma_MC = invgamma(self.prior.nu, scale = self.prior.L[0,0]).rvs(size = self.MC_draws)
+        else:
+            self.mu_MC    = mn(np.zeros(dim), np.identity(dim)).rvs(size = self.MC_draws)
+            self.sigma_MC = invwishart(df = np.max([self.prior.nu, dim]), scale = self.prior.L).rvs(size = self.MC_draws)
     
     def add_new_point(self, ev):
         """
@@ -735,12 +742,21 @@ class HDPGMM(DPGMM):
         """
         scores = {}
         logL_N = {}
+        
+        if self.dim == 1:
+            logL_x = compute_probability_1d(self.mu_MC, self.sigma_MC, x.means, x.covs, x.log_w)
+        else:
+            logL_x = compute_probability(self.mu_MC, self.sigma_MC, x.means, x.covs, x.log_w)
+
         for i in list(np.arange(self.n_cl)) + ["new"]:
             if i == "new":
                 ss = "new"
+                logL_D = np.zeros(self.MC_draws)
             else:
                 ss = self.mixture[i]
-            scores[i], logL_N[i] = self._log_predictive_likelihood(x, ss)
+                logL_D = ss.logL_D
+            scores[i] = logsumexp(logL_D + logL_x) - logsumexp(logL_D)
+            logL_N[i] = logL_D + logL_x
             if ss == "new":
                 scores[i] += np.log(self.alpha)
             else:
@@ -762,7 +778,7 @@ class HDPGMM(DPGMM):
         labels, scores = zip(*scores)
         cid = np.random.choice(labels, p=scores)
         if cid == "new":
-            self.mixture.append(component_h(x, self.dim, self.prior, logL_N[cid]))
+            self.mixture.append(component_h(x, self.dim, self.prior, logL_N[cid], self.mu_MC, self.sigma_MC))
             self.N_list.append(1.)
             self.n_cl += 1
         else:
@@ -775,33 +791,8 @@ class HDPGMM(DPGMM):
         self.log_w = np.log(self.w)
         return
 
-    def _log_predictive_likelihood(self, x, ss):
-        """
-        Compute log likelihood of drawing sample x from component ss given the samples that are already assigned to that component.
-        
-        Arguments:
-            :np.ndarray x: sample
-            :component ss: component to update
-        
-        Returns:
-            :double: log Likelihood
-        """
-        if ss == "new":
-            ss     = component(np.zeros(self.dim), prior = self.prior)
-            events = []
-            ss.N   = 0.
-            logL_D = 0.
-        else:
-            events = ss.events
-            logL_D = ss.logL_D
             
-        events.append(x)
-        
-        if self.dim == 1:
-            logL_N = MC_predictive_1d(events, n_samps = self.MC_draws, a = self.prior.nu+1, b = self.prior.L[0,0])
-        else:
-            logL_N = MC_predictive(events, self.dim, n_samps = self.MC_draws, a = self.prior.nu, b = self.prior.L)
-        return logL_N - logL_D, logL_N
+        return logsumexp(logL_N + logL_D) - logsumexp(logL_D), logL_N + logL_D
 
     def _add_datapoint_to_component(self, x, ss, logL_D):
         """
@@ -821,10 +812,12 @@ class HDPGMM(DPGMM):
         ss.log_w.append(x.log_w)
         ss.logL_D = logL_D
         
+        ss.mu    = np.average(self.mu_MC, weights = np.exp(logL_D), axis = 0)
+        ss.sigma = np.average(self.sigma_MC, weights = np.exp(logL_D), axis = 0)
         if self.dim == 1:
-            ss.mu, ss.sigma = expected_vals_MC_1d(ss.means, ss.covs, ss.log_w, a = self.prior.nu+1, b = self.prior.L[0,0])
-        else:
-            ss.mu, ss.sigma = expected_vals_MC(ss.means, ss.covs, ss.log_w, self.dim, a = self.prior.nu, b = self.prior.L)
+            ss.mu = np.atleast_2d(ss.mu).T
+            ss.sigma = np.atleast_2d(ss.sigma).T
+
         ss.N += 1
         return ss
 
