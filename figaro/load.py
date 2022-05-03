@@ -49,7 +49,7 @@ def available_gw_pars():
     """
     print([p for p in GW_par.keys()])
 
-def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.315, ol = 0.685):
+def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.315, ol = 0.685, volume = False):
     '''
     Loads the data from .txt/.dat files (for simulations) or .h5/.hdf5 files (posteriors from GWTC) for a single event.
     Default cosmological parameters from Planck Collaboration (2021) in a flat Universe (https://www.aanda.org/articles/aa/pdf/2020/09/aa33910-18.pdf)
@@ -74,11 +74,13 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674
         rdstate = np.random.RandomState()
     event = Path(event).resolve()
     name, ext = str(event).split('/')[-1].split('.')
+    if volume:
+        par = ['ra', 'dec', 'luminosity_distance']
     if not ext in supported_extensions:
         raise TypeError("File {0}.{1} is not supported".format(name, ext))
     if ext == 'txt' or ext == 'dat':
         if par is not None:
-            warnings.warn("Par names are ignored for .txt/.dat files")
+            warnings.warn("Par names (or volume keyword) are ignored for .txt/.dat files")
         if n_samples > -1:
             samples = np.atleast_1d(np.genfromtxt(event))
             s = int(min([n_samples, len(samples)]))
@@ -104,7 +106,7 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674
         out = np.atleast_2d(out).T
     return out, name
 
-def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.315, ol = 0.685):
+def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.315, ol = 0.685, volume = False):
     '''
     Loads the data from .txt files (for simulations) or .h5/.hdf5/.dat files (posteriors from GWTC-x).
     Default cosmological parameters from Planck Collaboration (2021) in a flat Universe (https://www.aanda.org/articles/aa/pdf/2020/09/aa33910-18.pdf)
@@ -128,7 +130,8 @@ def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.
     events      = []
     names       = []
     n_events    = len(event_files)
-    
+    if volume:
+        par = ['ra', 'dec', 'luminosity_distance']
     for i, event in enumerate(event_files):
         if seed:
             rdstate = np.random.RandomState(seed = 1)
@@ -142,7 +145,7 @@ def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.
         
         if ext == 'txt' or ext == 'dat':
             if par is not None:
-                warnings.warn("Par names are ignored for .txt/.dat files")
+                warnings.warn("Par names (or volume keyword) are ignored for .txt/.dat files")
             if n_samples > -1:
                 samples = np.atleast_1d(np.genfromtxt(event))
                 s = int(min([n_samples, len(samples)]))
