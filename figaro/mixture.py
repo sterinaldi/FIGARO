@@ -24,6 +24,11 @@ import ctypes
 
 sys.excepthook = except_hook
 
+"""
+See https://stackoverflow.com/a/54855769
+Wrapper (based on https://github.com/numba/numba/issues/3086) for scipy's cython implementation of gammaln.
+"""
+
 _PTR = ctypes.POINTER
 _dble = ctypes.c_double
 _ptr_dble = _PTR(_dble)
