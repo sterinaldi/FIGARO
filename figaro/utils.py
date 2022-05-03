@@ -70,10 +70,9 @@ def save_options(options):
 class PPPlot(axes.Axes):
     """
     Construct a probability--probability (P--P) plot.
-    
-    Copyright (C) 2012-2020  Leo Singer
+
     Derived from https://lscsoft.docs.ligo.org/ligo.skymap/_modules/ligo/skymap/plot/pp.html#PPPlot
-    Avoids installing the whole ligo.skymap.plot package.
+    This class avoids installing the whole ligo.skymap.plot package.
     """
 
     name = 'pp_plot'
