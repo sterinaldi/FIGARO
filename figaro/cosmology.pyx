@@ -21,16 +21,12 @@ cdef class CosmologicalParameters:
         return XLALLuminosityDistance(self._LALCosmologicalParameters,z)
 
     cdef np.ndarray[double, ndim=1, mode="c"] _LuminosityDistance(self, np.ndarray[double, ndim=1, mode="c"] z):
-        
         cdef unsigned int i, n = z.shape[0]
         cdef np.ndarray[double, ndim=1, mode="c"] DL = np.zeros(n)
         cdef double[:] DL_view = DL
-        
         for i in range(n):
             DL_view[i] = self._LuminosityDistance_double(z[i])
-        
         return DL
-        
 
     cdef double _HubbleDistance(self) nogil:
         return XLALHubbleDistance(self._LALCosmologicalParameters)
