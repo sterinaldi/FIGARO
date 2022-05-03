@@ -341,9 +341,9 @@ class VolumeReconstruction(DPGMM):
             if not self.catalog_folder.exists():
                 self.catalog_folder.mkdir(parents=True)
         if self.next_plot < np.inf:
-            self.convergence_folder = Path(self.out_folder, 'convergence')
-            if not Path(self.out_folder, 'convergence').exists():
-                Path(self.out_folder, 'convergence').mkdir()
+            self.CR_folder = Path(self.out_folder, 'CR')
+            if not self.CR_folder.exists():
+                self.CR_folder.mkdir()
             self.gif_folder = Path(self.out_folder, 'gif')
             if not self.gif_folder.exists():
                 self.gif_folder.mkdir()
@@ -760,8 +760,8 @@ class VolumeReconstruction(DPGMM):
         ax_a.legend(loc = 0, frameon = False, fontsize = 10)
         ax_v.legend(loc = 0, frameon = False, fontsize = 10)
         
-        fig.savefig(Path(self.convergence_folder, self.name + '.pdf'), bbox_inches = 'tight')
-        np.savetxt(Path(self.convergence_folder, self.name + '.txt'), np.array(output).T, header = header)
+        fig.savefig(Path(self.CR_folder, self.name + '.pdf'), bbox_inches = 'tight')
+        np.savetxt(Path(self.CR_folder, self.name + '.txt'), np.array(output).T, header = header)
         plt.close()
         
     def density_from_samples(self, samples):
