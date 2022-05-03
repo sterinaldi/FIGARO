@@ -123,8 +123,8 @@ def compute_entropy_single_draw(mixture, n_draws = 1e3):
     Returns:
         :double: entropy value
     """
-    samples = mixture._sample_from_dpgmm_probit(int(n_draws))
-    logP    = mixture._evaluate_log_mixture_in_probit(samples)
+    samples = mixture.sample_from_dpgmm(int(n_draws))
+    logP    = mixture.evaluate_log_mixture(samples)
     entropy = np.sum(-logP)/(n_draws*log2e)
     return entropy
 
