@@ -1,12 +1,18 @@
 import numpy as np
-import matplotlib.pyplot as plt
+
 import warnings
 from pathlib import Path
+
 from distutils.spawn import find_executable
+
+import matplotlib.pyplot as plt
 from matplotlib import rcParams
+from matplotlib import axes
+from matplotlib.projections import projection_registry
 from corner import corner
+
 from collections import Counter
-import ligo.skymap.plot
+import scipy.stats
 
 if find_executable('latex'):
     rcParams["text.usetex"] = True
@@ -60,6 +66,84 @@ def save_options(options):
 #-------------#
 #    Plots    #
 #-------------#
+
+class PPPlot(axes.Axes):
+    """
+    Construct a probability--probability (P--P) plot.
+    
+    Copyright (C) 2012-2020  Leo Singer
+    Derived from https://lscsoft.docs.ligo.org/ligo.skymap/_modules/ligo/skymap/plot/pp.html#PPPlot
+    Avoids installing the whole ligo.skymap.plot package.
+    """
+
+    name = 'pp_plot'
+
+    def __init__(self, *args, **kwargs):
+        # Call parent constructor
+        super().__init__(*args, **kwargs)
+
+        # Square axes, limits from 0 to 1
+        self.set_aspect(1.0)
+        self.set_xlim(0.0, 1.0)
+        self.set_ylim(0.0, 1.0)
+
+    def add_diagonal(self, *args, **kwargs):
+        """
+        Add a diagonal line to the plot, running from (0, 0) to (1, 1).
+
+        Other parameters
+        ----------------
+        kwargs :
+            optional extra arguments to `matplotlib.axes.Axes.plot`
+        """
+        # Make copy of kwargs to pass to plot()
+        kwargs = dict(kwargs)
+        kwargs.setdefault('color', 'black')
+        kwargs.setdefault('linestyle', 'dashed')
+        kwargs.setdefault('linewidth', 0.5)
+
+        # Plot diagonal line
+        return self.plot([0, 1], [0, 1], *args, **kwargs)
+
+    def add_confidence_band(self, nsamples, alpha=0.95, **kwargs):
+        """
+        Add a target confidence band.
+
+        Parameters
+        ----------
+        nsamples : int
+            Number of P-values
+        alpha : float, default: 0.95
+            Confidence level
+
+        Other parameters
+        ----------------
+        **kwargs :
+            optional extra arguments to `matplotlib.axes.Axes.fill_betweenx`
+        """
+        n = nsamples
+        k = np.arange(0, n + 1)
+        p = k / n
+        ci_lo, ci_hi = scipy.stats.beta.interval(alpha, k + 1, n - k + 1)
+
+        # Make copy of kwargs to pass to fill_betweenx()
+        kwargs = dict(kwargs)
+        kwargs.setdefault('color', 'ghostwhite')
+        kwargs.setdefault('edgecolor', 'lightgray')
+        kwargs.setdefault('linewidth', 0.5)
+        fontsize = kwargs.pop('fontsize', 'x-small')
+
+        return self.fill_betweenx(p, ci_lo, ci_hi, **kwargs)
+
+    @classmethod
+    def _as_mpl_axes(cls):
+        """
+        Support placement in figure using the `projection` keyword argument.
+        See http://matplotlib.org/devel/add_new_projection.html.
+        """
+        return cls, {}
+        
+projection_registry.register(PPPlot)
 
 def plot_median_cr(draws, injected = None, samples = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True):
     """
