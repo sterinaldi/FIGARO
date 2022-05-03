@@ -10,4 +10,3 @@ numba
 imageio
 h5py
 tqdm
-ligo.skymap
