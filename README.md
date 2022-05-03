@@ -14,4 +14,4 @@ Without LALSuite, the following FIGARO functions won't be available:
 
 In order to install LALSuite, follow the instructions provided in https://wiki.ligo.org/Computing/LALSuiteInstall
 
-[![DOI](https://zenodo.org/badge/456607274.svg)](https://zenodo.org/badge/latestdoi/456607274)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.6515977.svg)](https://doi.org/10.5281/zenodo.6515977)
