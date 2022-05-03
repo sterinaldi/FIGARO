@@ -1,5 +1,4 @@
-# FIGARO
-## Fast Inference for GW Astronomy, Research & Observations
+# FIGARO - Fast Inference for GW Astronomy, Research & Observations
 
 https://www.youtube.com/watch?v=uJeJ4YiVFz8
 
@@ -15,3 +14,4 @@ Without LALSuite, the following FIGARO functions won't be available:
 
 In order to install LALSuite, follow the instructions provided in https://wiki.ligo.org/Computing/LALSuiteInstall
 
+[![DOI](https://zenodo.org/badge/456607274.svg)](https://zenodo.org/badge/latestdoi/456607274)
