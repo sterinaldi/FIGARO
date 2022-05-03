@@ -7,25 +7,12 @@ from scipy.special import logsumexp
 
 LOG2PI = np.log(2*np.pi)
 
-"""
-See https://stackoverflow.com/a/54855769
-Wrapper (based on https://github.com/numba/numba/issues/3086) for scipy's cython implementation of gammaln.
-"""
-
-_PTR = ctypes.POINTER
-_dble = ctypes.c_double
-_ptr_dble = _PTR(_dble)
-
-addr = get_cython_function_address("scipy.special.cython_special", "gammaln")
-functype = ctypes.CFUNCTYPE(_dble, _dble)
-gammaln_float64 = functype(addr)
-
 #-----------#
 # Functions #
 #-----------#
 
 @jit
-def log_add(x, y):
+def _log_add(x, y):
     """
     Compute log(np.exp(x) + np.exp(y))
     
@@ -42,7 +29,7 @@ def log_add(x, y):
         return y+np.log1p(np.exp(x-y))
 
 @jit
-def log_add_array(x,y):
+def _log_add_array(x,y):
     """
     Compute log(np.exp(x) + np.exp(y)) element-wise
     
@@ -55,27 +42,8 @@ def log_add_array(x,y):
     """
     res = np.zeros(len(x), dtype = np.float64)
     for i in prange(len(x)):
-        res[i] = log_add(x[i],y[i])
+        res[i] = _log_add(x[i],y[i])
     return res
-    
-@njit
-def numba_gammaln(x):
-    return gammaln_float64(x)
-
-@jit
-def log_invgamma(x, a, b):
-    """
-    Inverse Gamma logpdf
-    
-    Arguments:
-        :double x: value
-        :double a: shape parameter
-        :double b: scale parameter
-    
-    Returns:
-        :double: InverseGamma(a,b).logpdf(var^2)
-    """
-    return a*np.log(b) - (a+1)*np.log(x**2) - b/x**2 - numba_gammaln(a)
 
 @jit
 def log_norm_1d(x, m, s):
@@ -101,9 +69,9 @@ def logdet_jit(M):
     return np.log(np.linalg.det(M))
 
 @njit
-def triple_product(v, M, n):
+def scalar_product(v, M, n):
     """
-    Triple product: v*M*v^T
+    Scalar product: v*M*v^T
     
     Arguments:
         :np.ndarray v: array
@@ -133,7 +101,7 @@ def log_norm(x, mu, cov):
         :double: MultivariateNormal(m,s).logpdf(x)
     """
     inv_cov  = inv_jit(cov)
-    exponent = -0.5*triple_product(x-mu, inv_cov, len(mu))
+    exponent = -0.5*scalar_product(x-mu, inv_cov, len(mu))
     lognorm  = 0.5*len(mu)*LOG2PI+0.5*logdet_jit(cov)
     return -lognorm+exponent
 
@@ -220,7 +188,7 @@ def log_prob_mixture_1d(mu, sigma, log_w, means, covs):
     """
     logP = -np.inf
     for i in prange(len(means)):
-        logP = log_add(logP, log_w[i] + log_norm_1d(means[i,0], mu, sigma + covs[i,0,0]))
+        logP = _log_add(logP, log_w[i] + log_norm_1d(means[i,0], mu, sigma + covs[i,0,0]))
     return logP
 
 def MC_predictive_1d(events, n_samps = 1000, a = 2, b = 0.2):
@@ -261,7 +229,7 @@ def log_prob_mixture_1d_MC(mu, sigma, log_w, means, covs):
     """
     logP = -np.ones(len(mu), dtype = np.float64)*np.inf
     for i in prange(len(means)):
-        logP = log_add_array(logP, log_w[i] + log_norm_1d(means[i,0], mu, sigma + covs[i,0,0]))
+        logP = _log_add_array(logP, log_w[i] + log_norm_1d(means[i,0], mu, sigma + covs[i,0,0]))
     return logP
 
 #------------#
@@ -292,8 +260,7 @@ def expected_vals_MC(means, covs, log_w, dim, n_samps = 1000, a = 2, b = np.arra
     for i in range(n_samps):
         P[i] = log_integrand(mu[i], sigma[i], means, covs, log_w)
     P = np.exp(P)
-    norm = np.sum(P)
-    return np.atleast_2d(np.average(mu, weights = P/norm, axis = 0)), np.atleast_2d(np.average(sigma, weights = P/norm, axis = 0))
+    return np.atleast_2d(np.average(mu, weights = P, axis = 0)), np.atleast_2d(np.average(sigma, weights = P, axis = 0))
 
 def log_integrand(mu, sigma, means, covs, log_w):
     """
@@ -331,7 +298,7 @@ def log_prob_mixture(mu, cov, means, sigmas, log_w):
     """
     logP = -np.inf
     for i in range(len(means)):
-        logP = log_add(logP, log_w[i] + log_norm(means[i], mu, sigmas[i] + cov))
+        logP = _log_add(logP, log_w[i] + log_norm(means[i], mu, sigmas[i] + cov))
     return logP
 
 def MC_predictive(events, dim, n_samps = 1000, a = 2, b = np.array([0.2])):
@@ -375,5 +342,5 @@ def log_prob_mixture_MC(mu, cov, log_w, means, covs):
     """
     logP = -np.ones(len(mu), dtype = np.float64)*np.inf
     for i in prange(len(means)):
-        logP = log_add_array(logP, log_w[i] + log_norm_array(means[i], mu, covs[i] + cov))
+        logP = _log_add_array(logP, log_w[i] + log_norm_array(means[i], mu, covs[i] + cov))
     return logP
