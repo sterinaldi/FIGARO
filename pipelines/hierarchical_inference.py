@@ -22,7 +22,7 @@ def main():
     parser.add_option("-b", "--bounds", type = "string", dest = "bounds", help = "Density bounds. Must be a string formatted as '[[xmin, xmax], [ymin, ymax],...]'. For 1D distributions use '[[xmin, xmax]]'. Quotation marks are required and scientific notation is accepted", default = None)
     parser.add_option("-o", "--output", type = "string", dest = "output", help = "Output folder. Default: same directory as samples folder", default = None)
     parser.add_option("--inj_density", type = "string", dest = "inj_density_file", help = "Python module with injected density - please name the method 'density'", default = None)
-    parser.add_option("--parameter", type = "string", dest = "par", help = "GW parameter(s) to be read from files", default = 'm1')
+    parser.add_option("--parameter", type = "string", dest = "par", help = "GW parameter(s) to be read from files", default = None)
     # Plot
     parser.add_option("--name", type = "string", dest = "h_name", help = "Name to be given to hierarchical inference files. Default: same name as samples folder parent directory", default = None)
     parser.add_option("-p", "--postprocess", dest = "postprocess", action = 'store_true', help = "Postprocessing", default = False)
@@ -77,7 +77,8 @@ def main():
     # Read cosmology
     options.h, options.om, options.ol = (float(x) for x in options.cosmology.split(','))
     # Read parameter(s)
-    options.par = options.par.split(',')
+    if options.par is not None:
+        options.par = options.par.split(',')
     # Read number of single-event draws
     if options.n_se_draws is None:
         options.n_se_draws = options.n_draws
@@ -86,7 +87,7 @@ def main():
     
     # Load samples
     events, names = load_data(options.samples_folder, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol)
-    all_samples = np.atleast_2d(np.concatenate(events)).T
+    all_samples = np.atleast_2d(np.concatenate(events))
     try:
         dim = np.shape(events[0][0])[-1]
     except IndexError:
@@ -113,7 +114,7 @@ def main():
                 name = names[i]
                 # Variance prior from samples
                 probit_samples = transform_to_probit(ev, options.bounds)
-                sigma = np.atleast_2d(np.var(probit_samples, axis = 0)/25)
+                sigma = np.atleast_2d(np.cov(probit_samples.T)/25)
                 mix.initialise(prior_pars = (1e-1, sigma/25, dim, np.zeros(dim)))
                 # Draw samples
                 draws = []
@@ -145,7 +146,7 @@ def main():
                 print("No posteriors_single_event.pkl file found. Please provide it or re-run the single-event inference")
                 exit()
         probit_samples = transform_to_probit(all_samples, options.bounds)
-        sigma = np.atleast_2d(np.var(probit_samples, axis = 0))
+        sigma = np.atleast_2d(np.cov(probit_samples.T))
         mix = HDPGMM(options.bounds, prior_pars = (1e-1, sigma/25, dim, np.zeros(dim)))
         draws = []
         # Run hierarchical analysis
@@ -167,9 +168,9 @@ def main():
             exit()
     # Plot
     if dim == 1:
-        plot_median_cr(draws, injected = inj_density, samples = true_vals, out_folder = output_plots, name = options.h_name, label = options.symbol, unit = options.unit)
+        plot_median_cr(draws, injected = inj_density, samples = true_vals, out_folder = output_plots, name = options.h_name, label = options.symbol, unit = options.unit, hierarchical = True)
     else:
-        plot_multidim(draws, dim, samples = true_vals, out_folder = output_plots, name = options.h_name, labels = symbols, units = units)
+        plot_multidim(draws, dim, samples = true_vals, out_folder = output_plots, name = options.h_name, labels = symbols, units = units, hierarchical = True)
 
 if __name__ == '__main__':
     main()
