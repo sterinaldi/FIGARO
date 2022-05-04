@@ -11,7 +11,7 @@ from scipy.stats import invgamma, invwishart
 
 from figaro.decorators import *
 from figaro.transform import *
-from figaro.montecarlo import compute_probability, compute_probability_1d
+from figaro.montecarlo import evaluate_mixture_MC_draws, evaluate_mixture_MC_draws_1d
 from figaro.exceptions import except_hook
 
 from numba import jit, njit, prange
@@ -273,17 +273,14 @@ class mixture:
         :mixture: instance of mixture class
     """
     def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, hier_flag = False):
-        if dim > 1 and hier_flag:
-            self.means = np.array([m[0] for m in means])
-        else:
-            self.means = means
-        self.covs     = covs
-        self.w        = w
-        self.log_w    = np.log(w)
-        self.bounds   = bounds
-        self.dim      = dim
-        self.n_cl     = n_cl
-        self.n_pts    = n_pts
+        self.means  = means
+        self.covs   = covs
+        self.w      = w
+        self.log_w  = np.log(w)
+        self.bounds = bounds
+        self.dim    = dim
+        self.n_cl   = n_cl
+        self.n_pts  = n_pts
         
     @probit
     def evaluate_mixture(self, x):
@@ -744,9 +741,9 @@ class HDPGMM(DPGMM):
         logL_N = {}
         
         if self.dim == 1:
-            logL_x = compute_probability_1d(self.mu_MC, self.sigma_MC, x.means, x.covs, x.log_w)
+            logL_x = evaluate_mixture_MC_draws_1d(self.mu_MC, self.sigma_MC, x.means, x.covs, x.w)
         else:
-            logL_x = compute_probability(self.mu_MC, self.sigma_MC, x.means, x.covs, x.log_w)
+            logL_x = evaluate_mixture_MC_draws(self.mu_MC, self.sigma_MC, x.means, x.covs, x.w)
 
         for i in list(np.arange(self.n_cl)) + ["new"]:
             if i == "new":
@@ -784,15 +781,11 @@ class HDPGMM(DPGMM):
         else:
             self.mixture[int(cid)] = self._add_datapoint_to_component(x, self.mixture[int(cid)], logL_N[int(cid)])
             self.N_list[int(cid)] += 1
-            
         # Update weights
         self.w = np.array(self.N_list)
         self.w = self.w/self.w.sum()
         self.log_w = np.log(self.w)
         return
-
-            
-        return logsumexp(logL_N + logL_D) - logsumexp(logL_D), logL_N + logL_D
 
     def _add_datapoint_to_component(self, x, ss, logL_D):
         """
@@ -817,7 +810,7 @@ class HDPGMM(DPGMM):
         if self.dim == 1:
             ss.mu = np.atleast_2d(ss.mu).T
             ss.sigma = np.atleast_2d(ss.sigma).T
-
+        
         ss.N += 1
         return ss
 
@@ -830,13 +823,3 @@ class HDPGMM(DPGMM):
         """
         for ev in events:
             self.add_new_point(ev)
-
-    # Overwrites parent function to account for hierarchical issues
-    def build_mixture(self):
-        """
-        Instances a mixture class representing the inferred distribution
-        
-        Returns:
-            :mixture: the inferred distribution
-        """
-        return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, self.n_pts, hier_flag = True)
