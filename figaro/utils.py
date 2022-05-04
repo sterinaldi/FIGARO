@@ -231,8 +231,8 @@ def plot_median_cr(draws, injected = None, samples = None, bounds = None, out_fo
         fig.savefig(Path(out_folder, '{0}.pdf'.format(name)), bbox_inches = 'tight')
         ax.set_yscale('log')
         fig.savefig(Path(out_folder, 'log_{0}.pdf'.format(name)), bbox_inches = 'tight')
-        plt.close()
         np.savetxt(Path(out_folder, 'prob_{0}.txt'.format(name)), np.array([x, p[50], p[5], p[16], p[84], p[95]]).T, header = 'x 50 5 16 84 95')
+    plt.close()
 
 def plot_multidim(draws, dim, samples = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True):
     """
@@ -265,9 +265,9 @@ def plot_multidim(draws, dim, samples = None, out_folder = '.', name = 'density'
     
     # Draw samples from mixture
     if samples is not None:
-        size = np.min([1000, len(samples)])
+        size = np.max([100**dim, len(samples)])
     else:
-        size = 1000
+        size = 100**dim
         
     idx = np.random.choice(np.arange(len(draws)), size = size)
     ctr = Counter(idx)
@@ -288,6 +288,7 @@ def plot_multidim(draws, dim, samples = None, out_folder = '.', name = 'density'
         plt.show()
     if save:
         c.savefig(Path(out_folder, '{0}.pdf'.format(name)), bbox_inches = 'tight')
+    plt.close()
 
 def plot_n_clusters_alpha(n_cl, alpha, out_folder = '.', name = 'event', show = False, save = True):
     """
