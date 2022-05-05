@@ -101,10 +101,11 @@ def autocorrelation(draws, bounds = None, out_folder = '.', name = 'event', n_po
     taumax, ac = compute_autocorrelation(functions, mean, dx)
     
     fig, ax = plt.subplots()
+    ax.axhline(0, lw = 0.5, ls = '--', c = 'r')
     ax.plot(np.arange(taumax), ac, ls = '--', marker = '', lw = 0.7)
     ax.set_xlabel('$\\tau$')
     ax.set_ylabel('$C(\\tau)$')
-    ax.grid(visible = True)
+    ax.grid(True,dashes=(1,3))
     if show:
         plt.show()
     if save:
@@ -166,7 +167,7 @@ def entropy(draws, out_folder = '.', name = 'event', n_draws = 1e3, step = 1, di
     ax.plot(np.arange(1, len(draws)+1)*step, S, ls = '--', marker = '', lw = 0.7)
     ax.set_xlabel('$N$')
     ax.set_ylabel('$S(N)\ [\mathrm{bits}]$')
-    ax.grid()
+    ax.grid(True,dashes=(1,3))
     if show:
         plt.show()
     if save:
@@ -192,10 +193,11 @@ def plot_angular_coefficient(entropy, L = 500, out_folder = '.', name = 'event',
     """
     S = compute_angular_coefficients(entropy, L = L)
     fig, ax = plt.subplots()
+    ax.axhline(0, lw = 0.5, ls = '--', c = 'r')
     ax.plot(np.arange(len(S))*step+L, S, ls = '--', marker = '', color = 'steelblue', lw = 0.7)
     ax.set_ylabel('$\\frac{dS(N)}{dN}$')
     ax.set_xlabel('$N$')
-    ax.grid()
+    ax.grid(True,dashes=(1,3))
     if show:
         plt.show()
     if save:
