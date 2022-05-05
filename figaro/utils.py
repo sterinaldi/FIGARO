@@ -144,7 +144,7 @@ class PPPlot(axes.Axes):
         
 projection_registry.register(PPPlot)
 
-def plot_median_cr(draws, injected = None, samples = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True):
+def plot_median_cr(draws, injected = None, samples = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True, subfolder = False):
     """
     Plot the recovered 1D distribution along with the injected distribution and samples from the true distribution (both if available).
     
@@ -231,13 +231,27 @@ def plot_median_cr(draws, injected = None, samples = None, bounds = None, out_fo
     if show:
         plt.show()
     if save:
-        fig.savefig(Path(out_folder, '{0}.pdf'.format(name)), bbox_inches = 'tight')
+        if subfolder:
+            plot_folder = Path(out_folder, 'density')
+            if not plot_folder.exists():
+                plot_folder.mkdir()
+            log_folder = Path(out_folder, 'log_density')
+            if not log_folder.exists():
+                log_folder.mkdir()
+            txt_folder = Path(out_folder, 'txt')
+            if not txt_folder.exists():
+                txt_folder.mkdir()
+        else:
+            plot_folder = out_folder
+            log_folder  = out_folder
+            txt_folder  = out_folder
+        fig.savefig(Path(plot_folder, '{0}.pdf'.format(name)), bbox_inches = 'tight')
         ax.set_yscale('log')
-        fig.savefig(Path(out_folder, 'log_{0}.pdf'.format(name)), bbox_inches = 'tight')
-        np.savetxt(Path(out_folder, 'prob_{0}.txt'.format(name)), np.array([x, p[50], p[5], p[16], p[84], p[95]]).T, header = 'x 50 5 16 84 95')
+        fig.savefig(Path(log_folder, 'log_{0}.pdf'.format(name)), bbox_inches = 'tight')
+        np.savetxt(Path(txt_folder, 'prob_{0}.txt'.format(name)), np.array([x, p[50], p[5], p[16], p[84], p[95]]).T, header = 'x 50 5 16 84 95')
     plt.close()
 
-def plot_multidim(draws, dim, samples = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True):
+def plot_multidim(draws, dim, samples = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False):
     """
     Plot the recovered multidimensional distribution along with samples from the true distribution (if available) as corner plot.
     
@@ -290,7 +304,12 @@ def plot_multidim(draws, dim, samples = None, out_folder = '.', name = 'density'
     if show:
         plt.show()
     if save:
-        c.savefig(Path(out_folder, '{0}.pdf'.format(name)), bbox_inches = 'tight')
+        if not subfolder:
+            c.savefig(Path(out_folder, '{0}.pdf'.format(name)), bbox_inches = 'tight')
+        else:
+            if not Path(out_folder, 'density').exists():
+                Path(out_folder, 'density').mkdir()
+            c.savefig(Path(out_folder, 'density', '{0}.pdf'.format(name)), bbox_inches = 'tight')
     plt.close()
 
 def plot_n_clusters_alpha(n_cl, alpha, out_folder = '.', name = 'event', show = False, save = True):
@@ -312,7 +331,7 @@ def plot_n_clusters_alpha(n_cl, alpha, out_folder = '.', name = 'event', show = 
     ax.set_xlabel('$t$')
     ax.set_ylabel('$N_{\mathrm{cl}}(t)$', color = 'k')
     ax1.set_ylabel('$\alpha(t)$', color = 'r')
-    ax.grid()
+    ax.grid(True,dashes=(1,3))
     if show:
         plt.show()
     if save:
@@ -352,7 +371,7 @@ def pp_plot_cdf(draws, injection, n_points = 1000, out_folder = '.', name = 'eve
     ax.plot(cdf_injection, cdf, color = 'steelblue', lw = 0.7)
     ax.set_xlabel('$\mathrm{Injected}$')
     ax.set_ylabel('$\mathrm{FIGARO}$')
-    ax.grid()
+    ax.grid(True,dashes=(1,3))
     if show:
         plt.show()
     if save:
