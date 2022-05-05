@@ -239,7 +239,7 @@ def plot_median_cr(draws, injected = None, samples = None, bounds = None, out_fo
 
 def plot_multidim(draws, dim, samples = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True):
     """
-    Plot the recovered multidimensional distribution along with samples from the true distribution (if available).
+    Plot the recovered multidimensional distribution along with samples from the true distribution (if available) as corner plot.
     
     Arguments:
         :iterable draws:         container for mixture instances
