@@ -200,6 +200,7 @@ def plot_median_cr(draws, injected = None, samples = None, bounds = None, out_fo
     # Samples (if available)
     if samples is not None:
         ax.hist(samples, bins = int(np.sqrt(len(samples))), histtype = 'step', density = True, stacked = True, label = '$\mathrm{Samples}$')
+        xlim = ax.get_xlim()
     
     # CR
     ax.fill_between(x, p[95], p[5], color = 'mediumturquoise', alpha = 0.5)
@@ -223,6 +224,8 @@ def plot_median_cr(draws, injected = None, samples = None, bounds = None, out_fo
     else:
         ax.set_xlabel('${0}\ [{1}]$'.format(label, unit))
     ax.set_ylabel('$p({0})$'.format(label))
+    if samples is not None:
+        ax.set_xlim(xlim)
     ax.grid(True,dashes=(1,3))
     ax.legend(loc = 0, frameon = False)
     if show:
@@ -231,12 +234,12 @@ def plot_median_cr(draws, injected = None, samples = None, bounds = None, out_fo
         fig.savefig(Path(out_folder, '{0}.pdf'.format(name)), bbox_inches = 'tight')
         ax.set_yscale('log')
         fig.savefig(Path(out_folder, 'log_{0}.pdf'.format(name)), bbox_inches = 'tight')
-        plt.close()
         np.savetxt(Path(out_folder, 'prob_{0}.txt'.format(name)), np.array([x, p[50], p[5], p[16], p[84], p[95]]).T, header = 'x 50 5 16 84 95')
+    plt.close()
 
 def plot_multidim(draws, dim, samples = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True):
     """
-    Plot the recovered multidimensional distribution along with samples from the true distribution (if available).
+    Plot the recovered multidimensional distribution along with samples from the true distribution (if available) as corner plot.
     
     Arguments:
         :iterable draws:         container for mixture instances
@@ -265,9 +268,9 @@ def plot_multidim(draws, dim, samples = None, out_folder = '.', name = 'density'
     
     # Draw samples from mixture
     if samples is not None:
-        size = np.min([1000, len(samples)])
+        size = np.max([100**dim, len(samples)])
     else:
-        size = 1000
+        size = 100**dim
         
     idx = np.random.choice(np.arange(len(draws)), size = size)
     ctr = Counter(idx)
@@ -288,6 +291,7 @@ def plot_multidim(draws, dim, samples = None, out_folder = '.', name = 'density'
         plt.show()
     if save:
         c.savefig(Path(out_folder, '{0}.pdf'.format(name)), bbox_inches = 'tight')
+    plt.close()
 
 def plot_n_clusters_alpha(n_cl, alpha, out_folder = '.', name = 'event', show = False, save = True):
     """

@@ -7,11 +7,11 @@ from pathlib import Path
 
 from scipy.special import gammaln, logsumexp
 from scipy.stats import multivariate_normal as mn
-from scipy.stats import invwishart
+from scipy.stats import invgamma, invwishart
 
 from figaro.decorators import *
 from figaro.transform import *
-from figaro.montecarlo import MC_predictive_1d, MC_predictive, expected_vals_MC_1d, expected_vals_MC
+from figaro.montecarlo import evaluate_mixture_MC_draws, evaluate_mixture_MC_draws_1d
 from figaro.exceptions import except_hook
 
 from numba import jit, njit, prange
@@ -241,7 +241,7 @@ class component_h:
     Returns:
         :component_h: instance of component_h class
     """
-    def __init__(self, x, dim, prior, logL_D):
+    def __init__(self, x, dim, prior, logL_D, mu_MC, sigma_MC):
         self.dim    = dim
         self.N      = 1
         self.events = [x]
@@ -250,11 +250,12 @@ class component_h:
         self.log_w  = [x.log_w]
         self.logL_D = logL_D
         
-        if self.dim == 1:
-            self.mu, self.sigma = expected_vals_MC_1d(self.means, self.covs, self.log_w, a = prior.nu+1, b = prior.L[0,0])
-        else:
-            self.mu, self.sigma = expected_vals_MC(self.means, self.covs, self.log_w, self.dim, a = prior.nu, b = prior.L)
-    
+        self.mu    = np.average(mu_MC, weights = np.exp(logL_D), axis = 0)
+        self.sigma = np.average(sigma_MC, weights = np.exp(logL_D), axis = 0)
+        if dim == 1:
+            self.mu = np.atleast_2d(self.mu).T
+            self.sigma = np.atleast_2d(self.sigma).T
+            
 class mixture:
     """
     Class to store a single draw from DPGMM/(H)DPGMM.
@@ -272,17 +273,14 @@ class mixture:
         :mixture: instance of mixture class
     """
     def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, hier_flag = False):
-        if dim > 1 and hier_flag:
-            self.means = np.array([m[0] for m in means])
-        else:
-            self.means = means
-        self.covs     = covs
-        self.w        = w
-        self.log_w    = np.log(w)
-        self.bounds   = bounds
-        self.dim      = dim
-        self.n_cl     = n_cl
-        self.n_pts    = n_pts
+        self.means  = means
+        self.covs   = covs
+        self.w      = w
+        self.log_w  = np.log(w)
+        self.bounds = bounds
+        self.dim    = dim
+        self.n_cl   = n_cl
+        self.n_pts  = n_pts
         
     @probit
     def evaluate_mixture(self, x):
@@ -410,7 +408,7 @@ class DPGMM:
         if prior_pars is not None:
             self.prior = prior(*prior_pars)
         else:
-            self.prior = prior(1e-1, np.identity(self.dim)*0.2**2, self.dim, np.zeros(self.dim))
+            self.prior = prior(1e-2, np.identity(self.dim)*0.1**2, np.min([2*self.dim, 3]), np.zeros(self.dim))
         self.alpha      = alpha0
         self.alpha_0    = alpha0
         self.mixture    = []
@@ -707,9 +705,26 @@ class HDPGMM(DPGMM):
                        ):
         dim = len(bounds)
         if prior_pars == None:
-            prior_pars = (1e-1, np.identity(dim)*0.2**2, dim, np.zeros(dim))
+            prior_pars = (1e-2, np.identity(dim)*0.1**2, np.max([2*dim, 3]), np.zeros(dim))
         super().__init__(bounds = bounds, prior_pars = prior_pars, alpha0 = alpha0, out_folder = out_folder)
         self.MC_draws = int(MC_draws)
+        if self.dim == 1:
+            self.sigma_MC = invgamma(self.prior.nu/2, scale = self.prior.nu*self.prior.L[0,0]/2.).rvs(size = self.MC_draws)
+            self.mu_MC    = np.array([np.random.normal(loc = self.prior.mu[0], scale = s) for s in np.sqrt(self.sigma_MC/self.prior.k)])
+        else:
+            df = np.max([self.prior.nu, dim + 2])
+            self.sigma_MC = invwishart(df = df, scale = self.prior.L*(df-dim-1)).rvs(size = self.MC_draws)
+            self.mu_MC    = np.array([mn(self.prior.mu, s/self.prior.k).rvs() for s in self.sigma_MC])
+        
+    def initialise(self, prior_pars = None):
+        super().initialise(prior_pars = prior_pars)
+        if self.dim == 1:
+            self.sigma_MC = invgamma(self.prior.nu/2, scale = self.prior.nu*self.prior.L[0,0]/2.).rvs(size = self.MC_draws)
+            self.mu_MC    = np.array([np.random.normal(loc = self.prior.mu[0], scale = s) for s in np.sqrt(self.sigma_MC/self.prior.k)])
+        else:
+            df = np.max([self.prior.nu, dim + 2])
+            self.sigma_MC = invwishart(df = df, scale = self.prior.L*(df-dim-1)).rvs(size = self.MC_draws)
+            self.mu_MC    = np.array([mn(self.prior.mu, s/self.prior.k).rvs() for s in self.sigma_MC])
     
     def add_new_point(self, ev):
         """
@@ -735,12 +750,21 @@ class HDPGMM(DPGMM):
         """
         scores = {}
         logL_N = {}
+        
+        if self.dim == 1:
+            logL_x = evaluate_mixture_MC_draws_1d(self.mu_MC, self.sigma_MC, x.means, x.covs, x.w)
+        else:
+            logL_x = evaluate_mixture_MC_draws(self.mu_MC, self.sigma_MC, x.means, x.covs, x.w)
+
         for i in list(np.arange(self.n_cl)) + ["new"]:
             if i == "new":
                 ss = "new"
+                logL_D = np.zeros(self.MC_draws)
             else:
                 ss = self.mixture[i]
-            scores[i], logL_N[i] = self._log_predictive_likelihood(x, ss)
+                logL_D = ss.logL_D
+            scores[i] = logsumexp(logL_D + logL_x) - logsumexp(logL_D)
+            logL_N[i] = logL_D + logL_x
             if ss == "new":
                 scores[i] += np.log(self.alpha)
             else:
@@ -762,46 +786,17 @@ class HDPGMM(DPGMM):
         labels, scores = zip(*scores)
         cid = np.random.choice(labels, p=scores)
         if cid == "new":
-            self.mixture.append(component_h(x, self.dim, self.prior, logL_N[cid]))
+            self.mixture.append(component_h(x, self.dim, self.prior, logL_N[cid], self.mu_MC, self.sigma_MC))
             self.N_list.append(1.)
             self.n_cl += 1
         else:
             self.mixture[int(cid)] = self._add_datapoint_to_component(x, self.mixture[int(cid)], logL_N[int(cid)])
             self.N_list[int(cid)] += 1
-            
         # Update weights
         self.w = np.array(self.N_list)
         self.w = self.w/self.w.sum()
         self.log_w = np.log(self.w)
         return
-
-    def _log_predictive_likelihood(self, x, ss):
-        """
-        Compute log likelihood of drawing sample x from component ss given the samples that are already assigned to that component.
-        
-        Arguments:
-            :np.ndarray x: sample
-            :component ss: component to update
-        
-        Returns:
-            :double: log Likelihood
-        """
-        if ss == "new":
-            ss     = component(np.zeros(self.dim), prior = self.prior)
-            events = []
-            ss.N   = 0.
-            logL_D = 0.
-        else:
-            events = ss.events
-            logL_D = ss.logL_D
-            
-        events.append(x)
-        
-        if self.dim == 1:
-            logL_N = MC_predictive_1d(events, n_samps = self.MC_draws, a = self.prior.nu+1, b = self.prior.L[0,0])
-        else:
-            logL_N = MC_predictive(events, self.dim, n_samps = self.MC_draws, a = self.prior.nu, b = self.prior.L)
-        return logL_N - logL_D, logL_N
 
     def _add_datapoint_to_component(self, x, ss, logL_D):
         """
@@ -821,10 +816,14 @@ class HDPGMM(DPGMM):
         ss.log_w.append(x.log_w)
         ss.logL_D = logL_D
         
+        log_norm = logsumexp(logL_D)
+
+        ss.mu    = np.average(self.mu_MC, weights = np.exp(logL_D - log_norm), axis = 0)
+        ss.sigma = np.average(self.sigma_MC, weights = np.exp(logL_D - log_norm), axis = 0)
         if self.dim == 1:
-            ss.mu, ss.sigma = expected_vals_MC_1d(ss.means, ss.covs, ss.log_w, a = self.prior.nu+1, b = self.prior.L[0,0])
-        else:
-            ss.mu, ss.sigma = expected_vals_MC(ss.means, ss.covs, ss.log_w, self.dim, a = self.prior.nu, b = self.prior.L)
+            ss.mu = np.atleast_2d(ss.mu).T
+            ss.sigma = np.atleast_2d(ss.sigma).T
+        
         ss.N += 1
         return ss
 
@@ -837,13 +836,3 @@ class HDPGMM(DPGMM):
         """
         for ev in events:
             self.add_new_point(ev)
-
-    # Overwrites parent function to account for hierarchical issues
-    def build_mixture(self):
-        """
-        Instances a mixture class representing the inferred distribution
-        
-        Returns:
-            :mixture: the inferred distribution
-        """
-        return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, self.n_pts, hier_flag = True)
