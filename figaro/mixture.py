@@ -152,7 +152,7 @@ def compute_hyperpars(k, mu, nu, L, mean, S, N):
     k_n  = k + N
     mu_n = (mu*k + N*mean)/k_n
     nu_n = nu + N
-    L_n  = L*k + S*N + k*N*((mean - mu).T@(mean - mu))/k_n
+    L_n  = L + S*N + k*N*((mean - mu).T@(mean - mu))/k_n
     return k_n, mu_n, nu_n, L_n
 
 @jit
@@ -181,7 +181,7 @@ def compute_component_suffstats(x, mean, cov, N, p_mu, p_k, p_nu, p_L):
     new_cov   = (N*(cov + mean.T@mean) + x.T@x)/(N+1) - new_mean.T@new_mean
     new_N     = N+1
     new_mu    = ((p_mu*p_k + new_N*new_mean)/(p_k + new_N))[0]
-    new_sigma = (p_L*p_k + new_cov*new_N + p_k*new_N*((new_mean - p_mu).T@(new_mean - p_mu))/(p_k + new_N))/(p_nu + new_N)
+    new_sigma = (p_L + new_cov*new_N + p_k*new_N*((new_mean - p_mu).T@(new_mean - p_mu))/(p_k + new_N))/(p_nu + new_N - x.shape[-1] - 1)
     
     return new_mean, new_cov, new_N, new_mu, new_sigma
 
@@ -204,8 +204,8 @@ class prior:
         :prior: instance of prior class
     """
     def __init__(self, k, L, nu, mu):
-        self.k = k
-        self.L = L
+        self.k  = k
+        self.L  = L*(nu-mu.shape[-1]-1)
         self.mu = mu
         self.nu = nu
 
@@ -225,7 +225,7 @@ class component:
         self.mean  = x
         self.cov   = np.identity(x.shape[-1])*0.
         self.mu    = np.atleast_2d((prior.mu*prior.k + self.N*self.mean)/(prior.k + self.N)).astype(np.float64)[0]
-        self.sigma = np.identity(x.shape[-1]).astype(np.float64)*prior.L
+        self.sigma = np.identity(x.shape[-1]).astype(np.float64)*prior.L/(prior.nu - x.shape[-1] - 1)
 
 class component_h:
     """
@@ -408,7 +408,7 @@ class DPGMM:
         if prior_pars is not None:
             self.prior = prior(*prior_pars)
         else:
-            self.prior = prior(1e-2, np.identity(self.dim)*0.1**2, np.min([2*self.dim, 3]), np.zeros(self.dim))
+            self.prior = prior(1e-2, np.identity(self.dim)*0.2**2, self.dim+2, np.zeros(self.dim))
         self.alpha      = alpha0
         self.alpha_0    = alpha0
         self.mixture    = []
@@ -705,7 +705,7 @@ class HDPGMM(DPGMM):
                        ):
         dim = len(bounds)
         if prior_pars == None:
-            prior_pars = (1e-2, np.identity(dim)*0.1**2, np.max([2*dim, 3]), np.zeros(dim))
+            prior_pars = (1e-2, np.identity(dim)*0.2**2, dim+2, np.zeros(dim))
         super().__init__(bounds = bounds, prior_pars = prior_pars, alpha0 = alpha0, out_folder = out_folder)
         self.MC_draws = int(MC_draws)
         if self.dim == 1:
