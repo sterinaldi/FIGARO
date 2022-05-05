@@ -199,13 +199,15 @@ def plot_median_cr(draws, injected = None, samples = None, bounds = None, out_fo
     
     # Samples (if available)
     if samples is not None:
-        ax.hist(samples, bins = int(np.sqrt(len(samples))), histtype = 'step', density = True, stacked = True, label = '$\mathrm{Samples}$')
+        ax.hist(samples, bins = int(np.sqrt(len(samples))), histtype = 'step', density = True, label = '$\mathrm{Samples}$', log = True)
         xlim = ax.get_xlim()
+        ylim = ax.get_ylim()
+    else:
+        ax.set_yscale('log')
     
     # CR
     ax.fill_between(x, p[95], p[5], color = 'mediumturquoise', alpha = 0.5)
     ax.fill_between(x, p[84], p[16], color = 'darkturquoise', alpha = 0.5)
-    
     # Injection (if available)
     if injected is not None:
         if callable(injected):
@@ -216,7 +218,6 @@ def plot_median_cr(draws, injected = None, samples = None, bounds = None, out_fo
     
     # Median
     ax.plot(x, p[50], lw = 0.7, color = 'steelblue', label = '${0}$'.format(rec_label))
-    
     if label is None:
         label = 'x'
     if unit is None:
@@ -226,10 +227,12 @@ def plot_median_cr(draws, injected = None, samples = None, bounds = None, out_fo
     ax.set_ylabel('$p({0})$'.format(label))
     if samples is not None:
         ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
+    else:
+        ylim_d, ylim_u = ax.get_xlim()
+        ax.set_ylim(1e-5, ylim_u)
     ax.grid(True,dashes=(1,3))
     ax.legend(loc = 0, frameon = False)
-    if show:
-        plt.show()
     if save:
         if subfolder:
             plot_folder = Path(out_folder, 'density')
@@ -245,10 +248,19 @@ def plot_median_cr(draws, injected = None, samples = None, bounds = None, out_fo
             plot_folder = out_folder
             log_folder  = out_folder
             txt_folder  = out_folder
-        fig.savefig(Path(plot_folder, '{0}.pdf'.format(name)), bbox_inches = 'tight')
-        ax.set_yscale('log')
         fig.savefig(Path(log_folder, 'log_{0}.pdf'.format(name)), bbox_inches = 'tight')
+        ax.set_yscale('linear')
+        ax.autoscale(True)
+        if samples is not None:
+            ax.set_xlim(xlim)
+        fig.savefig(Path(plot_folder, '{0}.pdf'.format(name)), bbox_inches = 'tight')
         np.savetxt(Path(txt_folder, 'prob_{0}.txt'.format(name)), np.array([x, p[50], p[5], p[16], p[84], p[95]]).T, header = 'x 50 5 16 84 95')
+    if show:
+        ax.set_yscale('linear')
+        ax.autoscale(True)
+        if samples is not None:
+            ax.set_xlim(xlim)
+        plt.show()
     plt.close()
 
 def plot_multidim(draws, dim, samples = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False):
@@ -335,7 +347,7 @@ def plot_n_clusters_alpha(n_cl, alpha, out_folder = '.', name = 'event', show = 
     if show:
         plt.show()
     if save:
-        fig.savefig(Path(out_folder, name+'_n_cl_alpha.pdf'), bbox_inches = 'tight')
+        fig.savefig(Path(out_folder, '{0}_n_cl_alpha.pdf'.format(name)), bbox_inches = 'tight')
     plt.close()
 
 def pp_plot_cdf(draws, injection, n_points = 1000, out_folder = '.', name = 'event', show = False, save = True):
@@ -375,5 +387,5 @@ def pp_plot_cdf(draws, injection, n_points = 1000, out_folder = '.', name = 'eve
     if show:
         plt.show()
     if save:
-        fig.savefig(Path(out_folder, name+'_ppplot.pdf'), bbox_inches = 'tight')
+        fig.savefig(Path(out_folder, '{0}_ppplot.pdf'.format(name)), bbox_inches = 'tight')
     plt.close()
