@@ -68,12 +68,18 @@ setup(
     url = 'https://github.com/sterinaldi/figaro',
     python_requires = '>=3.7',
     packages = ['figaro'],
+    py_modules = ['figaro/pipelines/probability_density', 'figaro/pipelines/hierarchical_inference', 'figaro/pipelines/create_glade'],
     install_requires=requirements,
     include_dirs = ['figaro', numpy.get_include()],
     setup_requires=['numpy', 'cython'],
-    entry_points={},
     package_data={"": ['*.c', '*.pyx', '*.pxd']},
     ext_modules=ext_modules,
+    entry_points = {
+        'console_scripts': ['figaro-density=figaro.pipelines.probability_density:main',
+                            'figaro-hierarchical=figaro.pipelines.hierarchical_inference:main',
+                            'figaro-glade=figaro.pipelines.create_glade:main',
+                            ],
+        }
     )
 
 setup(
