@@ -21,7 +21,7 @@ def main():
     parser.add_option("-b", "--bounds", type = "string", dest = "bounds", help = "Density bounds. Must be a string formatted as '[[xmin, xmax], [ymin, ymax],...]'. For 1D distributions use '[[xmin, xmax]]'. Quotation marks are required and scientific notation is accepted", default = None)
     parser.add_option("-o", "--output", type = "string", dest = "output", help = "Output folder. Default: same directory as samples", default = None)
     parser.add_option("--inj_density", type = "string", dest = "inj_density_file", help = "Python module with injected density - please name the method 'density'", default = None)
-    parser.add_option("--parameter", type = "string", dest = "par", help = "GW parameter(s) to be read from file", default = 'm1')
+    parser.add_option("--parameter", type = "string", dest = "par", help = "GW parameter(s) to be read from file", default = None)
     # Plot
     parser.add_option("-p", "--postprocess", dest = "postprocess", action = 'store_true', help = "Postprocessing", default = False)
     parser.add_option("--symbol", type = "string", dest = "symbol", help = "LaTeX-style quantity symbol, for plotting purposes", default = None)
@@ -58,8 +58,8 @@ def main():
     # Read cosmology
     options.h, options.om, options.ol = (float(x) for x in options.cosmology.split(','))
     # Read parameter(s)
-    options.par = options.par.split(',')
-
+    if options.par is not None:
+        options.par = options.par.split(',')
     save_options(options)
     
     # Load samples
