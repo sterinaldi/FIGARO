@@ -112,24 +112,17 @@ def main():
             for i in tqdm(range(len(events)), desc = 'Events'):
                 ev   = events[i]
                 name = names[i]
-                # Variance prior from samples
-                probit_samples = transform_to_probit(ev, options.bounds)
-                sigma = np.atleast_2d(np.cov(probit_samples.T))
-                mu    = np.mean(probit_samples, axis = 0)
-                n     = np.random.uniform(1.5, 8)
-                mix.initialise(prior_pars = (1e-3, sigma/n**2, dim, mu))
                 # Draw samples
                 draws = []
                 for _ in range(options.n_se_draws):
                     np.random.shuffle(ev)
                     mix.density_from_samples(ev)
                     draws.append(mix.build_mixture())
-                    n = np.random.uniform(1.5, 8)
-                    mix.initialise(prior_pars = (1e-2, sigma/n**2, dim, mu))
+                    mix.initialise()
                 posteriors.append(draws)
                 # Make plots
                 if dim == 1:
-                    plot_median_cr(draws, injected = inj_density, samples = ev, out_folder = output_plots, name = name, label = options.symbol, unit = options.unit)
+                    plot_median_cr(draws, samples = ev, out_folder = output_plots, name = name, label = options.symbol, unit = options.unit, subfolder = True)
                 else:
                     plot_multidim(draws, dim, samples = ev, out_folder = output_plots, name = name, labels = symbols, units = units)
                 # Save single-event draws
