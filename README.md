@@ -5,7 +5,7 @@ https://www.youtube.com/watch?v=uJeJ4YiVFz8
 To install FIGARO, run `python setup.py install` and `python setup.py build_ext --inplace`.\
 An introductive guide on how to use FIGARO can be found in the `introductive_guide.ipynb` notebook, where it is shown how to to reconstruct a probability density with FIGARO and how to use its products.\
 FIGARO comes with two plug-and-play console scripts, `figaro-density` and `figaro-hierarchical`. The first is meant to reconstruct a probability density given a set of samples, the latter performs the hierarchical inference on a collection of sets.\
-In order to see the available options, run `figaro-density -h` or `figaro-hierarchical -h'.
+In order to see the available options, run `figaro-density -h` or `figaro-hierarchical -h`.
 
 We recommend using the `igwn-py39` conda environment, which includes all the required packages apart from ImageIO.
 This environment is available at https://computing.docs.ligo.org/conda/environments/igwn-py39/   
