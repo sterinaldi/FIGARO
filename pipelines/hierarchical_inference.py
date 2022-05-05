@@ -114,8 +114,10 @@ def main():
                 name = names[i]
                 # Variance prior from samples
                 probit_samples = transform_to_probit(ev, options.bounds)
-                sigma = np.atleast_2d(np.cov(probit_samples.T)/25)
-                mix.initialise(prior_pars = (1e-1, sigma/25, dim, np.zeros(dim)))
+                sigma = np.atleast_2d(np.cov(probit_samples.T))
+                mu    = np.mean(probit_samples, axis = 0)
+                n     = np.random.uniform(1.5, 8)
+                mix.initialise(prior_pars = (1e-3, sigma/n**2, dim, mu))
                 # Draw samples
                 draws = []
                 for _ in range(options.n_se_draws):
@@ -123,7 +125,7 @@ def main():
                     mix.density_from_samples(ev)
                     draws.append(mix.build_mixture())
                     n = np.random.uniform(1.5, 8)
-                    mix.initialise(prior_pars = (1e-1, sigma/n**2, dim, np.zeros(dim)))
+                    mix.initialise(prior_pars = (1e-2, sigma/n**2, dim, mu))
                 posteriors.append(draws)
                 # Make plots
                 if dim == 1:
@@ -147,7 +149,9 @@ def main():
                 exit()
         probit_samples = transform_to_probit(all_samples, options.bounds)
         sigma = np.atleast_2d(np.cov(probit_samples.T))
-        mix = HDPGMM(options.bounds, prior_pars = (1e-1, sigma/25, dim, np.zeros(dim)))
+        mu    = np.mean(probit_samples, axis = 0)
+        n     = np.random.uniform(1.5, 8)
+        mix = HDPGMM(options.bounds, prior_pars = (1e-2, sigma/n**2, np.max([2*dim,3]), mu), MC_draws = 1e3)
         draws = []
         # Run hierarchical analysis
         for _ in tqdm(range(options.n_draws), desc = 'Hierarchical'):
@@ -155,7 +159,7 @@ def main():
             mix.density_from_samples(posteriors)
             draws.append(mix.build_mixture())
             n = np.random.uniform(1.5, 8)
-            mix.initialise(prior_pars = (1e-1, sigma/n**2, dim, np.zeros(dim)))
+            mix.initialise(prior_pars = (1e-2, sigma/n**2, np.max([2*dim,3]), np.ones(dim)*mu))
         draws = np.array(draws)
         with open(Path(output_pkl, 'draws_'+options.h_name+'.pkl'), 'wb') as f:
             dill.dump(draws, f)
