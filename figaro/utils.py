@@ -200,6 +200,7 @@ def plot_median_cr(draws, injected = None, samples = None, bounds = None, out_fo
     # Samples (if available)
     if samples is not None:
         ax.hist(samples, bins = int(np.sqrt(len(samples))), histtype = 'step', density = True, stacked = True, label = '$\mathrm{Samples}$')
+        xlim = ax.get_xlim()
     
     # CR
     ax.fill_between(x, p[95], p[5], color = 'mediumturquoise', alpha = 0.5)
@@ -223,6 +224,8 @@ def plot_median_cr(draws, injected = None, samples = None, bounds = None, out_fo
     else:
         ax.set_xlabel('${0}\ [{1}]$'.format(label, unit))
     ax.set_ylabel('$p({0})$'.format(label))
+    if samples is not None:
+        ax.set_xlim(xlim)
     ax.grid(True,dashes=(1,3))
     ax.legend(loc = 0, frameon = False)
     if show:
