@@ -18,8 +18,11 @@ try:
 except ImportError:
     raise ImportError("Cython not found. Please install it via\n\tpip install Cython")
 
-with open("requirements.txt") as requires_file:
-    requirements = requires_file.read().split("\n")
+if os.environ['CONDA_DEFAULT_ENV'] == 'igwn-py39':
+    requirements = ['imageio']
+else:
+    with open("requirements.txt") as requires_file:
+        requirements = requires_file.read().split("\n")
 
 # see https://stackoverflow.com/a/21621689/1862861 for why this is here
 class build_ext(_build_ext):
