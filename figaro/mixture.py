@@ -408,7 +408,7 @@ class DPGMM:
         if prior_pars is not None:
             self.prior = prior(*prior_pars)
         else:
-            self.prior = prior(1e-1, np.identity(self.dim)*0.2**2, self.dim, np.zeros(self.dim))
+            self.prior = prior(1e-2, np.identity(self.dim)*0.1**2, np.min([2*self.dim, 3]), np.zeros(self.dim))
         self.alpha      = alpha0
         self.alpha_0    = alpha0
         self.mixture    = []
@@ -705,15 +705,26 @@ class HDPGMM(DPGMM):
                        ):
         dim = len(bounds)
         if prior_pars == None:
-            prior_pars = (1e-1, np.identity(dim)*0.1**2, dim, np.zeros(dim))
+            prior_pars = (1e-2, np.identity(dim)*0.1**2, np.max([2*dim, 3]), np.zeros(dim))
         super().__init__(bounds = bounds, prior_pars = prior_pars, alpha0 = alpha0, out_folder = out_folder)
         self.MC_draws = int(MC_draws)
         if self.dim == 1:
-            self.mu_MC    = np.random.normal(size = self.MC_draws)
-            self.sigma_MC = invgamma(self.prior.nu, scale = self.prior.L[0,0]).rvs(size = self.MC_draws)
+            self.sigma_MC = invgamma(self.prior.nu/2, scale = self.prior.nu*self.prior.L[0,0]/2.).rvs(size = self.MC_draws)
+            self.mu_MC    = np.array([np.random.normal(loc = self.prior.mu[0], scale = s) for s in np.sqrt(self.sigma_MC/self.prior.k)])
         else:
-            self.mu_MC    = mn(np.zeros(dim), np.identity(dim)).rvs(size = self.MC_draws)
-            self.sigma_MC = invwishart(df = np.max([self.prior.nu, dim]), scale = self.prior.L).rvs(size = self.MC_draws)
+            df = np.max([self.prior.nu, dim + 2])
+            self.sigma_MC = invwishart(df = df, scale = self.prior.L*(df-dim-1)).rvs(size = self.MC_draws)
+            self.mu_MC    = np.array([mn(self.prior.mu, s/self.prior.k).rvs() for s in self.sigma_MC])
+        
+    def initialise(self, prior_pars = None):
+        super().initialise(prior_pars = prior_pars)
+        if self.dim == 1:
+            self.sigma_MC = invgamma(self.prior.nu/2, scale = self.prior.nu*self.prior.L[0,0]/2.).rvs(size = self.MC_draws)
+            self.mu_MC    = np.array([np.random.normal(loc = self.prior.mu[0], scale = s) for s in np.sqrt(self.sigma_MC/self.prior.k)])
+        else:
+            df = np.max([self.prior.nu, dim + 2])
+            self.sigma_MC = invwishart(df = df, scale = self.prior.L*(df-dim-1)).rvs(size = self.MC_draws)
+            self.mu_MC    = np.array([mn(self.prior.mu, s/self.prior.k).rvs() for s in self.sigma_MC])
     
     def add_new_point(self, ev):
         """
@@ -805,8 +816,10 @@ class HDPGMM(DPGMM):
         ss.log_w.append(x.log_w)
         ss.logL_D = logL_D
         
-        ss.mu    = np.average(self.mu_MC, weights = np.exp(logL_D), axis = 0)
-        ss.sigma = np.average(self.sigma_MC, weights = np.exp(logL_D), axis = 0)
+        log_norm = logsumexp(logL_D)
+
+        ss.mu    = np.average(self.mu_MC, weights = np.exp(logL_D - log_norm), axis = 0)
+        ss.sigma = np.average(self.sigma_MC, weights = np.exp(logL_D - log_norm), axis = 0)
         if self.dim == 1:
             ss.mu = np.atleast_2d(ss.mu).T
             ss.sigma = np.atleast_2d(ss.sigma).T
