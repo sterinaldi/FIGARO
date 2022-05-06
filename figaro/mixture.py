@@ -726,7 +726,7 @@ class HDPGMM(DPGMM):
             self.mu_MC    = np.array([np.random.normal(loc = self.prior.mu[0], scale = s) for s in np.sqrt(self.sigma_MC/self.prior.k)])
         else:
             df = np.max([self.prior.nu, self.dim + 2])
-            self.sigma_MC = invwishart(df = df, scale = self.prior.L*(df-dim-1)).rvs(size = self.MC_draws)
+            self.sigma_MC = invwishart(df = df, scale = self.prior.L*(df-self.dim-1)).rvs(size = self.MC_draws)
             self.mu_MC    = np.array([mn(self.prior.mu, s/self.prior.k).rvs() for s in self.sigma_MC])
     
     def add_new_point(self, ev):
