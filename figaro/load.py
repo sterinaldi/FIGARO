@@ -242,7 +242,7 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1):
                     data = f['IMRPhenomPv2NRT_lowSpin_posterior']
                 except:
                     print("Skipped event {0} (not loadable yet)".format(Path(event).parts[-1].split('.')[0]))
-                    
+                    return None
             
             # Provided quantities
             names_GWTC1 = {'m1_detect'          : 'm1_detector_frame_Msun',
