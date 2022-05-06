@@ -92,6 +92,11 @@ def main():
         dim = np.shape(events[0][0])[-1]
     except IndexError:
         dim = 1
+    
+    # Check if all samples are within bounds
+    if not np.alltrue([(all_samples[:,i] > options.bounds[i,0]).all() and (all_samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
+        raise ValueError("One or more samples are outside the given bounds.")
+    
     # Plot labels
     if dim > 1:
         if options.symbol is not None:
@@ -112,6 +117,10 @@ def main():
             for i in tqdm(range(len(events)), desc = 'Events'):
                 ev   = events[i]
                 name = names[i]
+                probit_samples = transform_to_probit(ev, mix.bounds)
+                mu = np.atleast_1d(np.mean(probit_samples, axis = 0))
+                sigma = np.atleast_2d(np.cov(probit_samples.T))
+                mix.initialise(prior_pars= (1e-2, sigma/16, dim+2+5, mu))
                 # Draw samples
                 draws = []
                 for _ in range(options.n_se_draws):
@@ -142,17 +151,17 @@ def main():
                 exit()
         probit_samples = transform_to_probit(all_samples, options.bounds)
         sigma = np.atleast_2d(np.cov(probit_samples.T))
-        mu    = np.mean(probit_samples, axis = 0)
-        n     = np.random.uniform(1.5, 8)
-        mix = HDPGMM(options.bounds, prior_pars = (1e-2, sigma/n**2, np.max([2*dim,3]), mu), MC_draws = 1e3)
+        mu    = np.atleast_1d(np.mean(probit_samples, axis = 0))
+        n     = np.random.uniform(12, 15)
+        mix = HDPGMM(options.bounds, prior_pars = (1e-2, sigma/n**2, dim+2, mu), MC_draws = 1e3)
         draws = []
         # Run hierarchical analysis
         for _ in tqdm(range(options.n_draws), desc = 'Hierarchical'):
             np.random.shuffle(posteriors)
             mix.density_from_samples(posteriors)
             draws.append(mix.build_mixture())
-            n = np.random.uniform(1.5, 8)
-            mix.initialise(prior_pars = (1e-2, sigma/n**2, np.max([2*dim,3]), np.ones(dim)*mu))
+            n = np.random.uniform(5, 10)
+            mix.initialise()#prior_pars = (1e-2, sigma/n**2, dim+2+7, mu))
         draws = np.array(draws)
         with open(Path(output_pkl, 'draws_'+options.h_name+'.pkl'), 'wb') as f:
             dill.dump(draws, f)
