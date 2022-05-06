@@ -128,7 +128,7 @@ class VolumeReconstruction(DPGMM):
     """
     def __init__(self, max_dist,
                        out_folder          = '.',
-                       prior_pars          = (1e-3, np.identity(3)*0.2**2, 3, np.zeros(3)),
+                       prior_pars          = (1e-3, np.identity(3)*0.01**2, 10, np.zeros(3)),
                        alpha0              = 1,
                        n_gridpoints        = [720, 360, 100], # RA, dec, DL
                        name                = 'skymap',
