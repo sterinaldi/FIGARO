@@ -2,7 +2,7 @@
 
 https://www.youtube.com/watch?v=uJeJ4YiVFz8
 
-To install FIGARO, run `python setup.py install` and `python setup.py build_ext --inplace`.
+To install FIGARO, run `python setup.py build_ext --inplace` and `python setup.py install`.
 
 An introductive guide on how to use FIGARO can be found in the `introductive_guide.ipynb` notebook, where it is shown how to to reconstruct a probability density with FIGARO and how to use its products.\
 To learn how to use FIGARO to reconstruct skymaps, have a look to the `skymaps.ipynb` notebook.
