@@ -120,7 +120,7 @@ def main():
                 probit_samples = transform_to_probit(ev, mix.bounds)
                 mu = np.atleast_1d(np.mean(probit_samples, axis = 0))
                 sigma = np.atleast_2d(np.cov(probit_samples.T))
-                mix.initialise(prior_pars= (1e-2, sigma/16, dim+2+5, mu))
+                mix.initialise(prior_pars= (1e-2, sigma, dim+2, mu))
                 # Draw samples
                 draws = []
                 for _ in range(options.n_se_draws):
