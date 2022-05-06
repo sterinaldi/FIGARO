@@ -13,6 +13,7 @@ from figaro.decorators import *
 from figaro.transform import *
 from figaro.montecarlo import evaluate_mixture_MC_draws, evaluate_mixture_MC_draws_1d
 from figaro.exceptions import except_hook
+from figaro.montecarlo import logsumexp_jit
 
 from numba import jit, njit, prange
 from numba.extending import get_cython_function_address
@@ -107,10 +108,10 @@ def compute_t_pars(k, mu, nu, L, mean, S, N, dim):
     Compute parameters for student-t distribution.
     
     Arguments:
-        :double k:        Normal std parameter (for NIG/NIW)
-        :np.ndarray mu:   Normal mean parameter (for NIG/NIW)
-        :int nu:          Gamma df parameter (for NIG/NIW)
-        :np.ndarray L:    Gamma scale matrix (for NIG/NIW)
+        :double k:        Normal std parameter (for NIW)
+        :np.ndarray mu:   Normal mean parameter (for NIW)
+        :int nu:          Inverse-Wishart df parameter (for NIW)
+        :np.ndarray L:    Inverse-Wishart scale matrix (for NIW)
         :np.ndarray mean: samples mean
         :np.ndarray S:    samples covariance
         :int N:           number of samples
@@ -191,23 +192,23 @@ def compute_component_suffstats(x, mean, cov, N, p_mu, p_k, p_nu, p_L):
 
 class prior:
     """
-    Class to store the NIG/NIW prior parameters
-    See https://www.cs.ubc.ca/~murphyk/Papers/bayesGauss.pdf
+    Class to store the NIW prior parameters
+    See https://www.cs.ubc.ca/~murphyk/Papers/bayesGauss.pdf, sec. 9
     
     Arguments:
         :double k:        Normal std parameter
         :np.ndarray mu:   Normal mean parameter
-        :int nu:          Gamma df parameter
-        :np.ndarray L:    Gamma scale matrix
+        :int nu:          Wishart df parameter
+        :np.ndarray L:    Wishart scale matrix
     
     Returns:
         :prior: instance of prior class
     """
     def __init__(self, k, L, nu, mu):
         self.k  = k
-        self.L  = L*(nu-mu.shape[-1]-1)
+        self.nu = np.max([nu, mu.shape[-1]+2])
+        self.L  = L*(self.nu-mu.shape[-1]-1)
         self.mu = mu
-        self.nu = nu
 
 class component:
     """
@@ -391,7 +392,7 @@ class DPGMM:
     
     Arguments:
         :iterable bounds:        boundaries of the rectangle over which the distribution is defined. It should be in the format [[xmin, xmax],[ymin, ymax],...]
-        :iterable prior_pars:    NIG/NIW prior parameters (k, L, nu, mu)
+        :iterable prior_pars:    NIW prior parameters (k, L, nu, mu)
         :double alpha0:          initial guess for concentration parameter
         :str or Path out_folder: folder for outputs
     
@@ -421,7 +422,7 @@ class DPGMM:
         Initialise the mixture to initial conditions.
         
         Arguments:
-            :iterable prior_pars: NIG/NIW prior parameters (k, L, nu, mu). If None, old parameters are kept
+            :iterable prior_pars: NIW prior parameters (k, L, nu, mu). If None, old parameters are kept
         """
         self.alpha    = self.alpha_0
         self.mixture  = []
@@ -690,7 +691,7 @@ class HDPGMM(DPGMM):
     
     Arguments:
         :iterable bounds:        boundaries of the rectangle over which the distribution is defined. It should be in the format [[xmin, xmax],[ymin, ymax],...]
-        :iterable prior_pars:    NIG/NIW prior parameters (k, L, nu, mu)
+        :iterable prior_pars:    NIW prior parameters (k, L, nu, mu)
         :double alpha0:          initial guess for concentration parameter
         :str or Path out_folder: folder for outputs
     
@@ -708,13 +709,14 @@ class HDPGMM(DPGMM):
             prior_pars = (1e-2, np.identity(dim)*0.2**2, dim+2, np.zeros(dim))
         super().__init__(bounds = bounds, prior_pars = prior_pars, alpha0 = alpha0, out_folder = out_folder)
         self.MC_draws = int(MC_draws)
+        
+        self.sigma_MC = invwishart(df = self.prior.nu-dim-1, scale = self.prior.L).rvs(size = self.MC_draws)
         if self.dim == 1:
-            self.sigma_MC = invgamma(self.prior.nu/2, scale = self.prior.nu*self.prior.L[0,0]/2.).rvs(size = self.MC_draws)
             self.mu_MC    = np.array([np.random.normal(loc = self.prior.mu[0], scale = s) for s in np.sqrt(self.sigma_MC/self.prior.k)])
         else:
-            df = np.max([self.prior.nu, dim + 2])
-            self.sigma_MC = invwishart(df = df, scale = self.prior.L*(df-dim-1)).rvs(size = self.MC_draws)
             self.mu_MC    = np.array([mn(self.prior.mu, s/self.prior.k).rvs() for s in self.sigma_MC])
+        # For logsumexp_jit
+        self.b_ones = np.ones(self.MC_draws)
         
     def initialise(self, prior_pars = None):
         super().initialise(prior_pars = prior_pars)
@@ -763,7 +765,7 @@ class HDPGMM(DPGMM):
             else:
                 ss = self.mixture[i]
                 logL_D = ss.logL_D
-            scores[i] = logsumexp(logL_D + logL_x) - logsumexp(logL_D)
+            scores[i] = logsumexp_jit(logL_D + logL_x, b = self.b_ones) - logsumexp_jit(logL_D, b = self.b_ones)
             logL_N[i] = logL_D + logL_x
             if ss == "new":
                 scores[i] += np.log(self.alpha)
@@ -815,11 +817,9 @@ class HDPGMM(DPGMM):
         ss.covs.append(x.covs)
         ss.log_w.append(x.log_w)
         ss.logL_D = logL_D
-        
-        log_norm = logsumexp(logL_D)
 
-        ss.mu    = np.average(self.mu_MC, weights = np.exp(logL_D - log_norm), axis = 0)
-        ss.sigma = np.average(self.sigma_MC, weights = np.exp(logL_D - log_norm), axis = 0)
+        ss.mu    = np.average(self.mu_MC, weights = np.exp(logL_D), axis = 0)
+        ss.sigma = np.average(self.sigma_MC, weights = np.exp(logL_D), axis = 0)
         if self.dim == 1:
             ss.mu = np.atleast_2d(ss.mu).T
             ss.sigma = np.atleast_2d(ss.sigma).T
