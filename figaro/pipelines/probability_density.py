@@ -68,7 +68,11 @@ def main():
         dim = np.shape(samples[0])[-1]
     except IndexError:
         dim = 1
-    
+        
+    # Check if all samples are within bounds
+    if not np.alltrue([(samples[:,i] > options.bounds[i,0]).all() and (samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
+        raise ValueError("One or more samples are outside the given bounds.")
+
     # Reconstruction
     if not options.postprocess:
         mix = DPGMM(options.bounds)
