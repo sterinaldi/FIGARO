@@ -220,7 +220,7 @@ def plot_median_cr(draws, injected = None, samples = None, bounds = None, out_fo
     ax.plot(x, p[50], lw = 0.7, color = 'steelblue', label = '${0}$'.format(rec_label))
     if label is None:
         label = 'x'
-    if unit is None:
+    if unit is None or unit == '':
         ax.set_xlabel('${0}$'.format(label))
     else:
         ax.set_xlabel('${0}\ [{1}]$'.format(label, unit))
@@ -290,7 +290,7 @@ def plot_multidim(draws, dim, samples = None, out_folder = '.', name = 'density'
         labels = ['${0}$'.format(l) for l in labels]
     
     if units is not None:
-        labels = [l[:-1]+'\ [{0}]$'.format(u) for l, u in zip(labels, units)]
+        labels = [l[:-1]+'\ [{0}]$'.format(u) if not u == '' else l for l, u in zip(labels, units)]
     
     # Draw samples from mixture
     if samples is not None:
