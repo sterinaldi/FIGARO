@@ -101,7 +101,10 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674
         # If everything is ok, load the samples
         else:
             out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate)
-
+    
+    if out is None:
+        return out, name
+    
     if len(np.shape(out)) == 1:
         out = np.atleast_2d(out).T
     return out, name
@@ -173,7 +176,11 @@ def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.
                 raise Exception("LAL is not installed. GW posterior samples cannot be loaded.")
             # If everything is ok, load the samples
             else:
-                events.append(_unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate))
+                out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate)
+                if out is not None:
+                    events.append(out)
+                else:
+                    names.remove(name)
                 
     return (events, np.array(names))
 
@@ -231,7 +238,11 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1):
             try:
                 data = f['Overall_posterior']
             except KeyError:
-                data = f['IMRPhenomPv2NRT_lowSpin_posterior']
+                try:
+                    data = f['IMRPhenomPv2NRT_lowSpin_posterior']
+                except:
+                    print("Skipped event {0} (not loadable yet)".format(Path(event).parts[-1].split('.')[0]))
+                    
             
             # Provided quantities
             names_GWTC1 = {'m1_detect'          : 'm1_detector_frame_Msun',
