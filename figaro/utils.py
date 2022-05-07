@@ -144,7 +144,7 @@ class PPPlot(axes.Axes):
         
 projection_registry.register(PPPlot)
 
-def plot_median_cr(draws, injected = None, samples = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True, subfolder = False):
+def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True, subfolder = False):
     """
     Plot the recovered 1D distribution along with the injected distribution and samples from the true distribution (both if available).
     
@@ -215,7 +215,14 @@ def plot_median_cr(draws, injected = None, samples = None, bounds = None, out_fo
         else:
             p_x = injected
         ax.plot(x, p_x, lw = 0.5, color = 'red', label = '$\mathrm{Simulated}$')
-    
+        if selfunc is not None:
+            if callable(selfunc):
+                f_x = selfunc(x)
+            else:
+                f_x = selfunc
+            filtered_p_x = p_x*f_x
+            ax.plot(x, filtered_p_x/np.sum(filtered_p_x*dx), lw = 0.5, color = 'k', label = '$\mathrm{Selection\ effects}$')
+        
     # Median
     ax.plot(x, p[50], lw = 0.7, color = 'steelblue', label = '${0}$'.format(rec_label))
     if label is None:
@@ -227,10 +234,7 @@ def plot_median_cr(draws, injected = None, samples = None, bounds = None, out_fo
     ax.set_ylabel('$p({0})$'.format(label))
     if samples is not None:
         ax.set_xlim(xlim)
-        ax.set_ylim(ylim)
-    else:
-        ylim_d, ylim_u = ax.get_xlim()
-        ax.set_ylim(1e-5, ylim_u)
+    ax.set_ylim(bottom = 1e-5, top = np.max(p[95])*1.1)
     ax.grid(True,dashes=(1,3))
     ax.legend(loc = 0, frameon = False)
     if save:
@@ -262,6 +266,47 @@ def plot_median_cr(draws, injected = None, samples = None, bounds = None, out_fo
             ax.set_xlim(xlim)
         plt.show()
     plt.close()
+    
+    # If selection function is available, plot reweighted distribution
+    if injected is not None and selfunc is not None:
+        for perc in percentiles:
+            p[perc] = np.percentile((probs/f_x).T, perc, axis = 1)
+        norm = p[50].sum()*dx
+        for perc in percentiles:
+            p[perc] = p[perc]/norm
+        
+        fig, ax = plt.subplots()
+        ax.set_yscale('log')
+        # CR
+        ax.fill_between(x, p[95], p[5], color = 'mediumturquoise', alpha = 0.5)
+        ax.fill_between(x, p[84], p[16], color = 'darkturquoise', alpha = 0.5)
+        # Injection
+        ax.plot(x, p_x, lw = 0.5, color = 'red', label = '$\mathrm{Simulated}$')
+        # Median
+        ax.plot(x, p[50], lw = 0.7, color = 'steelblue', label = '${0}$'.format(rec_label))
+        if label is None:
+            label = 'x'
+        if unit is None or unit == '':
+            ax.set_xlabel('${0}$'.format(label))
+        else:
+            ax.set_xlabel('${0}\ [{1}]$'.format(label, unit))
+        ax.set_ylabel('$p({0})$'.format(label))
+        ax.autoscale(True)
+        ax.set_ylim(bottom = 1e-5, top = np.max(p[95])*1.1)
+        ax.grid(True,dashes=(1,3))
+        ax.legend(loc = 0, frameon = False)
+        if save:
+            fig.savefig(Path(log_folder, 'log_inj_{0}.pdf'.format(name)), bbox_inches = 'tight')
+            ax.set_yscale('linear')
+            ax.autoscale(True)
+            fig.savefig(Path(plot_folder, 'inj_{0}.pdf'.format(name)), bbox_inches = 'tight')
+            np.savetxt(Path(txt_folder, 'prob_inj_{0}.txt'.format(name)), np.array([x, p[50], p[5], p[16], p[84], p[95]]).T, header = 'x 50 5 16 84 95')
+        if show:
+            ax.set_yscale('linear')
+            ax.autoscale(True)
+            plt.show()
+        plt.close()
+    
 
 def plot_multidim(draws, dim, samples = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False):
     """
