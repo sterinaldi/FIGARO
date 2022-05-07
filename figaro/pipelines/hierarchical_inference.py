@@ -22,6 +22,7 @@ def main():
     parser.add_option("-b", "--bounds", type = "string", dest = "bounds", help = "Density bounds. Must be a string formatted as '[[xmin, xmax], [ymin, ymax],...]'. For 1D distributions use '[[xmin, xmax]]'. Quotation marks are required and scientific notation is accepted", default = None)
     parser.add_option("-o", "--output", type = "string", dest = "output", help = "Output folder. Default: same directory as samples folder", default = None)
     parser.add_option("--inj_density", type = "string", dest = "inj_density_file", help = "Python module with injected density - please name the method 'density'", default = None)
+    parser.add_option("--selfunc", type = "string", dest = "selfunc_file", help = "Python module with selection function - please name the method 'selfunc'", default = None)
     parser.add_option("--parameter", type = "string", dest = "par", help = "GW parameter(s) to be read from files", default = None)
     # Plot
     parser.add_option("--name", type = "string", dest = "h_name", help = "Name to be given to hierarchical inference files. Default: same name as samples folder parent directory", default = None)
@@ -69,6 +70,14 @@ def main():
         inj_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(inj_module)
         inj_density = inj_module.density
+    #If provided, load selecton function
+    selfunc = None
+    if options.selfunc_file is not None:
+        selfunc_file_name = options.selfunc_file.split('/')[-1].split('.')[0]
+        spec = importlib.util.spec_from_file_location(selfunc_file_name, options.selfunc_file)
+        selfunc_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(selfunc_module)
+        selfunc = selfunc_module.selection_function
     # If provided, load true values
     true_vals = None
     if options.true_vals is not None:
@@ -152,16 +161,14 @@ def main():
         probit_samples = transform_to_probit(all_samples, options.bounds)
         sigma = np.atleast_2d(np.cov(probit_samples.T))
         mu    = np.atleast_1d(np.mean(probit_samples, axis = 0))
-        n     = np.random.uniform(12, 15)
-        mix = HDPGMM(options.bounds, prior_pars = (1e-2, sigma/n**2, dim+2, mu), MC_draws = 1e3)
+        mix = HDPGMM(options.bounds, prior_pars = (1e-2, sigma/25, dim+2, mu), MC_draws = 1e3)
         draws = []
         # Run hierarchical analysis
         for _ in tqdm(range(options.n_draws), desc = 'Hierarchical'):
             np.random.shuffle(posteriors)
             mix.density_from_samples(posteriors)
             draws.append(mix.build_mixture())
-            n = np.random.uniform(5, 10)
-            mix.initialise()#prior_pars = (1e-2, sigma/n**2, dim+2+7, mu))
+            mix.initialise()
         draws = np.array(draws)
         with open(Path(output_pkl, 'draws_'+options.h_name+'.pkl'), 'wb') as f:
             dill.dump(draws, f)
@@ -174,7 +181,7 @@ def main():
             exit()
     # Plot
     if dim == 1:
-        plot_median_cr(draws, injected = inj_density, samples = true_vals, out_folder = output_plots, name = options.h_name, label = options.symbol, unit = options.unit, hierarchical = True)
+        plot_median_cr(draws, injected = inj_density, selfunc = selfunc, samples = true_vals, out_folder = output_plots, name = options.h_name, label = options.symbol, unit = options.unit, hierarchical = True)
     else:
         plot_multidim(draws, dim, samples = true_vals, out_folder = output_plots, name = options.h_name, labels = symbols, units = units, hierarchical = True)
 
