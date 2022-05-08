@@ -25,6 +25,32 @@ rcParams["axes.labelsize"]=16
 rcParams["axes.grid"] = True
 rcParams["grid.alpha"] = 0.6
 
+#-–––––––––-#
+# Utilities #
+#-----------#
+
+def recursive_grid(bounds, n_pts = 100):
+    """
+    Recursively generates the n-dimensional grid points (extremes are excluded).
+    
+    Arguments:
+        :list-of-lists bounds: extremes for each dimension (excluded)
+        :int n_pts:            number of points for each dimension
+        
+    Returns:
+        :np.ndarray: grid
+    """
+    if len(bounds) == 1:
+        return np.atleast_2d(np.linspace(bounds[0,0], bounds[0,1], n_pts+2)[1:-1]).T
+    else:
+        grid_nm1 = recursive_grid(np.array(bounds)[1:], n_pts)
+        d        = np.linspace(bounds[0,0], bounds[0,1], n_pts+2)[1:-1]
+        grid     = []
+        for di in d:
+            for gi in grid_nm1:
+                grid.append([di,*gi])
+        return np.array(grid)
+
 #-------------#
 #   Options   #
 #-------------#
@@ -370,8 +396,19 @@ def plot_multidim(draws, dim, samples = None, selfunc = None, out_folder = '.', 
     plt.close()
     
     if selfunc is not None:
-        return
-        # Write importance sampler
+        grid   = recursive_grid(draws[0].bounds)
+        p_grid = np.array([d_i.evaluate_mixture(grid) for d_i in draws])
+        median = np.median(p_grid, axis = 0)
+        top    = np.max(median/selfunc(x))
+        mix_samples = []
+        while len(samples) < n_draws:
+            pts    = np.random.uniform(draws[0].bounds[:,0], draws[0].bounds[:,1], size = (n_draws, dim))
+            p_pts  = np.array([d_i.evaluate_mixture(grid) for d_i in draws])
+            median = np.median(p_pts, axis = 0)
+            sf     = selfunc(pts)
+            h      = np.random.uniform(0, top, size = n_draws)
+            mix_samples.extend(pts[np.where(h < median/sf)])
+        mix_samples = np.array(mix_samples)[:n_draws]
         
         c = corner(mix_samples, color = 'dodgerblue', labels = labels, hist_kwargs={'density':True, 'label':'${0}$'.format(rec_label)})
         plt.legend(loc = 0, frameon = False, fontsize = 12, bbox_to_anchor = (0.95, (dim-1)+0.8))
