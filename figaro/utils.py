@@ -396,19 +396,19 @@ def plot_multidim(draws, dim, samples = None, selfunc = None, out_folder = '.', 
     plt.close()
     
     if selfunc is not None:
+        return
+        # to be finished
         grid   = recursive_grid(draws[0].bounds)
-        p_grid = np.array([d_i.evaluate_mixture(grid) for d_i in draws])
-        median = np.median(p_grid, axis = 0)
-        top    = np.max(median/selfunc(x))
+        p_grid = np.random.choice(draws).evaluate_mixture(grid)
+        top    = np.max(p_grid/selfunc(grid))
         mix_samples = []
-        while len(samples) < n_draws:
-            pts    = np.random.uniform(draws[0].bounds[:,0], draws[0].bounds[:,1], size = (n_draws, dim))
-            p_pts  = np.array([d_i.evaluate_mixture(grid) for d_i in draws])
-            median = np.median(p_pts, axis = 0)
+        while len(mix_samples) < size:
+            pts    = np.random.uniform(draws[0].bounds[:,0], draws[0].bounds[:,1], size = (size, dim))
+            p_pts  = np.random.choice(draws).evaluate_mixture(pts)
             sf     = selfunc(pts)
-            h      = np.random.uniform(0, top, size = n_draws)
-            mix_samples.extend(pts[np.where(h < median/sf)])
-        mix_samples = np.array(mix_samples)[:n_draws]
+            h      = np.random.uniform(0, top, size = size)
+            mix_samples.extend(pts[np.where(h < p_pts/sf)])
+        mix_samples = np.array(mix_samples)[:size]
         
         c = corner(mix_samples, color = 'dodgerblue', labels = labels, hist_kwargs={'density':True, 'label':'${0}$'.format(rec_label)})
         plt.legend(loc = 0, frameon = False, fontsize = 12, bbox_to_anchor = (0.95, (dim-1)+0.8))
