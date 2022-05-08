@@ -100,8 +100,8 @@ def main():
     events, names = load_data(options.samples_folder, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol)
     if options.exclude_points:
         print("Ignoring points outside bounds.")
-        for ev in events:
-            ev = ev[np.where((np.prod(options.bounds[:,0] < ev, axis = 1) & np.prod(ev < options.bounds[:,1], axis = 1)))]
+        for i, ev in enumerate(events):
+            events[i] = ev[np.where((np.prod(options.bounds[:,0] < ev, axis = 1) & np.prod(ev < options.bounds[:,1], axis = 1)))]
         all_samples = np.atleast_2d(np.concatenate(events))
     else:
         # Check if all samples are within bounds
