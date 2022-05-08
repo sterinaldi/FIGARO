@@ -242,7 +242,7 @@ class component_h:
     Returns:
         :component_h: instance of component_h class
     """
-    def __init__(self, x, dim, prior, logL_D, mu_MC, sigma_MC):
+    def __init__(self, x, dim, prior, logL_D, mu_MC, sigma_MC, b_ones):
         self.dim    = dim
         self.N      = 1
         self.events = [x]
@@ -251,8 +251,10 @@ class component_h:
         self.log_w  = [x.log_w]
         self.logL_D = logL_D
         
-        self.mu    = np.average(mu_MC, weights = np.exp(logL_D), axis = 0)
-        self.sigma = np.average(sigma_MC, weights = np.exp(logL_D), axis = 0)
+        log_norm = logsumexp_jit(logL_D, b = b_ones)
+        
+        self.mu    = np.average(mu_MC, weights = np.exp(logL_D - log_norm), axis = 0)
+        self.sigma = np.average(sigma_MC, weights = np.exp(logL_D - log_norm), axis = 0)
         if dim == 1:
             self.mu = np.atleast_2d(self.mu).T
             self.sigma = np.atleast_2d(self.sigma).T
@@ -789,7 +791,7 @@ class HDPGMM(DPGMM):
         labels, scores = zip(*scores)
         cid = np.random.choice(labels, p=scores)
         if cid == "new":
-            self.mixture.append(component_h(x, self.dim, self.prior, logL_N[cid], self.mu_MC, self.sigma_MC))
+            self.mixture.append(component_h(x, self.dim, self.prior, logL_N[cid], self.mu_MC, self.sigma_MC, self.b_ones))
             self.N_list.append(1.)
             self.n_cl += 1
         else:
@@ -819,8 +821,10 @@ class HDPGMM(DPGMM):
         ss.log_w.append(x.log_w)
         ss.logL_D = logL_D
 
-        ss.mu    = np.average(self.mu_MC, weights = np.exp(logL_D), axis = 0)
-        ss.sigma = np.average(self.sigma_MC, weights = np.exp(logL_D), axis = 0)
+        log_norm = logsumexp_jit(logL_D, self.b_ones)
+
+        ss.mu    = np.average(self.mu_MC, weights = np.exp(logL_D - log_norm), axis = 0)
+        ss.sigma = np.average(self.sigma_MC, weights = np.exp(logL_D - log_norm), axis = 0)
         if self.dim == 1:
             ss.mu = np.atleast_2d(ss.mu).T
             ss.sigma = np.atleast_2d(ss.sigma).T
