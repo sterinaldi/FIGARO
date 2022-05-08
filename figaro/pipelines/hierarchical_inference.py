@@ -98,6 +98,10 @@ def main():
     
     # Load samples
     events, names = load_data(options.samples_folder, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol)
+    try:
+        dim = np.shape(events[0][0])[-1]
+    except IndexError:
+        dim = 1
     if options.exclude_points:
         print("Ignoring points outside bounds.")
         for i, ev in enumerate(events):
@@ -108,10 +112,6 @@ def main():
         all_samples = np.atleast_2d(np.concatenate(events))
         if not np.alltrue([(all_samples[:,i] > options.bounds[i,0]).all() and (all_samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
             raise ValueError("One or more samples are outside the given bounds.")
-    try:
-        dim = np.shape(events[0][0])[-1]
-    except IndexError:
-        dim = 1
 
     # Plot labels
     if dim > 1:
@@ -191,7 +191,7 @@ def main():
     if dim == 1:
         plot_median_cr(draws, injected = inj_density, selfunc = selfunc, samples = true_vals, out_folder = output_plots, name = options.h_name, label = options.symbol, unit = options.unit, hierarchical = True)
     else:
-        plot_multidim(draws, dim, samples = true_vals, out_folder = output_plots, name = options.h_name, labels = symbols, units = units, hierarchical = True)
+        plot_multidim(draws, dim, samples = true_vals, selfunc = selfunc, out_folder = output_plots, name = options.h_name, labels = symbols, units = units, hierarchical = True)
 
 if __name__ == '__main__':
     main()

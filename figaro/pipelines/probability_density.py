@@ -29,7 +29,7 @@ def main():
     # Settings
     parser.add_option("--draws", type = "int", dest = "n_draws", help = "Number of draws", default = 100)
     parser.add_option("--n_samples_dsp", type = "int", dest = "n_samples_dsp", help = "Number of samples to analyse (downsampling). Default: all", default = -1)
-    parser.add_option("--exclude_points", dest = "exclude_points", type = "bool", help = "Exclude points outside bounds from analysis", default = False)
+    parser.add_option("--exclude_points", dest = "exclude_points", action = 'store_true', help = "Exclude points outside bounds from analysis", default = False)
     parser.add_option("--cosmology", type = "string", dest = "cosmology", help = "Cosmological parameters (h, om, ol). Default values from Planck (2021)", default = '0.674,0.315,0.685')
 
     (options, args) = parser.parse_args()
