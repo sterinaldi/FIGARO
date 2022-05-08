@@ -29,6 +29,7 @@ def main():
     # Settings
     parser.add_option("--draws", type = "int", dest = "n_draws", help = "Number of draws", default = 100)
     parser.add_option("--n_samples_dsp", type = "int", dest = "n_samples_dsp", help = "Number of samples to analyse (downsampling). Default: all", default = -1)
+    parser.add_option("--exclude_points", dest = "exclude_points", type = "bool", help = "Exclude points outside bounds from analysis", default = False)
     parser.add_option("--cosmology", type = "string", dest = "cosmology", help = "Cosmological parameters (h, om, ol). Default values from Planck (2021)", default = '0.674,0.315,0.685')
 
     (options, args) = parser.parse_args()
@@ -43,7 +44,7 @@ def main():
         options.output = options.samples_file.parent
     # Read bounds
     if options.bounds is not None:
-        options.bounds = json.loads(options.bounds)
+        options.bounds = np.array(json.loads(options.bounds))
     elif options.bounds is None and not options.postprocess:
         print("Please provide bounds for the inference (use -b '[[xmin,xmax],[ymin,ymax],...]')")
         exit()
@@ -65,13 +66,16 @@ def main():
     # Load samples
     samples, name = load_single_event(options.samples_file, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol)
     try:
-        dim = np.shape(samples[0])[-1]
+        dim = np.shape(samples)[-1]
     except IndexError:
         dim = 1
-        
-    # Check if all samples are within bounds
-    if not np.alltrue([(samples[:,i] > options.bounds[i,0]).all() and (samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
-        raise ValueError("One or more samples are outside the given bounds.")
+    if options.exclude_points:
+        print("Ignoring points outside bounds.")
+        samples = samples[np.where((np.prod(options.bounds[:,0] < samples, axis = 1) & np.prod(samples < options.bounds[:,1], axis = 1)))]
+    else:
+        # Check if all samples are within bounds
+        if not np.alltrue([(samples[:,i] > options.bounds[i,0]).all() and (samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
+            raise ValueError("One or more samples are outside the given bounds.")
 
     # Reconstruction
     if not options.postprocess:

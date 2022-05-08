@@ -27,6 +27,7 @@ def main():
     # Plot
     parser.add_option("--name", type = "string", dest = "h_name", help = "Name to be given to hierarchical inference files. Default: same name as samples folder parent directory", default = None)
     parser.add_option("-p", "--postprocess", dest = "postprocess", action = 'store_true', help = "Postprocessing", default = False)
+    parser.add_option("-s", "--save_se", dest = "save_single_event", action = 'store_false', help = "Save single event plots", default = False)
     parser.add_option("--symbol", type = "string", dest = "symbol", help = "LaTeX-style quantity symbol, for plotting purposes", default = None)
     parser.add_option("--unit", type = "string", dest = "unit", help = "LaTeX-style quantity unit, for plotting purposes", default = None)
     parser.add_option("--hier_samples", type = "string", dest = "true_vals", help = "Samples from hierarchical distribution (true single-event values, for simulations only)", default = None)
@@ -34,6 +35,7 @@ def main():
     parser.add_option("--draws", type = "int", dest = "n_draws", help = "Number of draws for hierarchical distribution", default = 100)
     parser.add_option("--se_draws", type = "int", dest = "n_se_draws", help = "Number of draws for single-event distribution. Default: same as hierarchical distribution", default = None)
     parser.add_option("--n_samples_dsp", type = "int", dest = "n_samples_dsp", help = "Number of samples to analyse (downsampling). Default: all", default = -1)
+    parser.add_option("--exclude_points", dest = "exclude_points", type = "bool", help = "Exclude points outside bounds from analysis", default = False)
     parser.add_option("--cosmology", type = "string", dest = "cosmology", help = "Cosmological parameters (h, om, ol). Default values from Planck (2021)", default = '0.674,0.315,0.685')
     parser.add_option("-e", "--events", dest = "run_events", action = 'store_false', help = "Skip single-event analysis", default = True)
 
@@ -96,16 +98,21 @@ def main():
     
     # Load samples
     events, names = load_data(options.samples_folder, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol)
-    all_samples = np.atleast_2d(np.concatenate(events))
+    if options.exclude_points:
+        print("Ignoring points outside bounds.")
+        for ev in events:
+            ev = ev[np.where((np.prod(options.bounds[:,0] < ev, axis = 1) & np.prod(ev < options.bounds[:,1], axis = 1)))]
+        all_samples = np.atleast_2d(np.concatenate(events))
+    else:
+        # Check if all samples are within bounds
+        all_samples = np.atleast_2d(np.concatenate(events))
+        if not np.alltrue([(all_samples[:,i] > options.bounds[i,0]).all() and (all_samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
+            raise ValueError("One or more samples are outside the given bounds.")
     try:
         dim = np.shape(events[0][0])[-1]
     except IndexError:
         dim = 1
-    
-    # Check if all samples are within bounds
-    if not np.alltrue([(all_samples[:,i] > options.bounds[i,0]).all() and (all_samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
-        raise ValueError("One or more samples are outside the given bounds.")
-    
+
     # Plot labels
     if dim > 1:
         if options.symbol is not None:
@@ -139,10 +146,11 @@ def main():
                     mix.initialise()
                 posteriors.append(draws)
                 # Make plots
-                if dim == 1:
-                    plot_median_cr(draws, samples = ev, out_folder = output_plots, name = name, label = options.symbol, unit = options.unit, subfolder = True)
-                else:
-                    plot_multidim(draws, dim, samples = ev, out_folder = output_plots, name = name, labels = symbols, units = units)
+                if options.save_single_event:
+                    if dim == 1:
+                        plot_median_cr(draws, samples = ev, out_folder = output_plots, name = name, label = options.symbol, unit = options.unit, subfolder = True)
+                    else:
+                        plot_multidim(draws, dim, samples = ev, out_folder = output_plots, name = name, labels = symbols, units = units)
                 # Save single-event draws
                 with open(Path(output_pkl, 'draws_'+name+'.pkl'), 'wb') as f:
                     dill.dump(np.array(draws), f)
@@ -161,7 +169,7 @@ def main():
         probit_samples = transform_to_probit(all_samples, options.bounds)
         sigma = np.atleast_2d(np.cov(probit_samples.T))
         mu    = np.atleast_1d(np.mean(probit_samples, axis = 0))
-        mix = HDPGMM(options.bounds, prior_pars = (1e-2, sigma/25, dim+2, mu), MC_draws = 1e3)
+        mix = HDPGMM(options.bounds, prior_pars = (1e-2, sigma/100, dim+2, mu), MC_draws = 1e3)
         draws = []
         # Run hierarchical analysis
         for _ in tqdm(range(options.n_draws), desc = 'Hierarchical'):
