@@ -81,7 +81,7 @@ def FindLevelForHeight(inLogArr, logvalue, logdd):
     idx = (np.abs(adSorted-logvalue)).argmin()
     return np.exp(adCum[idx])
 
-def ConfidenceVolume(log_volume_map, log_measure, ra_grid, dec_grid, distance_grid, adLevels = [0.50, 0.90]):
+def ConfidenceVolume(log_volume_map, ra_grid, dec_grid, distance_grid, log_measure = None, adLevels = [0.50, 0.90]):
     """
     Compute the credible volume(s) for a 3D probability distribution
     
@@ -102,7 +102,13 @@ def ConfidenceVolume(log_volume_map, log_measure, ra_grid, dec_grid, distance_gr
     dra = np.diff(ra_grid)[0]
     # create a normalized cumulative distribution
     log_volume_map_sorted = np.ascontiguousarray(np.sort(log_volume_map.flatten())[::-1])
-    log_measure_sorted    = np.ascontiguousarray(log_measure.flatten()[np.argsort(log_volume_map.flatten())][::-1])
+    if log_measure is not None:
+        log_measure_sorted = np.ascontiguousarray(log_measure.flatten()[np.argsort(log_volume_map.flatten())][::-1])
+    else:
+        log_measure_sorted = np.zeros(log_volume_map_sorted.shape)
+    log_norm              = fast_log_cumulative(log_volume_map_sorted + log_measure_sorted + np.log(dra) + np.log(ddec) + np.log(dd))[-1]
+    log_volume_map_sorted = log_volume_map_sorted - log_norm
+    log_volume_map        = log_volume_map - log_norm
     log_volume_map_cum    = fast_log_cumulative(log_volume_map_sorted + log_measure_sorted + np.log(dra) + np.log(ddec) + np.log(dd))
     # find the indeces  corresponding to the given CLs
     adLevels = np.ravel([adLevels])
@@ -118,7 +124,7 @@ def ConfidenceVolume(log_volume_map, log_measure, ra_grid, dec_grid, distance_gr
     
     return volume_confidence, index, np.array(adHeights)
 
-def ConfidenceArea(log_skymap, log_measure, ra_grid, dec_grid, adLevels = [0.50, 0.90]):
+def ConfidenceArea(log_skymap, ra_grid, dec_grid, log_measure = None, adLevels = [0.50, 0.90]):
     """
     Compute the credible area(s) for a 2D probability distribution
     
@@ -137,8 +143,14 @@ def ConfidenceArea(log_skymap, log_measure, ra_grid, dec_grid, adLevels = [0.50,
     ddec = np.diff(dec_grid)[0]
     dra = np.diff(ra_grid)[0]
     log_skymap_sorted  = np.ascontiguousarray(np.sort(log_skymap.flatten())[::-1])
-    log_measure_sorted = np.ascontiguousarray(log_measure.flatten()[np.argsort(log_skymap.flatten())][::-1])
-    log_skymap_cum     = fast_log_cumulative(log_skymap_sorted + log_measure_sorted.flatten() + np.log(dra) + np.log(ddec))
+    if log_measure is not None:
+        log_measure_sorted = np.ascontiguousarray(log_measure.flatten()[np.argsort(log_skymap.flatten())][::-1])
+    else:
+        log_measure_sorted = np.zeros(log_skymap_sorted.shape)
+    log_norm           = fast_log_cumulative(log_skymap_sorted + log_measure_sorted.flatten() + np.log(dra) + np.log(ddec))[-1]
+    log_skymap         = log_skymap - log_norm
+    log_skymap_sorted  = log_skymap_sorted - log_norm
+    log_skymap_cum     = fast_log_cumulative(log_skymap_sorted + log_measure_sorted.flatten() + np.log(dra) + np.log(ddec) - log_norm)
     # find the indeces  corresponding to the given CLs
     adLevels = np.ravel([adLevels])
     args = [(log_skymap_sorted, log_skymap_cum, level) for level in adLevels]

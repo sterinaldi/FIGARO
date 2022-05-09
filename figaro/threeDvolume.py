@@ -469,7 +469,7 @@ class VolumeReconstruction(DPGMM):
             except FloatingPointError:
                 self.log_p_skymap = logsumexp(self.log_p_vol + np.log(self.dD) + np.log(self.distance_measure_3d), axis = -1)
 
-        self.areas, self.skymap_idx_CR, self.skymap_heights = ConfidenceArea(self.log_p_skymap, self.log_measure_2d, self.ra, self.dec, adLevels = self.levels)
+        self.areas, self.skymap_idx_CR, self.skymap_heights = ConfidenceArea(self.log_p_skymap, self.ra, self.dec, log_measure = log_measure_2d, adLevels = self.levels)
         for cr, area in zip(self.levels, self.areas):
             self.areas_N[cr].append(area)
     
@@ -494,7 +494,7 @@ class VolumeReconstruction(DPGMM):
             self.log_p_vol = self.log_p_vol.reshape(len(self.ra), len(self.dec), len(self.dist))
             self.volume_already_evaluated = True
             
-        self.volumes, self.idx_CR, self.volume_heights = ConfidenceVolume(self.log_p_vol, self.log_measure_3d, self.ra, self.dec, self.dist, adLevels = self.levels)
+        self.volumes, self.idx_CR, self.volume_heights = ConfidenceVolume(self.log_p_vol, self.ra, self.dec, self.dist, log_measure = self.log_measure_3d, adLevels = self.levels)
         
         for cr, vol in zip(self.levels, self.volumes):
             self.volumes_N[cr].append(vol)
