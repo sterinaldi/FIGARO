@@ -29,7 +29,7 @@ rcParams["grid.alpha"] = 0.6
 # Utilities #
 #-----------#
 
-def recursive_grid(bounds, n_pts = 100):
+def recursive_grid(bounds, n_pts):
     """
     Recursively generates the n-dimensional grid points (extremes are excluded).
     
@@ -40,11 +40,12 @@ def recursive_grid(bounds, n_pts = 100):
     Returns:
         :np.ndarray: grid
     """
+    bounds = np.array(bounds)
     if len(bounds) == 1:
-        return np.atleast_2d(np.linspace(bounds[0,0], bounds[0,1], n_pts+2)[1:-1]).T
+        return np.atleast_2d(np.linspace(bounds[0,0], bounds[0,1], n_pts[0]+2)[1:-1]).T
     else:
-        grid_nm1 = recursive_grid(np.array(bounds)[1:], n_pts)
-        d        = np.linspace(bounds[0,0], bounds[0,1], n_pts+2)[1:-1]
+        grid_nm1 = recursive_grid(np.array(bounds)[1:], n_pts[1:])
+        d        = np.linspace(bounds[0,0], bounds[0,1], n_pts[0]+2)[1:-1]
         grid     = []
         for di in d:
             for gi in grid_nm1:
