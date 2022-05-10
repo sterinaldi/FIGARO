@@ -140,10 +140,7 @@ def main():
                 # Draw samples
                 draws = []
                 for _ in range(options.n_se_draws):
-                    np.random.shuffle(ev)
-                    mix.density_from_samples(ev)
-                    draws.append(mix.build_mixture())
-                    mix.initialise()
+                    draws.append(mix.density_from_samples(ev))
                 posteriors.append(draws)
                 # Make plots
                 if options.save_single_event:
@@ -173,10 +170,7 @@ def main():
         draws = []
         # Run hierarchical analysis
         for _ in tqdm(range(options.n_draws), desc = 'Hierarchical'):
-            np.random.shuffle(posteriors)
-            mix.density_from_samples(posteriors)
-            draws.append(mix.build_mixture())
-            mix.initialise()
+            draws.append(mix.density_from_samples(posteriors))
         draws = np.array(draws)
         with open(Path(output_pkl, 'draws_'+options.h_name+'.pkl'), 'wb') as f:
             dill.dump(draws, f)

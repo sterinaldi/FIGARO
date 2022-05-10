@@ -83,10 +83,7 @@ def main():
         draws = []
         
         for _ in tqdm(range(options.n_draws), desc = name):
-            np.random.shuffle(samples)
-            mix.density_from_samples(samples)
-            draws.append(mix.build_mixture())
-            mix.initialise()
+            draws.append(mix.density_from_samples(samples))
 
         draws = np.array(draws)
         with open(Path(options.output, 'draws_'+name+'.pkl'), 'wb') as f:
