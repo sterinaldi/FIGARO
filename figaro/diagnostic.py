@@ -95,7 +95,7 @@ def autocorrelation(draws, bounds = None, out_folder = '.', name = 'event', n_po
     x  = np.linspace(x_min, x_max, n_points+2)[1:-1]
     dx = x[1] - x[0]
     
-    functions = np.array([mix.evaluate_mixture(np.atleast_2d(x).T) for mix in draws])
+    functions = np.array([mix.pdf(np.atleast_2d(x).T) for mix in draws])
     mean      = np.mean(functions, axis = 0)
     
     taumax, ac = compute_autocorrelation(functions, mean, dx)
@@ -124,8 +124,8 @@ def compute_entropy_single_draw(mixture, n_draws = 1e3):
     Returns:
         :double: entropy value
     """
-    samples = mixture.sample_from_dpgmm(int(n_draws))
-    logP    = mixture.evaluate_log_mixture(samples)
+    samples = mixture.rvs(int(n_draws))
+    logP    = mixture.logpdf(samples)
     entropy = np.sum(-logP)/(n_draws*log2e)
     return entropy
 

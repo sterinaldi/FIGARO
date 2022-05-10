@@ -284,9 +284,22 @@ class mixture:
         self.dim    = dim
         self.n_cl   = n_cl
         self.n_pts  = n_pts
-        
+
+    def __call__(self, x):
+        return self.pdf(x)
+
+    def pdf(self, x):
+        if len(x.shape) == 1:
+            x = np.atleast_2d(x).T
+        return self._pdf(x)
+
+    def logpdf(self, x):
+        if len(x.shape) == 1:
+            x = np.atleast_2d(x).T
+        return self._logpdf(x)
+
     @probit
-    def evaluate_mixture(self, x):
+    def _pdf(self, x):
         """
         Evaluate mixture at point(s) x
         
@@ -300,7 +313,7 @@ class mixture:
         return p * np.exp(-probit_logJ(x, self.bounds))
 
     @probit
-    def evaluate_log_mixture(self, x):
+    def _logpdf(self, x):
         """
         Evaluate log mixture at point(s) x
         
@@ -313,7 +326,7 @@ class mixture:
         p = logsumexp(np.array([w + mn(mean, cov).logpdf(x) for mean, cov, w in zip(self.means, self.covs, self.log_w)]), axis = 0)
         return p - probit_logJ(x, self.bounds)
         
-    def _evaluate_mixture_in_probit(self, x):
+    def _pdf_probit(self, x):
         """
         Evaluate mixture at point(s) x in probit space
         
@@ -326,7 +339,7 @@ class mixture:
         p = np.sum(np.array([w*mn(mean, cov).pdf(x) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
         return p
 
-    def _evaluate_log_mixture_in_probit(self, x):
+    def _logpdf_probit(self, x):
         """
         Evaluate log mixture at point(s) x in probit space
         
@@ -340,7 +353,7 @@ class mixture:
         return p
 
     @from_probit
-    def sample_from_dpgmm(self, n_samps):
+    def rvs(self, n_samps):
         """
         Draw samples from mixture
         
@@ -362,7 +375,7 @@ class mixture:
                 samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i]).rvs(size = n)).T))
         return np.array(samples[1:])
 
-    def _sample_from_dpgmm_probit(self, n_samps):
+    def _rvs_probit(self, n_samps):
         """
         Draw samples from mixture in probit space
         
@@ -525,9 +538,16 @@ class DPGMM:
         
         Arguments:
             :iterable samples: samples set
+        
+        Returns:
+            :mixture: the inferred mixture
         """
+        np.random.shuffle(samples)
         for s in samples:
             self.add_new_point(np.atleast_2d(s))
+        d = self.build_mixture()
+        self.initialise()
+        return d
     
     @probit
     def add_new_point(self, x):
@@ -542,7 +562,7 @@ class DPGMM:
         self.alpha = update_alpha(self.alpha, self.n_pts, self.n_cl)
     
     @from_probit
-    def sample_from_dpgmm(self, n_samps):
+    def rvs(self, n_samps):
         """
         Draw samples from mixture
         
@@ -564,7 +584,7 @@ class DPGMM:
                 samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n)).T))
         return samples[1:]
 
-    def _sample_from_dpgmm_probit(self, n_samps):
+    def _rvs_probit(self, n_samps):
         """
         Draw samples from mixture in probit space
         
@@ -586,7 +606,7 @@ class DPGMM:
                 samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n)).T))
         return samples[1:]
 
-    def _evaluate_mixture_in_probit(self, x):
+    def _pdf_probit(self, x):
         """
         Evaluate mixture at point(s) x in probit space
         
@@ -600,7 +620,7 @@ class DPGMM:
         return p
 
     @probit
-    def _evaluate_mixture_no_jacobian(self, x):
+    def _pdf_probit_no_jacobian(self, x):
         """
         Evaluate mixture at point(s) x without jacobian
         
@@ -612,9 +632,14 @@ class DPGMM:
         """
         p = np.sum(np.array([w*mn(comp.mu, comp.sigma).pdf(x) for comp, w in zip(self.mixture, self.w)]), axis = 0)
         return p
-    
+
+    def pdf(self, x):
+        if len(x.shape) == 1:
+            x = np.atleast_2d(x).T
+        return self._pdf(x)
+
     @probit
-    def evaluate_mixture(self, x):
+    def _pdf(self, x):
         """
         Evaluate mixture at point(s) x
         
@@ -627,7 +652,7 @@ class DPGMM:
         p = np.sum(np.array([w*mn(comp.mu, comp.sigma).pdf(x) for comp, w in zip(self.mixture, self.w)]), axis = 0)
         return p * np.exp(-probit_logJ(x, self.bounds))
 
-    def _evaluate_log_mixture_in_probit(self, x):
+    def _logpdf_probit(self, x):
         """
         Evaluate log mixture at point(s) x in probit space
         
@@ -641,7 +666,7 @@ class DPGMM:
         return p
 
     @probit
-    def _evaluate_log_mixture_no_jacobian(self, x):
+    def _logpdf_no_jacobian(self, x):
         """
         Evaluate log mixture at point(s) x without jacobian
         
@@ -653,9 +678,14 @@ class DPGMM:
         """
         p = logsumexp(np.array([w + mn(comp.mu, comp.sigma).logpdf(x) for comp, w in zip(self.mixture, self.log_w)]), axis = 0)
         return p
+
+    def logpdf(self, x):
+        if len(x.shape) == 1:
+            x = np.atleast_2d(x).T
+        return self._logpdf(x)
         
     @probit
-    def evaluate_log_mixture(self, x):
+    def _logpdf(self, x):
         """
         Evaluate mixture at point(s) x
         
@@ -708,7 +738,7 @@ class HDPGMM(DPGMM):
                        ):
         self.dim = len(bounds)
         if prior_pars == None:
-            prior_pars = (1e-2, np.identity(self.dim)*0.2**2, dim+2, np.zeros(self.dim))
+            prior_pars = (1e-2, np.identity(self.dim)*0.2**2, self.dim+2, np.zeros(self.dim))
         super().__init__(bounds = bounds, prior_pars = prior_pars, alpha0 = alpha0, out_folder = out_folder)
         self.MC_draws = int(MC_draws)
         
@@ -723,12 +753,11 @@ class HDPGMM(DPGMM):
         
     def initialise(self, prior_pars = None):
         super().initialise(prior_pars = prior_pars)
+        df = np.max([self.prior.nu, self.dim + 2])
+        self.sigma_MC = invwishart(df = df, scale = self.prior.L).rvs(size = self.MC_draws)
         if self.dim == 1:
-            self.sigma_MC = invgamma(self.prior.nu/2, scale = self.prior.nu*self.prior.L[0,0]/2.).rvs(size = self.MC_draws)
             self.mu_MC    = np.array([np.random.normal(loc = self.prior.mu[0], scale = s) for s in np.sqrt(self.sigma_MC/self.prior.k)])
         else:
-            df = np.max([self.prior.nu, self.dim + 2])
-            self.sigma_MC = invwishart(df = df, scale = self.prior.L*(df-self.dim-1)).rvs(size = self.MC_draws)
             self.mu_MC    = np.array([mn(self.prior.mu, s/self.prior.k).rvs() for s in self.sigma_MC])
     
     def add_new_point(self, ev):
@@ -838,6 +867,13 @@ class HDPGMM(DPGMM):
         
         Arguments:
             :iterable samples: set of single-event draws from DPGMM
+        
+        Returns:
+            :mixture: the inferred mixture
         """
+        np.random.shuffle(events)
         for ev in events:
             self.add_new_point(ev)
+        d = self.build_mixture()
+        self.initialise()
+        return d

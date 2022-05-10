@@ -356,7 +356,7 @@ class VolumeReconstruction(DPGMM):
             self.density_folder.mkdir()
 
 
-    def _evaluate_mixture_in_probit(self, x):
+    def _pdf_probit(self, x):
         """
         Evaluate mixture at point(s) x in probit space.
         Overwrites parent method to avoid memory issues in 3D grid or catalog evaluation
@@ -372,7 +372,7 @@ class VolumeReconstruction(DPGMM):
             p += wi*mn(comp.mu, comp.sigma).pdf(x)
         return p
     
-    def _evaluate_log_mixture_in_probit(self, x):
+    def _logpdf_probit(self, x):
         """
         Evaluate log mixture at point(s) x in probit space.
         Overwrites parent method to avoid memory issues in 3D grid or catalog evaluation
@@ -415,7 +415,7 @@ class VolumeReconstruction(DPGMM):
         Returns:
             :np.ndarray: samples in celestial coordinates (ra, dec, D)
         """
-        samples = self.sample_from_dpgmm(n_samps)
+        samples = self.rvs(n_samps)
         return cartesian_to_celestial(samples)
     
     def plot_samples(self, n_samps, initial_samples = None):
@@ -444,7 +444,7 @@ class VolumeReconstruction(DPGMM):
         Marginalise volume map over luminosity distance to get the 2D skymap and compute credible areas
         """
         if not self.volume_already_evaluated:
-            p_vol               = self._evaluate_mixture_in_probit(self.probit_grid) * self.inv_J
+            p_vol               = self._pdf_probit(self.probit_grid) * self.inv_J
             self.norm_p_vol     = (p_vol*np.exp(self.log_measure_3d.reshape(p_vol.shape))*self.dD*self.dra*self.ddec).sum()
             self.log_norm_p_vol = np.log(self.norm_p_vol)
             self.p_vol          = p_vol/self.norm_p_vol
@@ -454,7 +454,7 @@ class VolumeReconstruction(DPGMM):
                 try:
                     self.log_p_vol = np.log(self.p_vol)
                 except FloatingPointError:
-                    self.log_p_vol = self._evaluate_log_mixture_in_probit(self.probit_grid) + self.log_inv_J - self.log_norm_p_vol
+                    self.log_p_vol = self._logpdf_probit(self.probit_grid) + self.log_inv_J - self.log_norm_p_vol
                     
             self.p_vol     = self.p_vol.reshape(len(self.ra), len(self.dec), len(self.dist))
             self.log_p_vol = self.log_p_vol.reshape(len(self.ra), len(self.dec), len(self.dist))
@@ -469,7 +469,7 @@ class VolumeReconstruction(DPGMM):
             except FloatingPointError:
                 self.log_p_skymap = logsumexp(self.log_p_vol + np.log(self.dD) + np.log(self.distance_measure_3d), axis = -1)
 
-        self.areas, self.skymap_idx_CR, self.skymap_heights = ConfidenceArea(self.log_p_skymap, self.ra, self.dec, log_measure = log_measure_2d, adLevels = self.levels)
+        self.areas, self.skymap_idx_CR, self.skymap_heights = ConfidenceArea(self.log_p_skymap, self.ra, self.dec, log_measure = self.log_measure_2d, adLevels = self.levels)
         for cr, area in zip(self.levels, self.areas):
             self.areas_N[cr].append(area)
     
@@ -478,7 +478,7 @@ class VolumeReconstruction(DPGMM):
         Evaluate volume map and compute credbile volumes
         """
         if not self.volume_already_evaluated:
-            p_vol               = self._evaluate_mixture_in_probit(self.probit_grid) * self.inv_J
+            p_vol               = self._pdf_probit(self.probit_grid) * self.inv_J
             self.norm_p_vol     = (p_vol*np.exp(self.log_measure_3d.reshape(p_vol.shape))*self.dD*self.dra*self.ddec).sum()
             self.log_norm_p_vol = np.log(self.norm_p_vol)
             self.p_vol          = p_vol/self.norm_p_vol
@@ -488,7 +488,7 @@ class VolumeReconstruction(DPGMM):
                 try:
                     self.log_p_vol = np.log(self.p_vol)
                 except FloatingPointError:
-                    self.log_p_vol = self._evaluate_log_mixture_in_probit(self.probit_grid) + self.log_inv_J - self.log_norm_p_vol
+                    self.log_p_vol = self._logpdf_probit(self.probit_grid) + self.log_inv_J - self.log_norm_p_vol
 
             self.p_vol     = self.p_vol.reshape(len(self.ra), len(self.dec), len(self.dist))
             self.log_p_vol = self.log_p_vol.reshape(len(self.ra), len(self.dec), len(self.dist))
@@ -518,7 +518,7 @@ class VolumeReconstruction(DPGMM):
         Arguments:
             :bool final_map: flag to raise if the inference is finished
         """
-        log_p_cat                  = self._evaluate_log_mixture_in_probit(self.probit_catalog) + self.log_inv_J_cat - self.log_norm_p_vol
+        log_p_cat                  = self._logpdf_probit(self.probit_catalog) + self.log_inv_J_cat - self.log_norm_p_vol
         self.log_p_cat_to_plot     = log_p_cat[np.where(log_p_cat > self.volume_heights[np.where(self.levels == self.region)])]
         self.p_cat_to_plot         = np.exp(self.log_p_cat_to_plot)
         self.cat_to_plot_celestial = self.catalog[np.where(log_p_cat > self.volume_heights[np.where(self.levels == self.region)])]

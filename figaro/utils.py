@@ -212,14 +212,13 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
     
     x    = np.linspace(x_min, x_max, n_pts+2)[1:-1]
     dx   = x[1]-x[0]
-    x_2d = np.atleast_2d(x).T
     
-    probs = np.array([d.evaluate_mixture(x_2d) for d in draws])
+    probs = np.array([d.pdf(x) for d in draws])
     
     percentiles = [50, 5, 16, 84, 95]
     p = {}
     for perc in percentiles:
-        p[perc] = np.percentile(probs.T, perc, axis = 1)
+        p[perc] = np.percentile(probs, perc, axis = 0)
     norm = p[50].sum()*dx
     for perc in percentiles:
         p[perc] = p[perc]/norm
@@ -377,7 +376,7 @@ def plot_multidim(draws, dim, samples = None, selfunc = None, out_folder = '.', 
     
     mix_samples = np.empty(shape = (1,dim))
     for i, n in zip(ctr.keys(), ctr.values()):
-        mix_samples = np.concatenate((mix_samples, draws[i].sample_from_dpgmm(n)))
+        mix_samples = np.concatenate((mix_samples, draws[i].rvs(n)))
     mix_samples = mix_samples[1:]
     
     # Make corner plots
@@ -462,8 +461,8 @@ def pp_plot_cdf(draws, injection, n_points = 1000, out_folder = '.', name = 'eve
     x_max = np.min(all_bounds[:,1])
     x = np.linspace(x_min, x_max, n_points+2)[1:-1]
     
-    functions     = np.array([mix.evaluate_mixture(np.atleast_2d(x).T) for mix in draws])
-    median        = np.percentile(functions.T, 50, axis = 1)
+    functions     = np.array([mix(x) for mix in draws])
+    median        = np.percentile(functions, 50, axis = 0)
     cdf_draws     = np.array([fast_cumulative(d) for d in functions])
     cdf_median    = fast_cumulative(median)
     cdf_injection = fast_cumulative(injection(x))
