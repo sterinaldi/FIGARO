@@ -11,6 +11,8 @@ from matplotlib import axes
 from matplotlib.projections import projection_registry
 from corner import corner
 
+from tqdm import tqdm
+
 from collections import Counter
 import scipy.stats
 
@@ -335,7 +337,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         plt.close()
     
 
-def plot_multidim(draws, dim, samples = None, selfunc = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False):
+def plot_multidim(draws, dim, samples = None, selfunc = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False, n_pts = 100):
     """
     Plot the recovered multidimensional distribution along with samples from the true distribution (if available) as corner plot.
     
@@ -398,29 +400,23 @@ def plot_multidim(draws, dim, samples = None, selfunc = None, out_folder = '.', 
     
     if selfunc is not None:
         return
-        # to be finished
-        grid   = recursive_grid(draws[0].bounds)
-        p_grid = np.random.choice(draws).evaluate_mixture(grid)
-        top    = np.max(p_grid/selfunc(grid))
-        mix_samples = []
-        while len(mix_samples) < size:
-            pts    = np.random.uniform(draws[0].bounds[:,0], draws[0].bounds[:,1], size = (size, dim))
-            p_pts  = np.random.choice(draws).evaluate_mixture(pts)
-            sf     = selfunc(pts)
-            h      = np.random.uniform(0, top, size = size)
-            mix_samples.extend(pts[np.where(h < p_pts/sf)])
-        mix_samples = np.array(mix_samples)[:size]
-        
-        c = corner(mix_samples, color = 'dodgerblue', labels = labels, hist_kwargs={'density':True, 'label':'${0}$'.format(rec_label)})
-        plt.legend(loc = 0, frameon = False, fontsize = 12, bbox_to_anchor = (0.95, (dim-1)+0.8))
-        if show:
-            plt.show()
-        if save:
-            if not subfolder:
-                c.savefig(Path(out_folder, 'inj_{0}.pdf'.format(name)), bbox_inches = 'tight')
-            else:
-                c.savefig(Path(out_folder, 'density', 'inj_{0}.pdf'.format(name)), bbox_inches = 'tight')
-        plt.close()
+#         to be finished
+#        if not np.iterable(n_pts):
+#            n_pts = np.ones(dim)*n_pts
+#        grid   = recursive_grid(draws[0].bounds, n_pts)
+#        p_grid = []
+#        for di in tqdm(draws, desc='Evaluating grid'):
+#            p_grid.append(di.evaluate_mixture(grid))
+#        median = np.percentile(p_grid.T, axis = 1)
+#
+#        if show:
+#            plt.show()
+#        if save:
+#            if not subfolder:
+#                c.savefig(Path(out_folder, 'inj_{0}.pdf'.format(name)), bbox_inches = 'tight')
+#            else:
+#                c.savefig(Path(out_folder, 'density', 'inj_{0}.pdf'.format(name)), bbox_inches = 'tight')
+#        plt.close()
 
 def plot_n_clusters_alpha(n_cl, alpha, out_folder = '.', name = 'event', show = False, save = True):
     """
