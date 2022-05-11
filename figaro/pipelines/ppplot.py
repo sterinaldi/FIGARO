@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 from figaro.mixture import DPGMM
 from figaro.transform import transform_to_probit
-from figaro.utils import save_options, plot_median_cr, plot_multidim, recursive_grid, pp_plot_levels
+from figaro.utils import save_options, plot_median_cr, plot_multidim, recursive_grid, pp_plot_levels, get_priors
 from figaro.credible_regions import FindLevelForHeight
 from figaro.load import load_data
 
@@ -137,10 +137,7 @@ def main():
             t = true_vals[name]
             if options.run_events:
                 # Estimate prior pars from samples
-                probit_samples = transform_to_probit(ev, mix.bounds)
-                mu = np.atleast_1d(np.mean(probit_samples, axis = 0))
-                sigma = np.atleast_2d(np.cov(probit_samples.T))
-                mix.initialise(prior_pars= (1e-2, sigma, dim+2, mu))
+                mix.initialise(prior_pars = get_priors(mix.bounds, samples = ev))
                 # Draw samples
                 draws = []
                 for _ in range(options.n_draws):

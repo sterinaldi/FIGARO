@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 from figaro.mixture import DPGMM, HDPGMM
 from figaro.transform import transform_to_probit
-from figaro.utils import save_options, plot_median_cr, plot_multidim
+from figaro.utils import save_options, plot_median_cr, plot_multidim, get_priors
 from figaro.load import load_data
 
 def main():
@@ -38,7 +38,7 @@ def main():
     parser.add_option("--exclude_points", dest = "exclude_points", action = 'store_true', help = "Exclude points outside bounds from analysis", default = False)
     parser.add_option("--cosmology", type = "string", dest = "cosmology", help = "Cosmological parameters (h, om, ol). Default values from Planck (2021)", default = '0.674,0.315,0.685')
     parser.add_option("-e", "--events", dest = "run_events", action = 'store_false', help = "Skip single-event analysis", default = True)
-
+    parser.add_option("--sigma_prior", dest = "sigma_prior", type = "string", help = "Expected standard deviation (prior) for hierarchical inference - single value or n-dim values. If None, it is estimated from samples", default = None)
     (options, args) = parser.parse_args()
 
     # Paths
@@ -93,6 +93,8 @@ def main():
     # Read number of single-event draws
     if options.n_se_draws is None:
         options.n_se_draws = options.n_draws
+    if options.sigma_prior is not None:
+        options.sigma_prior = np.array([float(s) for s in options.sigma_prior.split(',')])
     
     save_options(options)
     
@@ -133,10 +135,7 @@ def main():
             for i in tqdm(range(len(events)), desc = 'Events'):
                 ev   = events[i]
                 name = names[i]
-                probit_samples = transform_to_probit(ev, mix.bounds)
-                mu = np.atleast_1d(np.mean(probit_samples, axis = 0))
-                sigma = np.atleast_2d(np.cov(probit_samples.T))
-                mix.initialise(prior_pars= (1e-2, sigma, dim+2, mu))
+                mix.initialise(prior_pars = get_priors(mix.bounds, samples = ev))
                 # Draw samples
                 draws = []
                 for _ in range(options.n_se_draws):
@@ -163,10 +162,7 @@ def main():
             except FileNotFoundError:
                 print("No posteriors_single_event.pkl file found. Please provide it or re-run the single-event inference")
                 exit()
-        probit_samples = transform_to_probit(all_samples, options.bounds)
-        sigma = np.atleast_2d(np.cov(probit_samples.T))
-        mu    = np.atleast_1d(np.mean(probit_samples, axis = 0))
-        mix = HDPGMM(options.bounds, prior_pars = (1e-2, sigma/100, dim+2, mu), MC_draws = 1e3)
+        mix = HDPGMM(options.bounds, prior_pars = get_priors(options.bounds, samples = all_samples, std = options.sigma_prior), MC_draws = 1e3)
         draws = []
         # Run hierarchical analysis
         for _ in tqdm(range(options.n_draws), desc = 'Hierarchical'):

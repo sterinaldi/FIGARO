@@ -10,7 +10,7 @@ from pathlib import Path
 from tqdm import tqdm
 
 from figaro.mixture import DPGMM
-from figaro.utils import save_options, plot_median_cr, plot_multidim
+from figaro.utils import save_options, plot_median_cr, plot_multidim, get_priors
 from figaro.load import load_single_event
 
 def main():
@@ -31,7 +31,8 @@ def main():
     parser.add_option("--n_samples_dsp", type = "int", dest = "n_samples_dsp", help = "Number of samples to analyse (downsampling). Default: all", default = -1)
     parser.add_option("--exclude_points", dest = "exclude_points", action = 'store_true', help = "Exclude points outside bounds from analysis", default = False)
     parser.add_option("--cosmology", type = "string", dest = "cosmology", help = "Cosmological parameters (h, om, ol). Default values from Planck (2021)", default = '0.674,0.315,0.685')
-
+    parser.add_option("--sigma_prior", dest = "sigma_prior", type = "string", help = "Expected standard deviation (prior) - single value or n-dim values. If None, it is estimated from samples", default = None)
+    
     (options, args) = parser.parse_args()
 
     # Paths
@@ -76,10 +77,12 @@ def main():
         # Check if all samples are within bounds
         if not np.alltrue([(samples[:,i] > options.bounds[i,0]).all() and (samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
             raise ValueError("One or more samples are outside the given bounds.")
+    if options.sigma_prior is not None:
+        options.sigma_prior = np.array([float(s) for s in options.sigma_prior.split(',')])
 
     # Reconstruction
     if not options.postprocess:
-        mix = DPGMM(options.bounds)
+        mix = DPGMM(options.bounds, prior_pars = get_priors(options.bounds, samples = sampes, std = options.sigma_prior))
         draws = []
         
         for _ in tqdm(range(options.n_draws), desc = name):
