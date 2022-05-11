@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 from matplotlib import rcParams
 from matplotlib import axes
 from matplotlib.projections import projection_registry
+import matplotlib.patches as mpatches
+from matplotlib.lines import Line2D
 from corner import corner
 
 from tqdm import tqdm
@@ -42,17 +44,22 @@ def recursive_grid(bounds, n_pts):
     Returns:
         :np.ndarray: grid
     """
-    bounds = np.array(bounds)
+    bounds = np.atleast_2d(bounds)
+    n_pts  = np.atleast_1d(n_pts)
     if len(bounds) == 1:
-        return np.atleast_2d(np.linspace(bounds[0,0], bounds[0,1], n_pts[0]+2)[1:-1]).T
+        d  = np.linspace(bounds[0,0], bounds[0,1], n_pts[0]+2)[1:-1]
+        dD = d[1]-d[0]
+        return np.atleast_2d(d).T, [dD]
     else:
-        grid_nm1 = recursive_grid(np.array(bounds)[1:], n_pts[1:])
-        d        = np.linspace(bounds[0,0], bounds[0,1], n_pts[0]+2)[1:-1]
+        grid_nm1, diff = recursive_grid(np.array(bounds)[1:], n_pts[1:])
+        
+        d = np.linspace(bounds[0,0], bounds[0,1], n_pts[0]+2)[1:-1]
+        diff.append(d[1]-d[0])
         grid     = []
         for di in d:
             for gi in grid_nm1:
                 grid.append([di,*gi])
-        return np.array(grid)
+        return np.array(grid), diff
 
 #-------------#
 #   Options   #
@@ -133,7 +140,7 @@ class PPPlot(axes.Axes):
         # Plot diagonal line
         return self.plot([0, 1], [0, 1], *args, **kwargs)
 
-    def add_confidence_band(self, nsamples, alpha=0.95, **kwargs):
+    def add_confidence_band(self, nsamples, alpha=0.9, **kwargs):
         """
         Add a target confidence band.
 
@@ -157,11 +164,12 @@ class PPPlot(axes.Axes):
         # Make copy of kwargs to pass to fill_betweenx()
         kwargs = dict(kwargs)
         kwargs.setdefault('color', 'ghostwhite')
-        kwargs.setdefault('edgecolor', 'lightgray')
+        kwargs.setdefault('edgecolor', 'gray')
         kwargs.setdefault('linewidth', 0.5)
+        kwargs.setdefault('alpha', 0.5)
         fontsize = kwargs.pop('fontsize', 'x-small')
 
-        return self.fill_betweenx(p, ci_lo, ci_hi, **kwargs)
+        return self.fill_betweenx(p, ci_lo, ci_hi, **kwargs, label = '${0}\%\ CR$'.format(int(alpha*100)))
 
     @classmethod
     def _as_mpl_axes(cls):
@@ -476,6 +484,56 @@ def pp_plot_cdf(draws, injection, n_points = 1000, out_folder = '.', name = 'eve
     ax.plot(cdf_injection, cdf, color = 'steelblue', lw = 0.7)
     ax.set_xlabel('$\mathrm{Injected}$')
     ax.set_ylabel('$\mathrm{FIGARO}$')
+    ax.grid(True,dashes=(1,3))
+    if show:
+        plt.show()
+    if save:
+        fig.savefig(Path(out_folder, '{0}_ppplot.pdf'.format(name)), bbox_inches = 'tight')
+    plt.close()
+
+def pp_plot_levels(CR_levels, median_CR = None, out_folder = '.', name = 'MDC', show = False, save = True):
+    """
+    Make pp-plot comparing draws cdfs and injection cdf
+    
+    Arguments:
+        :iterable CR:            2D array with credible levels for each event
+        :iterable median_CR:     credible levels of medians
+        :str or Path out_folder: output folder
+        :str name:               name to be given to outputs
+        :bool save:              whether to save the plot or not
+        :bool show:              whether to show the plot during the run or not
+    """
+    if len(CR_levels.shape) > 1:
+        CR_levels = CR_levels.T
+    n_evs     = CR_levels.shape[-1]
+    L         = np.linspace(0,1,n_evs)
+    
+    fig = plt.figure()
+    ax  = fig.add_subplot(111, projection = 'pp_plot')
+    ax.add_confidence_band(n_evs, zorder = n_evs)
+    ax.add_diagonal(zorder = n_evs+1)
+    if len(CR_levels.shape) > 1:
+        sorted = []
+        for cr in CR_levels:
+            if median_CR is not None:
+                lw = 0.3
+                c  = 'lightsteelblue'
+            else:
+                lw = 0.6
+                c  = 'steelblue'
+            ax.plot(np.sort(cr), L, lw = lw, alpha = 0.5, color = c)
+        if median_CR is not None:
+            ax.plot(np.sort(median_CR), L, lw = 0.8, color = 'steelblue', label = '$\mathrm{Median}$', zorder = n_evs+2)
+        # Add label for draws
+        handles, labels = ax.get_legend_handles_labels()
+        line = Line2D([0], [0], label='$\mathrm{Draws}$', lw = lw, color = c)
+        handles.extend([line])
+        ax.legend(handles=handles, loc = 0, frameon = False)
+    else:
+        ax.plot(np.sort(CR_levels), L, lw = 0.8, color = 'steelblue', zorder = n_evs+2)
+    # Maquillage
+    ax.set_xlabel('$P$')
+    ax.set_ylabel('$\mathrm{Fraction\ of\ events\ within\ }CR_P$')
     ax.grid(True,dashes=(1,3))
     if show:
         plt.show()
