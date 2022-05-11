@@ -22,12 +22,12 @@ def main():
     parser.add_option("-b", "--bounds", type = "string", dest = "bounds", help = "Density bounds. Must be a string formatted as '[[xmin, xmax], [ymin, ymax],...]'. For 1D distributions use '[[xmin, xmax]]'. Quotation marks are required and scientific notation is accepted", default = None)
     parser.add_option("-o", "--output", type = "string", dest = "output", help = "Output folder. Default: same directory as samples folder", default = None)
     parser.add_option("--inj_density", type = "string", dest = "inj_density_file", help = "Python module with injected density - please name the method 'density'", default = None)
-    parser.add_option("--selfunc", type = "string", dest = "selfunc_file", help = "Python module with selection function - please name the method 'selfunc'", default = None)
+    parser.add_option("--selfunc", type = "string", dest = "selfunc_file", help = "Python module with selection function - please name the method 'selection_function'", default = None)
     parser.add_option("--parameter", type = "string", dest = "par", help = "GW parameter(s) to be read from files", default = None)
     # Plot
     parser.add_option("--name", type = "string", dest = "h_name", help = "Name to be given to hierarchical inference files. Default: same name as samples folder parent directory", default = None)
     parser.add_option("-p", "--postprocess", dest = "postprocess", action = 'store_true', help = "Postprocessing", default = False)
-    parser.add_option("-s", "--save_se", dest = "save_single_event", action = 'store_false', help = "Save single event plots", default = False)
+    parser.add_option("-s", "--save_se", dest = "save_single_event", action = 'store_true', help = "Save single event plots", default = False)
     parser.add_option("--symbol", type = "string", dest = "symbol", help = "LaTeX-style quantity symbol, for plotting purposes", default = None)
     parser.add_option("--unit", type = "string", dest = "unit", help = "LaTeX-style quantity unit, for plotting purposes", default = None)
     parser.add_option("--hier_samples", type = "string", dest = "true_vals", help = "Samples from hierarchical distribution (true single-event values, for simulations only)", default = None)
@@ -67,7 +67,7 @@ def main():
     # If provided, load injected density
     inj_density = None
     if options.inj_density_file is not None:
-        inj_file_name = options.inj_density_file.split('/')[-1].split('.')[0]
+        inj_file_name = Path(options.inj_density_file).parts[-1].split('.')[0]
         spec = importlib.util.spec_from_file_location(inj_file_name, options.inj_density_file)
         inj_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(inj_module)
@@ -75,7 +75,7 @@ def main():
     #If provided, load selecton function
     selfunc = None
     if options.selfunc_file is not None:
-        selfunc_file_name = options.selfunc_file.split('/')[-1].split('.')[0]
+        selfunc_file_name = Path(options.selfunc_file).parts[-1].split('.')[0]
         spec = importlib.util.spec_from_file_location(selfunc_file_name, options.selfunc_file)
         selfunc_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(selfunc_module)
