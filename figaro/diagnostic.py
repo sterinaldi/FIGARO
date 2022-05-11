@@ -6,6 +6,7 @@ from figaro.cumulative import fast_cumulative
 
 log2e = np.log2(np.e)
 
+@jit
 def angular_coefficient(x, y):
     """
     Angular coefficient obtained from linear regression.
@@ -29,6 +30,7 @@ def compute_angular_coefficients(x, L = 500):
     Returns:
         :np.ndarray: array of angular coefficients
     """
+    L = np.min([L, len(x)])
     N = np.arange(len(x))+1
     a = np.zeros(len(x) - int(L), dtype = np.float64)
     for i in range(len(a)):
@@ -95,7 +97,7 @@ def autocorrelation(draws, bounds = None, out_folder = '.', name = 'event', n_po
     x  = np.linspace(x_min, x_max, n_points+2)[1:-1]
     dx = x[1] - x[0]
     
-    functions = np.array([mix.pdf(np.atleast_2d(x).T) for mix in draws])
+    functions = np.array([mix.pdf(x) for mix in draws])
     mean      = np.mean(functions, axis = 0)
     
     taumax, ac = compute_autocorrelation(functions, mean, dx)
@@ -113,7 +115,7 @@ def autocorrelation(draws, bounds = None, out_folder = '.', name = 'event', n_po
     plt.close()
     return ac
     
-def compute_entropy_single_draw(mixture, n_draws = 1e3):
+def compute_entropy_single_draw(mixture, n_draws = 1e3, return_error = False):
     """
     Compute entropy for a single realisation of the DPGMM using Monte Carlo integration
     
@@ -126,10 +128,14 @@ def compute_entropy_single_draw(mixture, n_draws = 1e3):
     """
     samples = mixture.rvs(int(n_draws))
     logP    = mixture.logpdf(samples)
-    entropy = np.sum(-logP)/(n_draws*log2e)
-    return entropy
+    entropy = np.mean(-logP)/log2e
+    if not return_error:
+        return entropy
+    else:
+        dentropy = np.std(-logP)/(np.sqrt(n_draws)*log2e)
+        return entropy, dentropy
 
-def compute_entropy(draws, n_draws = 1e3):
+def compute_entropy(draws, n_draws = 1e3, return_error = False):
     """
     Compute entropy for a list of realisations of the DPGMM using Monte Carlo integration
     
@@ -141,30 +147,38 @@ def compute_entropy(draws, n_draws = 1e3):
         :np.ndarray: entropy values
     """
     S = np.zeros(len(draws))
-    for i, d in enumerate(draws):
-        S[i] = compute_entropy_single_draw(d, int(n_draws))
-    return S
+    if not return_error:
+        for i, d in enumerate(draws):
+            S[i] = compute_entropy_single_draw(d, n_draws)
+        return S
+    else:
+        dS = np.zeros(len(draws))
+        for i, d in enumerate(draws):
+            S[i], dS[i] = compute_entropy_single_draw(d, n_draws, return_error = return_error)
+        return S, dS
 
-def entropy(draws, out_folder = '.', name = 'event', n_draws = 1e3, step = 1, dim = 1, show = False, save = True):
+def entropy(draws, out_folder = '.', exp_entropy = None, name = 'event', n_draws = 1e4, step = 1, show = False, save = True):
     """
     Compute entropy of a set of draws and produce the relevant plot
     
     Arguments:
         :iterable draws:         container of mixture instances
         :str or Path out_folder: output folder
+        :double exp_entropy:     expected value for entropy, expressed in bits
         :str name:               name to be given to outputs
         :int n_draws:            number of MC draws
         :int step:               number of draws between entropy samples (if downsampled by some other method, for plotting purposes only)
-        :int dim:                number of dimensions
         :bool save:              whether to save the plot or not
         :bool show:              whether to show the plot during the run or not
     
     Return:
         :np.ndarray: entropy
     """
-    S = compute_entropy(draws, int(n_draws**dim))
+    S = compute_entropy(draws, int(n_draws))
     fig, ax = plt.subplots()
     ax.plot(np.arange(1, len(draws)+1)*step, S, ls = '--', marker = '', lw = 0.7)
+    if exp_entropy is not None:
+        ax.axhline(exp_entropy, lw = 0.5, ls = '--', c = 'r')
     ax.set_xlabel('$N$')
     ax.set_ylabel('$S(N)\ [\mathrm{bits}]$')
     ax.grid(True,dashes=(1,3))
@@ -175,13 +189,14 @@ def entropy(draws, out_folder = '.', name = 'event', n_draws = 1e3, step = 1, di
     plt.close()
     return S
 
-def plot_angular_coefficient(entropy, L = 500, out_folder = '.', name = 'event', step = 1, show = False, save = True):
+def plot_angular_coefficient(entropy, L = 500, ac_expected = None, out_folder = '.', name = 'event', step = 1, show = False, save = True):
     """
     Compute entropy angular coefficient and produce the relevant plot
     
     Arguments:
         :iterable entropy:       container of mixture instances
         :int L:                  window lenght
+        :double ac_expected:     expected angular coefficient
         :str or Path out_folder: output folder
         :str name:               name to be given to outputs
         :int step:               number of draws between entropy samples (if downsampled by some other method, for plotting purposes only)
@@ -193,7 +208,8 @@ def plot_angular_coefficient(entropy, L = 500, out_folder = '.', name = 'event',
     """
     S = compute_angular_coefficients(entropy, L = L)
     fig, ax = plt.subplots()
-    ax.axhline(0, lw = 0.5, ls = '--', c = 'r')
+    if ac_expected is not None:
+        ax.axhline(ac_expected, lw = 0.5, ls = '--', c = 'r')
     ax.plot(np.arange(len(S))*step+L, S, ls = '--', marker = '', color = 'steelblue', lw = 0.7)
     ax.set_ylabel('$\\frac{dS(N)}{dN}$')
     ax.set_xlabel('$N$')
