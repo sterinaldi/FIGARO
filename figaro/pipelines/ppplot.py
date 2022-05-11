@@ -1,0 +1,188 @@
+import numpy as np
+
+import optparse as op
+import configparser
+import json
+import dill
+import importlib
+
+from pathlib import Path
+from tqdm import tqdm
+
+from figaro.mixture import DPGMM
+from figaro.transform import transform_to_probit
+from figaro.utils import save_options, plot_median_cr, plot_multidim, recursive_grid, pp_plot_levels
+from figaro.credible_regions import FindLevelForHeight
+from figaro.load import load_data
+
+def main():
+
+    parser = op.OptionParser()
+    # Input/output
+    parser.add_option("-i", "--input", type = "string", dest = "samples_folder", help = "Folder with single-event samples files. .txt files only")
+    parser.add_option("-b", "--bounds", type = "string", dest = "bounds", help = "Density bounds. Must be a string formatted as '[[xmin, xmax], [ymin, ymax],...]'. For 1D distributions use '[[xmin, xmax]]'. Quotation marks are required and scientific notation is accepted", default = None)
+    parser.add_option("--true_vals", type = "string", dest = "true_vals", help = "JSON file storing a dictionary with the injected values. Dictionary keys must match single-event samples files names", default = None)
+    parser.add_option("-o", "--output", type = "string", dest = "output", help = "Output folder. Default: same directory as samples folder", default = None)
+    # Plot
+    parser.add_option("--name", type = "string", dest = "name", help = "Name to be given to pp-plot files. Default: MDC", default = 'MDC')
+    parser.add_option("-p", "--postprocess", dest = "postprocess", action = 'store_true', help = "Postprocessing", default = False)
+    parser.add_option("-s", "--save_plot", dest = "save_plots", action = 'store_false', help = "Save single event plots", default = False)
+    parser.add_option("--symbol", type = "string", dest = "symbol", help = "LaTeX-style quantity symbol, for plotting purposes", default = None)
+    parser.add_option("--unit", type = "string", dest = "unit", help = "LaTeX-style quantity unit, for plotting purposes", default = None)
+    # Settings
+    parser.add_option("--draws", type = "int", dest = "n_draws", help = "Number of draws for each single-event distribution", default = 100)
+    parser.add_option("--n_samples_dsp", type = "int", dest = "n_samples_dsp", help = "Number of samples to analyse (downsampling). Default: all", default = -1)
+    parser.add_option("--exclude_points", dest = "exclude_points", action = 'store_true', help = "Exclude points outside bounds from analysis", default = False)
+    parser.add_options("--grid_points", dest = "grid_points", type = "string", help = "Number of grid points for each dimension. Single integer or one int per dimension", default = None)
+    parser.add_option("-e", "--events", dest = "run_events", action = 'store_false', help = "Skip single-event analysis", default = True)
+
+    (options, args) = parser.parse_args()
+
+    # Paths
+    options.samples_folder = Path(options.samples_folder).resolve()
+    if options.output is not None:
+        options.output = Path(options.output).resolve()
+        if not options.output.exists():
+            options.output.mkdir(parents=True)
+    else:
+        options.output = options.samples_folder.parent
+    output_plots = Path(options.output, 'plots')
+    if not output_plots.exists():
+        output_plots.mkdir()
+    output_pkl = Path(options.output, 'draws')
+    if not output_pkl.exists():
+        output_pkl.mkdir()
+    # Read bounds
+    if options.bounds is not None:
+        options.bounds = np.array(json.loads(options.bounds))
+    elif options.bounds is None and not options.postprocess:
+        print("Please provide bounds for the inference (use -b '[[xmin,xmax],[ymin,ymax],...]')")
+        exit()
+    # Load true values
+    if options.true_vals is not None:
+        options.true_vals = Path(options.true_vals).resolve()
+        with open(options.true_vals, 'r') as f:
+            true_vals = json.load(f)
+    else:
+        print("Please provide true values")
+        exit()
+    
+    # Check that all files are .txt
+    if not (np.array([f.suffix for f in options.samples.glob('*')]) == '.txt').all():
+        print("Only .txt files are currently supported for PP-plot analysis")
+        exit()
+    # Load samples
+    events, names = load_data(options.samples_folder, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol)
+    try:
+        dim = np.shape(events[0][0])[-1]
+    except IndexError:
+        dim = 1
+    if dim > 3:
+        print("PP-plots can be computed up to 3 dimensions")
+        exit()
+    # Check all events have an entry in true_vals dict
+    if not np.array([name in true_vals.keys() for name in names]).all():
+        print("Please provide a dictionary storing all the true values. Dict keys must match event names. The following events appear not to have a true value:")
+        print(np.array(names)[np.where([name not in true_vals.keys() for name in names])])
+        exit()
+
+    if options.exclude_points:
+        print("Ignoring points outside bounds.")
+        for i, ev in enumerate(events):
+            events[i] = ev[np.where((np.prod(options.bounds[:,0] < ev, axis = 1) & np.prod(ev < options.bounds[:,1], axis = 1)))]
+        all_samples = np.atleast_2d(np.concatenate(events))
+    else:
+        # Check if all samples are within bounds
+        all_samples = np.atleast_2d(np.concatenate(events))
+        if not np.alltrue([(all_samples[:,i] > options.bounds[i,0]).all() and (all_samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
+            raise ValueError("One or more samples are outside the given bounds.")
+    # Plot labels
+    if dim > 1:
+        if options.symbol is not None:
+            symbols = options.symbol.split(',')
+        else:
+            symbols = options.symbol
+        if options.unit is not None:
+            units = options.unit.split(',')
+        else:
+            units = options.unit
+    # Read grid points
+    if options.grid_points is not None:
+        pts = options.grid_points.split('.')
+        if len(pts) == dim:
+            options.grid_points = np.array([int(d) for d in pts])
+        elif len(pts) == 1:
+            options.grid_points = np.ones(dim)*int(pts[0])
+        else:
+            print("Wrong number of grid point provided. Falling back to default number")
+            options.grid_points = np.ones(dim)*int((1000/dim**2)**dim)
+    else:
+        options.grid_points = np.ones(dim)*int((1000/dim**2)**dim)
+
+    save_options(options)
+
+    # Reconstruction
+    if not options.postprocess:
+        mix = DPGMM(options.bounds)
+        grid, diff = recursive_grid(options.bounds, options.grid_points)
+        logdiff = np.sum(np.log(diff))
+        posteriors = []
+        CR_levels  = []
+        CR_medians = []
+        # Run single-event analysis
+        for i in tqdm(range(len(events)), desc = 'Events')
+            ev   = events[i]
+            name = names[i]
+            # Load true value
+            t = true_vals[name]
+            if options.run_events:
+                # Estimate prior pars from samples
+                probit_samples = transform_to_probit(ev, mix.bounds)
+                mu = np.atleast_1d(np.mean(probit_samples, axis = 0))
+                sigma = np.atleast_2d(np.cov(probit_samples.T))
+                mix.initialise(prior_pars= (1e-2, sigma, dim+2, mu))
+                # Draw samples
+                draws = []
+                for _ in range(options.n_draws):
+                    draws.append(mix.density_from_samples(ev))
+                posteriors.append(draws)
+                if options.save_plots:
+                    if dim == 1:
+                        plot_median_cr(draws, samples = ev, out_folder = output_plots, name = name, label = options.symbol, unit = options.unit, subfolder = True)
+                    else:
+                        plot_multidim(draws, dim, samples = ev, out_folder = output_plots, name = name, labels = symbols, units = units)
+                # Save single-event draws
+                with open(Path(output_pkl, 'draws_'+name+'.pkl'), 'wb') as f:
+                    dill.dump(np.array(draws), f)
+            else:
+                with open(Path(output_pkl, 'draws_'+name+'.pkl'), 'rb') as f:
+                    draws = dill.load(f)
+            # Evaluate mixtures
+            logP      = np.array([d.logpdf(grid) for d in draws])
+            # Find true_value
+            true_idx  = abs(np.sum((grid - t)**2, axis = -1)).argmin()
+            logP_true = np.array([logP_i[true_idx] for logP_i in logP])
+            # Compute credible levels
+            CR = np.array([FindLevelForHeight(logP_i, logP_i_true, logdiff) for logP_i, logP_i_true in zip(logP, logP_true)])
+            CR_medians.append(np.median(CR))
+            CR_levels.append(CR)
+            
+        # Save all single-event draws together (might be useful for future hierarchical analysis)
+        posteriors = np.array(posteriors)
+        with open(Path(output_pkl, 'posteriors_single_event.pkl'), 'wb') as f:
+            dill.dump(posteriors, f)
+        # Save credible levels
+        CR_levels  = np.array(CR_levels)
+        CR_medians = np.array(CR_medians)
+        np.savetxt(Path(options.output, 'CR_levels.txt'), CR_levels, header = 'CR levels for events\nEach row is a different event, columns represent different draws')
+        np.savetxt(Path(options.output, 'CR_medians.txt'), CR_medians))
+    else:
+        CR_levels = np.genfromtxt(Path(options.output, 'CR_levels.txt'))
+        if len(CR_levels.shape) == 1:
+            CR_levels = np.atleast_2d(CR_levels).T
+        CR_medians = np.genfromtxt(Path(options.output, 'CR_medians.txt'))
+
+    pp_plot_levels(CR_levels, options.output, name = options.name)
+
+if __name__ == '__main__':
+    main()
