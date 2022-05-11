@@ -8,6 +8,7 @@ except ModuleNotFoundError:
     lal_flag = False
 from pathlib import Path
 from scipy.optimize import newton
+from tqdm import tqdm
 
 supported_extensions = ['h5', 'hdf5', 'txt', 'dat']
 
@@ -135,12 +136,11 @@ def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.
     n_events    = len(event_files)
     if volume:
         par = ['ra', 'dec', 'luminosity_distance']
-    for i, event in enumerate(event_files):
+    for event in tqdm(event_files, desc = 'Loading events'):
         if seed:
             rdstate = np.random.RandomState(seed = 1)
         else:
             rdstate = np.random.RandomState()
-        print('\r{0}/{1} event(s)'.format(i+1, n_events), end = '')
         name, ext = str(event).split('/')[-1].split('.')
         names.append(name)
         if not ext in supported_extensions:
