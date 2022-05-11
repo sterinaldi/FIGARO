@@ -544,7 +544,7 @@ class DPGMM:
         """
         np.random.shuffle(samples)
         for s in samples:
-            self.add_new_point(np.atleast_2d(s))
+            self.add_new_point(s)
         d = self.build_mixture()
         self.initialise()
         return d
