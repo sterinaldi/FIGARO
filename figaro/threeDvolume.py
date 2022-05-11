@@ -506,8 +506,8 @@ class VolumeReconstruction(DPGMM):
         self.log_p_vol_host    = self.log_p_vol[self.pixel_idx[0],self.pixel_idx[1],self.pixel_idx[2]]
         self.log_p_skymap_host = self.log_p_skymap[self.pixel_idx[0], self.pixel_idx[1]]
         
-        self.CR_host           = FindLevelForHeight(self.log_p_skymap, np.log(self.dra)+np.log(self.ddec))
-        self.CV_host           = FindLevelForHeight(self.log_p_vol, np.log(self.dra)+np.log(self.ddec)+np.log(self.dD))
+        self.CR_host           = FindLevelForHeight(self.log_p_skymap, self.log_p_skymap_host, np.log(self.dra)+np.log(self.ddec))
+        self.CV_host           = FindLevelForHeight(self.log_p_vol, self.log_p_vol_host, np.log(self.dra)+np.log(self.ddec)+np.log(self.dD))
         
     
     def evaluate_catalog(self, final_map = False):
