@@ -122,7 +122,7 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
         
     draw_flag = False
     # Mu
-    if mu is not None:
+    if mean is not None:
         mu_out = np.atleast_1d(mu)
         draw_flag = True
     elif samples is not None:
