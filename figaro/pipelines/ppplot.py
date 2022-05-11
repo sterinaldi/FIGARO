@@ -26,14 +26,14 @@ def main():
     # Plot
     parser.add_option("--name", type = "string", dest = "name", help = "Name to be given to pp-plot files. Default: MDC", default = 'MDC')
     parser.add_option("-p", "--postprocess", dest = "postprocess", action = 'store_true', help = "Postprocessing", default = False)
-    parser.add_option("-s", "--save_plot", dest = "save_plots", action = 'store_false', help = "Save single event plots", default = False)
+    parser.add_option("-s", "--save_plot", dest = "save_plots", action = 'store_true', help = "Save single event plots", default = False)
     parser.add_option("--symbol", type = "string", dest = "symbol", help = "LaTeX-style quantity symbol, for plotting purposes", default = None)
     parser.add_option("--unit", type = "string", dest = "unit", help = "LaTeX-style quantity unit, for plotting purposes", default = None)
     # Settings
     parser.add_option("--draws", type = "int", dest = "n_draws", help = "Number of draws for each single-event distribution", default = 100)
     parser.add_option("--n_samples_dsp", type = "int", dest = "n_samples_dsp", help = "Number of samples to analyse (downsampling). Default: all", default = -1)
     parser.add_option("--exclude_points", dest = "exclude_points", action = 'store_true', help = "Exclude points outside bounds from analysis", default = False)
-    parser.add_options("--grid_points", dest = "grid_points", type = "string", help = "Number of grid points for each dimension. Single integer or one int per dimension", default = None)
+    parser.add_option("--grid_points", dest = "grid_points", type = "string", help = "Number of grid points for each dimension. Single integer or one int per dimension", default = None)
     parser.add_option("-e", "--events", dest = "run_events", action = 'store_false', help = "Skip single-event analysis", default = True)
 
     (options, args) = parser.parse_args()
@@ -64,15 +64,15 @@ def main():
         with open(options.true_vals, 'r') as f:
             true_vals = json.load(f)
     else:
-        print("Please provide true values")
+        print("Please provide JSON file with true values")
         exit()
     
     # Check that all files are .txt
-    if not (np.array([f.suffix for f in options.samples.glob('*')]) == '.txt').all():
+    if not (np.array([f.suffix for f in options.samples_folder.glob('*')]) == '.txt').all():
         print("Only .txt files are currently supported for PP-plot analysis")
         exit()
     # Load samples
-    events, names = load_data(options.samples_folder, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol)
+    events, names = load_data(options.samples_folder, n_samples = options.n_samples_dsp)
     try:
         dim = np.shape(events[0][0])[-1]
     except IndexError:
@@ -112,12 +112,12 @@ def main():
         if len(pts) == dim:
             options.grid_points = np.array([int(d) for d in pts])
         elif len(pts) == 1:
-            options.grid_points = np.ones(dim)*int(pts[0])
+            options.grid_points = np.ones(dim, dtype = int)*int(pts[0])
         else:
             print("Wrong number of grid point provided. Falling back to default number")
-            options.grid_points = np.ones(dim)*int((1000/dim**2)**dim)
+            options.grid_points = np.ones(dim, dtype = int)*int((1000/dim**2)**dim)
     else:
-        options.grid_points = np.ones(dim)*int((1000/dim**2)**dim)
+        options.grid_points = np.ones(dim, dtype = int)*int((1000/dim**2)**dim)
 
     save_options(options)
 
@@ -130,7 +130,7 @@ def main():
         CR_levels  = []
         CR_medians = []
         # Run single-event analysis
-        for i in tqdm(range(len(events)), desc = 'Events')
+        for i in tqdm(range(len(events)), desc = 'Events'):
             ev   = events[i]
             name = names[i]
             # Load true value
@@ -148,9 +148,9 @@ def main():
                 posteriors.append(draws)
                 if options.save_plots:
                     if dim == 1:
-                        plot_median_cr(draws, samples = ev, out_folder = output_plots, name = name, label = options.symbol, unit = options.unit, subfolder = True)
+                        plot_median_cr(draws, samples = ev, out_folder = output_plots, name = name, label = options.symbol, unit = options.unit, subfolder = True, true_value = t)
                     else:
-                        plot_multidim(draws, dim, samples = ev, out_folder = output_plots, name = name, labels = symbols, units = units)
+                        plot_multidim(draws, dim, samples = ev, out_folder = output_plots, name = name, labels = symbols, units = units, true_value = t)
                 # Save single-event draws
                 with open(Path(output_pkl, 'draws_'+name+'.pkl'), 'wb') as f:
                     dill.dump(np.array(draws), f)
@@ -175,14 +175,14 @@ def main():
         CR_levels  = np.array(CR_levels)
         CR_medians = np.array(CR_medians)
         np.savetxt(Path(options.output, 'CR_levels.txt'), CR_levels, header = 'CR levels for events\nEach row is a different event, columns represent different draws')
-        np.savetxt(Path(options.output, 'CR_medians.txt'), CR_medians))
+        np.savetxt(Path(options.output, 'CR_medians.txt'), CR_medians)
     else:
         CR_levels = np.genfromtxt(Path(options.output, 'CR_levels.txt'))
         if len(CR_levels.shape) == 1:
             CR_levels = np.atleast_2d(CR_levels).T
         CR_medians = np.genfromtxt(Path(options.output, 'CR_medians.txt'))
 
-    pp_plot_levels(CR_levels, options.output, name = options.name)
+    pp_plot_levels(CR_levels, median_CR = CR_medians, out_folder = options.output, name = options.name)
 
 if __name__ == '__main__':
     main()
