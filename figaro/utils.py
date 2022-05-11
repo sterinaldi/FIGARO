@@ -61,6 +61,32 @@ def recursive_grid(bounds, n_pts):
                 grid.append([di,*gi])
         return np.array(grid), diff
 
+def rejection_sampler(n_draws, f, bounds, selfunc = None):
+    """
+    1D rejection sampler, allows for a selection function
+    
+    Arguments:
+        :int n_draws:      number of draws
+        :callable f:       probability density to sample from
+        :iterable bounds:  upper and lower bound
+        :callable selfunc: selection function, must support numpy arrays
+    
+    Returns:
+        :np.ndarray: samples
+    """
+    n_draws = int(n_draws)
+    if selfunc is None:
+        selfunc = lambda x: 1
+    x   = np.linspace(bounds[0], bounds[1], 1000)
+    top = np.max(f(x)*selfunc(x))
+    samples = []
+    while len(samples) < n_draws:
+        pts   = np.random.uniform(bounds[0], bounds[1], size = n_draws)
+        probs = f(pts)*selfunc(pts)
+        h     = np.random.uniform(0, top, size = n_draws)
+        samples.extend(pts[np.where(h < probs)])
+    return np.array(samples).flatten()[:n_draws]
+
 #-------------#
 #   Options   #
 #-------------#
@@ -181,7 +207,7 @@ class PPPlot(axes.Axes):
         
 projection_registry.register(PPPlot)
 
-def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True, subfolder = False):
+def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True, subfolder = False, true_value = None):
     """
     Plot the recovered 1D distribution along with the injected distribution and samples from the true distribution (both if available).
     
@@ -260,6 +286,8 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
             ax.plot(x, filtered_p_x/np.sum(filtered_p_x*dx), lw = 0.5, color = 'k', label = '$\mathrm{Selection\ effects}$')
         
     # Median
+    if true_value is not None:
+        ax.axvline(true_value, ls = '--', color = 'r', lw = 0.5, label = '$\mathrm{True\ value}$')
     ax.plot(x, p[50], lw = 0.7, color = 'steelblue', label = '${0}$'.format(rec_label))
     if label is None:
         label = 'x'
@@ -344,7 +372,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         plt.close()
     
 
-def plot_multidim(draws, dim, samples = None, selfunc = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False, n_pts = 100):
+def plot_multidim(draws, dim, samples = None, selfunc = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False, n_pts = 100, true_value = None):
     """
     Plot the recovered multidimensional distribution along with samples from the true distribution (if available) as corner plot.
     
@@ -390,9 +418,9 @@ def plot_multidim(draws, dim, samples = None, selfunc = None, out_folder = '.', 
     # Make corner plots
     if samples is not None:
         c = corner(samples, color = 'coral', labels = labels, hist_kwargs={'density':True, 'label':'$\mathrm{Samples}$'})
-        c = corner(mix_samples, fig = c, color = 'dodgerblue', labels = labels, hist_kwargs={'density':True, 'label':'${0}$'.format(rec_label)})
+        c = corner(mix_samples, fig = c, color = 'dodgerblue', labels = labels, truths = true_value, hist_kwargs={'density':True, 'label':'${0}$'.format(rec_label)})
     else:
-        c = corner(mix_samples, color = 'dodgerblue', labels = labels, hist_kwargs={'density':True, 'label':'${0}$'.format(rec_label)})
+        c = corner(mix_samples, color = 'dodgerblue', labels = labels, truths = true_value, hist_kwargs={'density':True, 'label':'${0}$'.format(rec_label)})
     plt.legend(loc = 0, frameon = False, fontsize = 12, bbox_to_anchor = (0.95, (dim-1)+0.8))
     if show:
         plt.show()
@@ -404,26 +432,6 @@ def plot_multidim(draws, dim, samples = None, selfunc = None, out_folder = '.', 
                 Path(out_folder, 'density').mkdir()
             c.savefig(Path(out_folder, 'density', '{0}.pdf'.format(name)), bbox_inches = 'tight')
     plt.close()
-    
-    if selfunc is not None:
-        return
-#         to be finished
-#        if not np.iterable(n_pts):
-#            n_pts = np.ones(dim)*n_pts
-#        grid   = recursive_grid(draws[0].bounds, n_pts)
-#        p_grid = []
-#        for di in tqdm(draws, desc='Evaluating grid'):
-#            p_grid.append(di.evaluate_mixture(grid))
-#        median = np.percentile(p_grid.T, axis = 1)
-#
-#        if show:
-#            plt.show()
-#        if save:
-#            if not subfolder:
-#                c.savefig(Path(out_folder, 'inj_{0}.pdf'.format(name)), bbox_inches = 'tight')
-#            else:
-#                c.savefig(Path(out_folder, 'density', 'inj_{0}.pdf'.format(name)), bbox_inches = 'tight')
-#        plt.close()
 
 def plot_n_clusters_alpha(n_cl, alpha, out_folder = '.', name = 'event', show = False, save = True):
     """
