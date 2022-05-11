@@ -51,7 +51,7 @@ def main():
     # If provided, load injected density
     inj_density = None
     if options.inj_density_file is not None:
-        inj_file_name = options.inj_density_file.split('/')[-1].split('.')[0]
+        inj_file_name = Path(options.inj_density_file).parts[-1].split('.')[0]
         spec = importlib.util.spec_from_file_location(inj_file_name, options.inj_density_file)
         inj_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(inj_module)
