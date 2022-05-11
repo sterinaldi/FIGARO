@@ -18,6 +18,8 @@ from tqdm import tqdm
 from collections import Counter
 import scipy.stats
 
+from figaro.transform import transform_to_probit
+
 if find_executable('latex'):
     rcParams["text.usetex"] = True
 rcParams["xtick.labelsize"]=14
@@ -86,6 +88,72 @@ def rejection_sampler(n_draws, f, bounds, selfunc = None):
         h     = np.random.uniform(0, top, size = n_draws)
         samples.extend(pts[np.where(h < probs)])
     return np.array(samples).flatten()[:n_draws]
+
+def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df = None, k = None):
+    """
+    Compute prior parameters from samples or, alternatively, from desired mean and standard deviation or covariance matrix.
+    If both samples and mean/std/cov are provided, mean and std/cov are used. Covariance prevails over std.
+    If no parameters are given apart from bounds, default values are returned:
+        * mu = np.zeros(dim)
+        * L  = np.identity(dim)*0.2**2
+        * df = dim+2
+        * k  = 1e-2
+    
+    Arguments:
+        :np.ndarray bounds: boundaries for probit transformation
+        :np.ndarray samples: 2D array with samples
+        :double or np.ndarray mean: mean
+        :double or np.ndarray std: expected standard deviation (if double, the same expected std is used for all dimensions, if np.ndarray must match the number of dimensions)
+        :np.ndarray cov: covariance matrix
+        :int df: degrees of freedom for Inverse Wishart distribution
+        :double k: scale parameter for Normal distribution
+        
+    Returns:
+        :tuple: prior parameters ordered as in H/DPGMM
+    """
+    dim = len(bounds)
+    if samples is not None:
+        probit_samples = transform_to_probit(samples, np.atleast_2d(bounds))
+    # DF
+    if df is not None:
+        df_out = df
+    else:
+        df_out = dim+2
+        
+    draw_flag = False
+    # Mu
+    if mu is not None:
+        mu_out = np.atleast_1d(mu)
+        draw_flag = True
+    elif samples is not None:
+        mu_out = np.atleast_1d(np.mean(probit_samples, axis = 0))
+    else:
+        mu_out = np.zeros(dim)
+    # L
+    if cov is not None:
+        L_out = cov
+        draw_flag = True
+    elif std is not None:
+        L_out = np.identity(dim)*std**2
+        draw_flag = True
+    elif samples is not None:
+        # 1/5 (arbitrary) std of samples
+        L_out = np.atleast_2d(np.cov(probit_samples.T))/25
+    else:
+        L_out = np.identity(dim)*0.2**2
+    # k
+    if k is not None:
+        k_out = k
+    else:
+        k_out = 1e-2
+        
+    if draw_flag:
+        ss = scipy.stats.multivariate_normal(mu_out, L_out).rvs(1000)
+        probit_samples = transform_to_probit(ss, np.atleast_2d(bounds))
+        mu_out = np.atleast_1d(np.mean(probit_samples, axis = 0))
+        L_out = np.atleast_2d(np.cov(probit_samples.T))
+        
+    return (k_out, L_out, df_out, mu_out)
 
 #-------------#
 #   Options   #
