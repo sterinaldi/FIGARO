@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 from figaro.utils import rejection_sampler
 
 import optparse as op
-import configparser
 import importlib
 
 from scipy.stats import norm

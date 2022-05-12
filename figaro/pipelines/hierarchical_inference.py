@@ -1,7 +1,6 @@
 import numpy as np
 
 import optparse as op
-import configparser
 import json
 import dill
 import importlib
@@ -62,8 +61,7 @@ def main():
     if options.bounds is not None:
         options.bounds = np.array(json.loads(options.bounds))
     elif options.bounds is None and not options.postprocess:
-        print("Please provide bounds for the inference (use -b '[[xmin,xmax],[ymin,ymax],...]')")
-        exit()
+        raise Exception("Please provide bounds for the inference (use -b '[[xmin,xmax],[ymin,ymax],...]')")
     # If provided, load injected density
     inj_density = None
     if options.inj_density_file is not None:
@@ -137,9 +135,7 @@ def main():
                 name = names[i]
                 mix.initialise(prior_pars = get_priors(mix.bounds, samples = ev))
                 # Draw samples
-                draws = []
-                for _ in range(options.n_se_draws):
-                    draws.append(mix.density_from_samples(ev))
+                draws = [mix.density_from_samples(ev) for _ in range(options.n_se_draws)]
                 posteriors.append(draws)
                 # Make plots
                 if options.save_single_event:
@@ -160,14 +156,11 @@ def main():
                 with open(Path(output_pkl, 'posteriors_single_event.pkl'), 'rb') as f:
                     posteriors = dill.load(f)
             except FileNotFoundError:
-                print("No posteriors_single_event.pkl file found. Please provide it or re-run the single-event inference")
-                exit()
-        mix = HDPGMM(options.bounds, prior_pars = get_priors(options.bounds, samples = all_samples, std = options.sigma_prior), MC_draws = 1e3)
-        draws = []
+                raise FileNotFoundError("No posteriors_single_event.pkl file found. Please provide it or re-run the single-event inference")
         # Run hierarchical analysis
-        for _ in tqdm(range(options.n_draws), desc = 'Hierarchical'):
-            draws.append(mix.density_from_samples(posteriors))
-        draws = np.array(draws)
+        mix   = HDPGMM(options.bounds, prior_pars = get_priors(options.bounds, samples = all_samples, std = options.sigma_prior), MC_draws = 1e3)
+        draws = np.array([mix.density_from_samples(posteriors) for _ in tqdm(range(options.n_draws), desc = 'Hierarchical')])
+        # Save draws
         with open(Path(output_pkl, 'draws_'+options.h_name+'.pkl'), 'wb') as f:
             dill.dump(draws, f)
     else:
@@ -175,8 +168,7 @@ def main():
             with open(Path(output_pkl, 'draws_'+options.h_name+'.pkl'), 'rb') as f:
                 draws = dill.load(f)
         except FileNotFoundError:
-            print("No draws_{0}.pkl file found. Please provide it or re-run the inference".format(options.h_name))
-            exit()
+            raise FileNotFoundError("No draws_{0}.pkl file found. Please provide it or re-run the inference".format(options.h_name))
     # Plot
     if dim == 1:
         plot_median_cr(draws, injected = inj_density, selfunc = selfunc, samples = true_vals, out_folder = output_plots, name = options.h_name, label = options.symbol, unit = options.unit, hierarchical = True)

@@ -1,7 +1,6 @@
 import numpy as np
 
 import optparse as op
-import configparser
 import json
 import dill
 import importlib
@@ -56,20 +55,18 @@ def main():
     if options.bounds is not None:
         options.bounds = np.array(json.loads(options.bounds))
     elif options.bounds is None and not options.postprocess:
-        print("Please provide bounds for the inference (use -b '[[xmin,xmax],[ymin,ymax],...]')")
-        exit()
+        raise Exception("Please provide bounds for the inference (use -b '[[xmin,xmax],[ymin,ymax],...]')")
     # Load true values
     if options.true_vals is not None:
         options.true_vals = Path(options.true_vals).resolve()
         with open(options.true_vals, 'r') as f:
             true_vals = json.load(f)
     else:
-        print("Please provide JSON file with true values")
-        exit()
+        raise Exception("Please provide JSON file with true values")
     
     # Check that all files are .txt
     if not (np.array([f.suffix for f in options.samples_folder.glob('*')]) == '.txt').all():
-        print("Only .txt files are currently supported for PP-plot analysis")
+        raise Exception("Only .txt files are currently supported for PP-plot analysis")
         exit()
     # Load samples
     events, names = load_data(options.samples_folder, n_samples = options.n_samples_dsp)
@@ -78,13 +75,10 @@ def main():
     except IndexError:
         dim = 1
     if dim > 3:
-        print("PP-plots can be computed up to 3 dimensions")
-        exit()
+        raise Exception("PP-plots can be computed up to 3 dimensions")
     # Check all events have an entry in true_vals dict
     if not np.array([name in true_vals.keys() for name in names]).all():
-        print("Please provide a dictionary storing all the true values. Dict keys must match event names. The following events appear not to have a true value:")
-        print(np.array(names)[np.where([name not in true_vals.keys() for name in names])])
-        exit()
+        raise Exception("Please provide a dictionary storing all the true values. Dict keys must match event names. The following events appear not to have a true value:\n{0}".format(np.array(names)[np.where([name not in true_vals.keys() for name in names])]))
 
     if options.exclude_points:
         print("Ignoring points outside bounds.")
@@ -139,9 +133,7 @@ def main():
                 # Estimate prior pars from samples
                 mix.initialise(prior_pars = get_priors(mix.bounds, samples = ev))
                 # Draw samples
-                draws = []
-                for _ in range(options.n_draws):
-                    draws.append(mix.density_from_samples(ev))
+                draws = [mix.density_from_samples(ev) for _ in range(options.n_draws)]
                 posteriors.append(draws)
                 if options.save_plots:
                     if dim == 1:

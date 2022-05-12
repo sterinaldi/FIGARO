@@ -1,7 +1,6 @@
 import numpy as np
 
 import optparse as op
-import configparser
 import json
 import dill
 import importlib
@@ -47,8 +46,7 @@ def main():
     if options.bounds is not None:
         options.bounds = np.array(json.loads(options.bounds))
     elif options.bounds is None and not options.postprocess:
-        print("Please provide bounds for the inference (use -b '[[xmin,xmax],[ymin,ymax],...]')")
-        exit()
+        raise Exception("Please provide bounds for the inference (use -b '[[xmin,xmax],[ymin,ymax],...]')")
     # If provided, load injected density
     inj_density = None
     if options.inj_density_file is not None:
@@ -83,23 +81,18 @@ def main():
 
     # Reconstruction
     if not options.postprocess:
+        # Actual analysis
         mix = DPGMM(options.bounds, prior_pars = get_priors(options.bounds, samples = sampes, std = options.sigma_prior))
-        draws = []
-        
-        for _ in tqdm(range(options.n_draws), desc = name):
-            draws.append(mix.density_from_samples(samples))
-
-        draws = np.array(draws)
+        draws = np.array([mix.density_from_samples(samples) for _ in tqdm(range(options.n_draws), desc = name)])
+        # Save reconstruction
         with open(Path(options.output, 'draws_'+name+'.pkl'), 'wb') as f:
             dill.dump(draws, f)
-    
     else:
         try:
             with open(Path(options.output, 'draws_'+name+'.pkl'), 'rb') as f:
                 draws = dill.load(f)
         except FileNotFoundError:
-            print("No draws_{0}.pkl file found. Please provide it or re-run the inference".format(name))
-            exit()
+            raise FileNotFoundError("No draws_{0}.pkl file found. Please provide it or re-run the inference".format(name))
 
     # Plot
     if dim == 1:
