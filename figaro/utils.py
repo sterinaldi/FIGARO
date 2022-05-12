@@ -91,31 +91,38 @@ def rejection_sampler(n_draws, f, bounds, selfunc = None):
 
 def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df = None, k = None):
     """
-    Compute prior parameters from samples or, alternatively, from desired mean and standard deviation or covariance matrix.
-    If both samples and mean/std/cov are provided, mean and std/cov are used. Covariance prevails over std.
-    If no parameters are given apart from bounds, default values are returned:
-        * mu = np.zeros(dim)
-        * L  = np.identity(dim)*0.2**2
-        * df = dim+2
-        * k  = 1e-2
+    This method takes the prior parameters for the Normal-Inverse-Wishart distribution in the natural space and returns them as parameters in the probit space, ordered as required by FIGARO. In the following, D will denote the dimensionality of the inferred distribution.
+
+    Four parameters are returned:
+    * df, is the number of degrees of freedom for the Inverse Wishart distribution,. It must be greater than D+1. If this parameter is None or does not satisfy the condition df > D+1, the default value D+2 is used;
+    * k is the scale parameter for the multivariate Normal distribution. Suggested values are  k <~ 1e-1. If None, the default value 1e-2 is used.
+    * mu is the mean of the multivariate Normal distribution. It can be either estimated from the available samples or passed directly as a 1D array with length D (the keyword argument mean overrides the samples). If None, the default value 0 (corresponding to the parameter space center) is used.
+    * L is the expected value for the Inverse Wishart distribution. This parameter can be either (in descending priority order):
+        * passed as 2D array with shape (D,D), the covariance matrix - keyword cov;
+        * passed as 1D array with shape (D,) or double: vector of standard deviations (if double, it assumes that the same std has to be used for all dimensions) - keyword std;
+        * estimated from samples - keyword samples.
+       
+    The order in which they are returned is (k,L,df,mu).
     
     Arguments:
-        :np.ndarray bounds: boundaries for probit transformation
-        :np.ndarray samples: 2D array with samples
+        :np.ndarray bounds:         boundaries for probit transformation
+        :np.ndarray samples:        2D array with samples
         :double or np.ndarray mean: mean
-        :double or np.ndarray std: expected standard deviation (if double, the same expected std is used for all dimensions, if np.ndarray must match the number of dimensions)
-        :np.ndarray cov: covariance matrix
-        :int df: degrees of freedom for Inverse Wishart distribution
-        :double k: scale parameter for Normal distribution
+        :double or np.ndarray std:  expected standard deviation (if double, the same expected std is used for all dimensions, if np.ndarray must match the number of dimensions)
+        :np.ndarray cov:            covariance matrix
+        :int df:                    degrees of freedom for Inverse Wishart distribution
+        :double k:                  scale parameter for Normal distribution
         
     Returns:
         :tuple: prior parameters ordered as in H/DPGMM
     """
     dim = len(bounds)
     if samples is not None:
+        if len(np.shape(samples)) < 2:
+            samples = np.atleast_2d(samples).T
         probit_samples = transform_to_probit(samples, np.atleast_2d(bounds))
     # DF
-    if df is not None:
+    if df is not None and df > dim+2:
         df_out = df
     else:
         df_out = dim+2
@@ -123,8 +130,7 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
     draw_flag = False
     # Mu
     if mean is not None:
-        mu_out = np.atleast_1d(mu)
-        draw_flag = True
+        mu_out = transform_to_probit(np.atleast_1d(mean), np.atleast_2d(bounds))
     elif samples is not None:
         mu_out = np.atleast_1d(np.mean(probit_samples, axis = 0))
     else:
@@ -146,11 +152,14 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
         k_out = k
     else:
         k_out = 1e-2
-        
+    
     if draw_flag:
-        ss = scipy.stats.multivariate_normal(mu_out, L_out).rvs(1000)
+        ss = scipy.stats.multivariate_normal(np.mean(bounds, axis = -1), L_out).rvs(10000)
+        if dim == 1:
+            ss = np.atleast_2d(ss).T
+        # Keeping only samples within bounds
+        ss = ss[np.where((np.prod(bounds[:,0] < ss, axis = 1) & np.prod(ss < bounds[:,1], axis = 1)))]
         probit_samples = transform_to_probit(ss, np.atleast_2d(bounds))
-        mu_out = np.atleast_1d(np.mean(probit_samples, axis = 0))
         L_out = np.atleast_2d(np.cov(probit_samples.T))
         
     return (k_out, L_out, df_out, mu_out)
