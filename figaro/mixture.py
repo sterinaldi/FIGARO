@@ -288,12 +288,12 @@ class mixture:
         return self.pdf(x)
 
     def pdf(self, x):
-        if len(np.shape(x)) < 1:
+        if len(np.shape(x)) < 2:
             x = np.atleast_2d(x).T
         return self._pdf(x)
 
     def logpdf(self, x):
-        if len(np.shape(x)) < 1:
+        if len(np.shape(x)) < 2:
             x = np.atleast_2d(x).T
         return self._logpdf(x)
 
@@ -644,7 +644,7 @@ class DPGMM:
     def pdf(self, x):
         if self.n_cl == 0:
             raise FIGAROException("You are trying to evaluate an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, you may want to evaluate the output of that method.")
-        if len(np.shape(x)) < 1:
+        if len(np.shape(x)) < 2:
             x = np.atleast_2d(x).T
         return self._pdf(x)
 
@@ -692,7 +692,7 @@ class DPGMM:
     def logpdf(self, x):
         if self.n_cl == 0:
             raise FIGAROException("You are trying to evaluate an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, you may want to evaluate the output of that method.")
-        if len(np.shape(x)) < 1:
+        if len(np.shape(x)) < 2:
             x = np.atleast_2d(x).T
         return self._logpdf(x)
         
@@ -748,7 +748,7 @@ class HDPGMM(DPGMM):
                        alpha0     = 1.,
                        out_folder = '.',
                        prior_pars = None,
-                       MC_draws   = 1e3,
+                       MC_draws   = 2e3,
                        ):
         self.dim = len(bounds)
         if prior_pars == None:
