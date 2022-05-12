@@ -5,7 +5,7 @@ from scipy.special import logsumexp
 # -----------------------
 # confidence calculations
 # -----------------------
-def FindNearest(ra, dec, dist, value):
+def FindNearest_Volume(ra, dec, dist, value):
     """
     Find the pixel that contains the triplet (ra', dec', D') stored in value.
     
@@ -22,6 +22,19 @@ def FindNearest(ra, dec, dist, value):
     for i, (d, v) in enumerate(zip([ra, dec, dist], value)):
         idx[i] = int(np.abs(d-v).argmin())
     return idx
+
+def FindNearest_Grid(grid, value):
+    """
+    Find the closest grid point to value.
+    
+    Arguments:
+        :np.ndarray grid: grid points (N_pts, N_dim), as with figaro.utils.recursive_grid
+        :iterable value:  value to locate
+    
+    Returns:
+        :np.ndarray: grid index
+    """
+    return abs(np.sum((grid - value)**2, axis = -1)).argmin()
 
 def FindHeights(args):
     """
