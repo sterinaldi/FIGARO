@@ -11,7 +11,7 @@ from tqdm import tqdm
 from figaro.mixture import DPGMM
 from figaro.transform import transform_to_probit
 from figaro.utils import save_options, plot_median_cr, plot_multidim, recursive_grid, pp_plot_levels, get_priors
-from figaro.credible_regions import FindLevelForHeight
+from figaro.credible_regions import FindLevelForHeight, FindNearest_Grid
 from figaro.load import load_data
 
 def main():
@@ -149,7 +149,7 @@ def main():
             # Evaluate mixtures
             logP      = np.array([d.logpdf(grid) for d in draws])
             # Find true_value
-            true_idx  = abs(np.sum((grid - t)**2, axis = -1)).argmin()
+            true_idx  = FindNearest_Grid(grid, t)
             logP_true = np.array([logP_i[true_idx] for logP_i in logP])
             # Compute credible levels
             CR = np.array([FindLevelForHeight(logP_i, logP_i_true, logdiff) for logP_i, logP_i_true in zip(logP, logP_true)])
