@@ -25,7 +25,7 @@ import dill
 from figaro.mixture import DPGMM
 from figaro.transform import *
 from figaro.coordinates import celestial_to_cartesian, cartesian_to_celestial, inv_Jacobian
-from figaro.credible_regions import ConfidenceArea, ConfidenceVolume, FindNearest, FindLevelForHeight
+from figaro.credible_regions import ConfidenceArea, ConfidenceVolume, FindNearest_Volume, FindLevelForHeight
 from figaro.diagnostic import compute_entropy_single_draw, angular_coefficient
 from figaro.exceptions import FIGAROException
 try:
@@ -215,7 +215,7 @@ class VolumeReconstruction(DPGMM):
             self.true_host = true_host
         self.host_name = host_name
         if self.true_host is not None:
-            self.pixel_idx  = FindNearest(self.ra, self.dec, self.dist, self.true_host)
+            self.pixel_idx  = FindNearest_Volume(self.ra, self.dec, self.dist, self.true_host)
             self.true_pixel = np.array([self.ra[self.pixel_idx[0]], self.dec[self.pixel_idx[1]], self.dist[self.pixel_idx[2]]])
         
         # Credible regions levels
@@ -288,7 +288,7 @@ class VolumeReconstruction(DPGMM):
         if self.entropy == True:
             self.flag_skymap = False
         if self.true_host is not None:
-            self.pixel_idx  = FindNearest(self.ra, self.dec, self.dist, self.true_host)
+            self.pixel_idx  = FindNearest_Volume(self.ra, self.dec, self.dist, self.true_host)
             self.true_pixel = np.array([self.ra[self.pixel_idx[0]], self.dec[self.pixel_idx[1]], self.dist[self.pixel_idx[2]]])
         if incr_plot is not None:
             if incr_plot:
