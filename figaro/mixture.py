@@ -288,12 +288,12 @@ class mixture:
         return self.pdf(x)
 
     def pdf(self, x):
-        if len(x.shape) == 1:
+        if len(np.shape(x)) < 1:
             x = np.atleast_2d(x).T
         return self._pdf(x)
 
     def logpdf(self, x):
-        if len(x.shape) == 1:
+        if len(np.shape(x)) < 1:
             x = np.atleast_2d(x).T
         return self._logpdf(x)
 
@@ -427,10 +427,15 @@ class DPGMM:
         self.alpha      = alpha0
         self.alpha_0    = alpha0
         self.mixture    = []
+        self.w          = []
+        self.log_w      = []
         self.N_list     = []
         self.n_cl       = 0
         self.n_pts      = 0
-    
+
+    def __call__(self, x):
+        return self.pdf(x)
+
     def initialise(self, prior_pars = None):
         """
         Initialise the mixture to initial conditions.
@@ -440,6 +445,8 @@ class DPGMM:
         """
         self.alpha    = self.alpha_0
         self.mixture  = []
+        self.w        = []
+        self.log_w    = []
         self.N_list   = []
         self.n_cl     = 0
         self.n_pts    = 0
@@ -571,6 +578,8 @@ class DPGMM:
         Returns:
             :np.ndarray: samples
         """
+        if self.n_cl == 0:
+            raise Exception("FIGARO: You are trying to draw samples from an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, you may want to draw samples from the output of that method.")
         idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = n_samps)
         ctr = Counter(idx)
         if self.dim > 1:
@@ -633,7 +642,9 @@ class DPGMM:
         return p
 
     def pdf(self, x):
-        if len(x.shape) == 1:
+        if self.n_cl == 0:
+            raise Exception("FIGARO: You are trying to evaluate an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, you may want to evaluate the output of that method.")
+        if len(np.shape(x)) < 1:
             x = np.atleast_2d(x).T
         return self._pdf(x)
 
@@ -679,7 +690,9 @@ class DPGMM:
         return p
 
     def logpdf(self, x):
-        if len(x.shape) == 1:
+        if self.n_cl == 0:
+            raise Exception("FIGARO: You are trying to evaluate an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, you may want to evaluate the output of that method.")
+        if len(np.shape(x)) < 1:
             x = np.atleast_2d(x).T
         return self._logpdf(x)
         
@@ -712,6 +725,8 @@ class DPGMM:
         Returns:
             :mixture: the inferred distribution
         """
+        if self.n_cl == 0:
+            raise Exception("FIGARO: You are trying to build an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, the inferred mixture is returned from that method as an instance of mixture class.")
         return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, self.n_pts)
 
 
