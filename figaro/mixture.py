@@ -11,9 +11,8 @@ from scipy.stats import invgamma, invwishart
 
 from figaro.decorators import *
 from figaro.transform import *
-from figaro.montecarlo import evaluate_mixture_MC_draws, evaluate_mixture_MC_draws_1d
+from figaro.likelihood import evaluate_mixture_MC_draws, evaluate_mixture_MC_draws_1d, logsumexp_jit
 from figaro.exceptions import except_hook
-from figaro.montecarlo import logsumexp_jit
 
 from numba import jit, njit, prange
 from numba.extending import get_cython_function_address
