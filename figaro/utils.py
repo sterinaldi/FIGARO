@@ -116,11 +116,12 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
     Returns:
         :tuple: prior parameters ordered as in H/DPGMM
     """
+    bounds = np.atleast_2d(bounds)
     dim = len(bounds)
     if samples is not None:
         if len(np.shape(samples)) < 2:
             samples = np.atleast_2d(samples).T
-        probit_samples = transform_to_probit(samples, np.atleast_2d(bounds))
+        probit_samples = transform_to_probit(samples, bounds)
     # DF
     if df is not None and df > dim+2:
         df_out = df
@@ -130,7 +131,10 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
     draw_flag = False
     # Mu
     if mean is not None:
-        mu_out = transform_to_probit(np.atleast_1d(mean), np.atleast_2d(bounds))
+        mean = np.atleast_1d(mean)
+        if not np.prod(bounds[:,0] < mean) & np.prod(mean < bounds[:,1]):
+            raise ValueError("Mean is outside of the given bounds")
+        mu_out = transform_to_probit(mean, bounds)
     elif samples is not None:
         mu_out = np.atleast_1d(np.mean(probit_samples, axis = 0))
     else:
@@ -159,7 +163,7 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
             ss = np.atleast_2d(ss).T
         # Keeping only samples within bounds
         ss = ss[np.where((np.prod(bounds[:,0] < ss, axis = 1) & np.prod(ss < bounds[:,1], axis = 1)))]
-        probit_samples = transform_to_probit(ss, np.atleast_2d(bounds))
+        probit_samples = transform_to_probit(ss, bounds)
         L_out = np.atleast_2d(np.cov(probit_samples.T))
         
     return (k_out, L_out, df_out, mu_out)
