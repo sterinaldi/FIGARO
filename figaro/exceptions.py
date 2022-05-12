@@ -2,6 +2,9 @@ import traceback as tb
 import numpy
 import sys
 
+class FIGAROException(Exception):
+    pass
+
 def except_hook(exctype, value, traceback):
     tb_last   = list(tb.walk_tb(traceback))[-1][0] # Get last call from traceback (function that raised the exception)
     try:

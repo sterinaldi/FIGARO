@@ -181,14 +181,14 @@ def is_opt_provided(parser, dest):
                 return True
     return False
 
-def save_options(options):
+def save_options(options, out_folder):
     """
     Saves options for the run (reproducibility)
     
     Arguments:
         :dict options: options
     """
-    logfile = open(Path(options.output, 'options_log.txt'), 'w')
+    logfile = open(Path(out_folder, 'options_log.txt'), 'w')
     for key, val in zip(vars(options).keys(), vars(options).values()):
         logfile.write('{0}: {1}\n'.format(key,val))
     logfile.close()

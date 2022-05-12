@@ -12,7 +12,7 @@ from scipy.stats import invgamma, invwishart
 from figaro.decorators import *
 from figaro.transform import *
 from figaro.likelihood import evaluate_mixture_MC_draws, evaluate_mixture_MC_draws_1d, logsumexp_jit
-from figaro.exceptions import except_hook
+from figaro.exceptions import except_hook, FIGAROException
 
 from numba import jit, njit, prange
 from numba.extending import get_cython_function_address
@@ -579,7 +579,7 @@ class DPGMM:
             :np.ndarray: samples
         """
         if self.n_cl == 0:
-            raise Exception("FIGARO: You are trying to draw samples from an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, you may want to draw samples from the output of that method.")
+            raise FIGAROException("You are trying to draw samples from an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, you may want to draw samples from the output of that method.")
         idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = n_samps)
         ctr = Counter(idx)
         if self.dim > 1:
@@ -643,7 +643,7 @@ class DPGMM:
 
     def pdf(self, x):
         if self.n_cl == 0:
-            raise Exception("FIGARO: You are trying to evaluate an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, you may want to evaluate the output of that method.")
+            raise FIGAROException("You are trying to evaluate an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, you may want to evaluate the output of that method.")
         if len(np.shape(x)) < 1:
             x = np.atleast_2d(x).T
         return self._pdf(x)
@@ -691,7 +691,7 @@ class DPGMM:
 
     def logpdf(self, x):
         if self.n_cl == 0:
-            raise Exception("FIGARO: You are trying to evaluate an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, you may want to evaluate the output of that method.")
+            raise FIGAROException("You are trying to evaluate an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, you may want to evaluate the output of that method.")
         if len(np.shape(x)) < 1:
             x = np.atleast_2d(x).T
         return self._logpdf(x)
@@ -726,7 +726,7 @@ class DPGMM:
             :mixture: the inferred distribution
         """
         if self.n_cl == 0:
-            raise Exception("FIGARO: You are trying to build an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, the inferred mixture is returned from that method as an instance of mixture class.")
+            raise FIGAROException("You are trying to build an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, the inferred mixture is returned from that method as an instance of mixture class.")
         return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, self.n_pts)
 
 

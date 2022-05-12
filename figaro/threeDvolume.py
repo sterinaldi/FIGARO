@@ -27,6 +27,7 @@ from figaro.transform import *
 from figaro.coordinates import celestial_to_cartesian, cartesian_to_celestial, inv_Jacobian
 from figaro.credible_regions import ConfidenceArea, ConfidenceVolume, FindNearest, FindLevelForHeight
 from figaro.diagnostic import compute_entropy_single_draw, angular_coefficient
+from figaro.exceptions import FIGAROException
 try:
     from figaro.cosmology import CosmologicalParameters
     lal_flag = True
@@ -777,7 +778,7 @@ class VolumeReconstruction(DPGMM):
         check_dec  = np.logical_and(samples[:,1] > -np.pi/2., samples[:,1] < np.pi/2.).all()
         check_dist = np.logical_and(samples[:,2] > 0, samples[:,2] < self.max_dist).all()
         if not (check_ra and check_dec and check_dist):
-            raise Exception("Samples are not in [RA, dec, DL] order or one or more points are outside the [[0, 2π], [-π/2, π/2], [0,{0:.0f}]] boundaries".format(self.max_dist))
+            raise FIGAROException("Samples are not in [RA, dec, DL] order or one or more points are outside the [[0, 2π], [-π/2, π/2], [0,{0:.0f}]] boundaries".format(self.max_dist))
         self.ac_cntr = self.n_sign_changes
         for i in tqdm(range(len(samples)), desc=self.name):
             self.add_sample(samples[i])
