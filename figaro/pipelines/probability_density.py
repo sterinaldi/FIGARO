@@ -62,7 +62,8 @@ def main():
     # Read parameter(s)
     if options.par is not None:
         options.par = options.par.split(',')
-    save_options(options)
+
+    save_options(options, options.output)
     
     # Load samples
     samples, name = load_single_event(options.samples_file, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol)

@@ -119,7 +119,7 @@ def main():
     else:
         options.grid_points = np.ones(dim, dtype = int)*int((1000/dim**2)**dim)
 
-    save_options(options)
+    save_options(options, options.output)
 
     # Reconstruction
     if not options.postprocess:
