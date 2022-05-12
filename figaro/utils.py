@@ -168,28 +168,6 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
 #   Options   #
 #-------------#
 
-def is_opt_provided(parser, dest):
-    """
-    Checks if an option is provided by the user.
-    From Oleg Gryb's answer in
-    https://stackoverflow.com/questions/2593257/how-to-know-if-optparse-option-was-passed-in-the-command-line-or-as-a-default
-    
-    Arguments:
-        :obj parser: an instance of optparse.OptionParser with the user-provided options
-        :str dest:   name of the option
-        
-    Returns:
-        :bool: True if the option is provided, false otherwise
-    """
-    for opt in parser._get_all_options():
-        try:
-            if opt.dest == dest and (opt._long_opts[0] in sys.argv[1:] or opt._short_opts[0] in sys.argv[1:]):
-                return True
-        except:
-            if opt.dest == dest and opt._long_opts[0] in sys.argv[1:]:
-                return True
-    return False
-
 def save_options(options, out_folder):
     """
     Saves options for the run (reproducibility)
