@@ -1,7 +1,7 @@
 import numpy as np
 from figaro.exceptions import FIGAROException
 
-def MC_integral(p, q, n_draws = 1e3, error = True, do_checks = True):
+def MC_integral(p, q, n_draws = 1e4, error = True, do_checks = True):
     """
     Monte Carlo integration using FIGARO reconstructions.
         ∫p(x)q(x)dx ~ ∑p(x_i)/N with x_i ~ q(x)
