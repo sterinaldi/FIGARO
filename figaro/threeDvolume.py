@@ -773,6 +773,7 @@ class VolumeReconstruction(DPGMM):
         Arguments:
             :iterable samples: set of volume samples
         """
+        np.random.shuffle(samples)
         # Checking the posteriors are properly ordered:
         check_ra   = np.logical_and(samples[:,0] > 0, samples[:,0] < 2*np.pi).all()
         check_dec  = np.logical_and(samples[:,1] > -np.pi/2., samples[:,1] < np.pi/2.).all()
