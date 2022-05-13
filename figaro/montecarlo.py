@@ -57,7 +57,7 @@ def MC_integral(p, q, n_draws = 1e4, error = True):
         samples = p.rvs(n_draws)
         probabilities = np.array([qi.pdf(samples) for qi in q])
     else:
-        probabilities = np.atleast_1d(q.pdf(p.rvs(n_draws)))
+        probabilities = np.atleast_2d(q.pdf(p.rvs(n_draws)))
     
     means = probabilities.mean(axis = 1)
     I = means.mean()
