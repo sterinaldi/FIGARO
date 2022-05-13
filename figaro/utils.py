@@ -372,13 +372,23 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         if subfolder:
             plot_folder = Path(out_folder, 'density')
             if not plot_folder.exists():
-                plot_folder.mkdir()
+                try:
+                    plot_folder.mkdir()
+                except FileExistsError:
+                    # Avoids issue with parallelisation
+                    pass
             log_folder = Path(out_folder, 'log_density')
             if not log_folder.exists():
-                log_folder.mkdir()
+                try:
+                    log_folder.mkdir()
+                except FileExistsError:
+                    pass
             txt_folder = Path(out_folder, 'txt')
             if not txt_folder.exists():
-                txt_folder.mkdir()
+                try:
+                    txt_folder.mkdir()
+                except FileExistsError:
+                    pass
         else:
             plot_folder = out_folder
             log_folder  = out_folder
@@ -490,7 +500,10 @@ def plot_multidim(draws, dim, samples = None, selfunc = None, out_folder = '.', 
             c.savefig(Path(out_folder, '{0}.pdf'.format(name)), bbox_inches = 'tight')
         else:
             if not Path(out_folder, 'density').exists():
-                Path(out_folder, 'density').mkdir()
+                try:
+                    Path(out_folder, 'density').mkdir()
+                except FileExistsError:
+                    pass
             c.savefig(Path(out_folder, 'density', '{0}.pdf'.format(name)), bbox_inches = 'tight')
     plt.close()
 
