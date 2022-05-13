@@ -82,7 +82,7 @@ def main():
     # Reconstruction
     if not options.postprocess:
         # Actual analysis
-        mix = DPGMM(options.bounds, prior_pars = get_priors(options.bounds, samples = sampes, std = options.sigma_prior))
+        mix = DPGMM(options.bounds, prior_pars = get_priors(options.bounds, samples = samples, std = options.sigma_prior))
         draws = np.array([mix.density_from_samples(samples) for _ in tqdm(range(options.n_draws), desc = name)])
         # Save reconstruction
         with open(Path(options.output, 'draws_'+name+'.pkl'), 'wb') as f:
