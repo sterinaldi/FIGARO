@@ -1,9 +1,23 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import rcParams
+from distutils.spawn import find_executable
 from numba import jit, prange
 from pathlib import Path
 from figaro.cumulative import fast_cumulative
 from figaro.exceptions import FIGAROException
+
+if find_executable('latex'):
+    rcParams["text.usetex"] = True
+rcParams["xtick.labelsize"]=14
+rcParams["ytick.labelsize"]=14
+rcParams["xtick.direction"]="in"
+rcParams["ytick.direction"]="in"
+rcParams["legend.fontsize"]=12
+rcParams["axes.labelsize"]=16
+rcParams["axes.grid"] = True
+rcParams["grid.alpha"] = 0.6
+
 
 log2e = np.log2(np.e)
 
