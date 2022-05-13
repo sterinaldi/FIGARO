@@ -64,5 +64,5 @@ def MC_integral(p, q, n_draws = 1e4, error = True):
     if not error:
         return I
     mc_error = (probabilities.var(axis = 1)/n_draws).mean()
-    figaro_error = means.var()
+    figaro_error = means.var()/len(means)
     return I, np.sqrt(mc_error + figaro_error)
