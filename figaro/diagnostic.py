@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from numba import jit, prange
 from pathlib import Path
 from figaro.cumulative import fast_cumulative
+from figaro.exceptions import FIGAROException
 
 log2e = np.log2(np.e)
 
@@ -20,17 +21,24 @@ def angular_coefficient(x, y):
     """
     return np.sum((x - np.mean(x))*(y - np.mean(y)))/np.sum((x - np.mean(x))**2)
     
-def compute_angular_coefficients(x, L = 500):
+def compute_angular_coefficients(x, L = None):
     """
     Given an array of points x, computes the angular coefficient for each adjacent chunk of length L.
     
     Arguments:
         :np.ndarray x: array of points
+        :int L:        window length
     
     Returns:
         :np.ndarray: array of angular coefficients
     """
-    L = np.min([L, len(x)])
+    if L is None:
+       L = len(x)//10
+    
+    if L > len(x):
+        raise FIGAROException("L must be smaller than the number of points you have")
+        
+    L = np.min([int(L), len(x)])
     N = np.arange(len(x))+1
     a = np.zeros(len(x) - int(L), dtype = np.float64)
     for i in range(len(a)):
