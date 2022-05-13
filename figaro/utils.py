@@ -168,6 +168,14 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
         
     return (k_out, L_out, df_out, mu_out)
 
+def rvs_median(draws, n_draws):
+    idx = np.random.choice(np.arange(len(draws)), size = n_draws)
+    ctr = Counter(idx)
+    samples = np.empty(shape = (1, draws[0].dim))
+    for i, n in zip(ctr.keys(), ctr.values()):
+        samples = np.concatenate((samples, draws[i].rvs(n)))
+    return samples[1:]
+
 #-------------#
 #   Options   #
 #-------------#
@@ -466,13 +474,7 @@ def plot_multidim(draws, dim, samples = None, selfunc = None, out_folder = '.', 
     else:
         size = 100**dim
         
-    idx = np.random.choice(np.arange(len(draws)), size = size)
-    ctr = Counter(idx)
-    
-    mix_samples = np.empty(shape = (1,dim))
-    for i, n in zip(ctr.keys(), ctr.values()):
-        mix_samples = np.concatenate((mix_samples, draws[i].rvs(n)))
-    mix_samples = mix_samples[1:]
+    mix_samples = rvs_median(draws, size)
     
     # Make corner plots
     if samples is not None:
