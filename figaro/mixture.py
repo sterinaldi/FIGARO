@@ -7,7 +7,7 @@ from pathlib import Path
 
 from scipy.special import gammaln, logsumexp
 from scipy.stats import multivariate_normal as mn
-from scipy.stats import invgamma, invwishart
+from scipy.stats import invgamma, invwishart, norm
 
 from figaro.decorators import *
 from figaro.transform import *
@@ -349,6 +349,48 @@ class mixture:
             :np.ndarray: mixture.logpdf(x)
         """
         p = logsumexp(np.array([w + mn(mean, cov).logpdf(x) for mean, cov, w in zip(self.means, self.covs, self.log_w)]), axis = 0)
+        return p
+
+    def cdf(self, x):
+        if self.dim > 1:
+            raise FIGAROException("cdf is provided only for 1-dimensional distributions")
+        if len(np.shape(x)) < 2:
+            x = np.atleast_2d(x).T
+        return self._cdf(x)
+
+    def logcdf(self, x):
+        if self.dim > 1:
+            raise FIGAROException("cdf is provided only for 1-dimensional distributions")
+        if len(np.shape(x)) < 2:
+            x = np.atleast_2d(x).T
+        return self._logcdf(x)
+
+    @probit
+    def _cdf(self, x):
+        """
+        Evaluate mixture cdf at point(s) x
+        
+        Arguments:
+            :np.ndarray x: point(s) to evaluate the mixture at
+        
+        Returns:
+            :np.ndarray: mixture.cdf(x)
+        """
+        p = np.sum(np.array([w*norm(mean[0], cov[0,0]).cdf(x) for mean, cov, w in zip(self.means, np.sqrt(self.covs), self.w)]), axis = 0)
+        return p
+
+    @probit
+    def _logcdf(self, x):
+        """
+        Evaluate mixture log cdf at point(s) x
+        
+        Arguments:
+            :np.ndarray x: point(s) to evaluate the mixture at
+        
+        Returns:
+            :np.ndarray: mixture.logcdf(x)
+        """
+        p = logsumexp(np.array([w + norm(mean[0], cov[0,0]).logcdf(x) for mean, cov, w in zip(self.means, np.sqrt(self.covs), self.log_w)]), axis = 0)
         return p
 
     @from_probit
