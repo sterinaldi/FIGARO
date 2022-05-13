@@ -1,7 +1,7 @@
 import numpy as np
 from figaro.exceptions import FIGAROException
 
-def MC_integral(p, q, n_draws = 1e4, error = True, do_checks = True):
+def MC_integral(p, q, n_draws = 1e4, error = True):
     """
     Monte Carlo integration using FIGARO reconstructions.
         ∫p(x)q(x)dx ~ ∑p(x_i)/N with x_i ~ q(x)
@@ -14,34 +14,35 @@ def MC_integral(p, q, n_draws = 1e4, error = True, do_checks = True):
         :list or class instance q: the probability density to sample from. Must have a rvs() method.
         :int n_draws:              number of MC draws
         :bool error:               whether to return the uncertainty on the integral value or not.
-        :bool do_checks:           whether to perform consistency checks or not (faster code, lazy evaluation - see https://docs.python.org/3/reference/expressions.html#boolean-operations).
     
     Return:
         :double: integral value
         :double: uncertainty (if error = True)
     """
     # Check that both p and q are iterables or callables:
-    if do_checks and not ((callable(p) or np.iterable(p)) and (callable(q) or np.iterable(q))):
-        raise FIGAROException("p and q must be callables or list of callables")
+    if not ((hasattr(p, 'pdf') or np.iterable(p)) and (hasattr(q, 'rvs') or np.iterable(q))):
+        raise FIGAROException("p and q must be list of callables or having pdf/rvs methods")
     # Number of p draws and methods check
     if np.iterable(p):
-        if do_checks and not np.alltrue([hasattr(pi, 'pdf') for pi in p]):
-            raise FIGAROException("p must have a pdf method")
+        if not np.alltrue([hasattr(pi, 'pdf') for pi in p]):
+            raise FIGAROException("p must have pdf method")
         n_p = len(p)
+        np.random.shuffle(p)
         iter_p = True
     else:
-        if do_checks and not hasattr(p, 'pdf'):
-            raise FIGAROException("p must have a pdf method")
+        if not hasattr(p, 'pdf'):
+            raise FIGAROException("p must have pdf method")
         iter_p = False
     # Number of q draws and methods check
     if np.iterable(q):
-        if do_checks and not np.alltrue([hasattr(qi, 'rvs') for qi in q]):
-            raise FIGAROException("q must have a rvs method")
+        if not np.alltrue([hasattr(qi, 'rvs') for qi in q]):
+            raise FIGAROException("q must have rvs method")
         n_q = len(q)
+        np.random.shuffle(q)
         iter_q = True
     else:
-        if do_checks and not hasattr(q, 'rvs'):
-            raise FIGAROException("q must have a rvs method")
+        if not hasattr(q, 'rvs'):
+            raise FIGAROException("q must have rvs method")
         iter_q = False
 
     n_draws = int(n_draws)
