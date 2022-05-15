@@ -152,11 +152,11 @@ def compute_hyperpars(k, mu, nu, L, mean, S, N):
     k_n  = k + N
     mu_n = (mu*k + N*mean)/k_n
     nu_n = nu + N
-    L_n  = L + S + k*N*((mean - mu).T@(mean - mu))/k_n
+    L_n  = L + S*N + k*N*((mean - mu).T@(mean - mu))/k_n
     return k_n, mu_n, nu_n, L_n
 
 @jit
-def compute_component_suffstats(x, mean, S, N, p_mu, p_k, p_nu, p_L):
+def compute_component_suffstats(x, mean, cov, N, p_mu, p_k, p_nu, p_L):
     """
     Update mean, covariance, number of samples and maximum a posteriori for mean and covariance.
     
@@ -178,12 +178,12 @@ def compute_component_suffstats(x, mean, S, N, p_mu, p_k, p_nu, p_L):
         :np.ndarray: covariance (maximum a posteriori)
     """
     new_mean  = (mean*N+x)/(N+1)
-    new_S     = (S + N*mean.T@mean + x.T@x) - (N+1)*new_mean.T@new_mean
+    new_cov   = (N*(cov + mean.T@mean) + x.T@x)/(N+1) - new_mean.T@new_mean
     new_N     = N+1
     new_mu    = ((p_mu*p_k + new_N*new_mean)/(p_k + new_N))[0]
-    new_sigma = (p_L + S + p_k*new_N*((new_mean - p_mu).T@(new_mean - p_mu))/(p_k + new_N))/(p_nu + new_N - x.shape[-1] - 1)
+    new_sigma = (p_L + new_cov*new_N + p_k*new_N*((new_mean - p_mu).T@(new_mean - p_mu))/(p_k + new_N))/(p_nu + new_N - x.shape[-1] - 1)
     
-    return new_mean, new_S, new_N, new_mu, new_sigma
+    return new_mean, new_cov, new_N, new_mu, new_sigma
 
 #-------------------#
 # Auxiliary classes #
@@ -223,7 +223,7 @@ class component:
     def __init__(self, x, prior):
         self.N     = 1
         self.mean  = x
-        self.S     = np.identity(x.shape[-1])*0.
+        self.cov   = np.identity(x.shape[-1])*0.
         self.mu    = np.atleast_2d((prior.mu*prior.k + self.N*self.mean)/(prior.k + self.N)).astype(np.float64)[0]
         self.sigma = np.identity(x.shape[-1]).astype(np.float64)*prior.L/(prior.nu - x.shape[-1] - 1)
 
@@ -506,9 +506,9 @@ class DPGMM:
         Returns:
             :component: updated component
         """
-        new_mean, new_S, new_N, new_mu, new_sigma = compute_component_suffstats(x, ss.mean, ss.S, ss.N, self.prior.mu, self.prior.k, self.prior.nu, self.prior.L)
+        new_mean, new_cov, new_N, new_mu, new_sigma = compute_component_suffstats(x, ss.mean, ss.cov, ss.N, self.prior.mu, self.prior.k, self.prior.nu, self.prior.L)
         ss.mean  = new_mean
-        ss.S     = new_S
+        ss.cov   = new_cov
         ss.N     = new_N
         ss.mu    = new_mu
         ss.sigma = new_sigma
@@ -528,7 +528,7 @@ class DPGMM:
         if ss == "new":
             ss = component(np.zeros(self.dim), prior = self.prior)
             ss.N = 0.
-        t_df, t_shape, mu_n = compute_t_pars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.S, ss.N, self.dim)
+        t_df, t_shape, mu_n = compute_t_pars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.cov, ss.N, self.dim)
         return student_t(df = t_df, t = x, mu = mu_n, sigma = t_shape, dim = self.dim)
 
     def _cluster_assignment_distribution(self, x):
