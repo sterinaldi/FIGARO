@@ -624,6 +624,7 @@ class VolumeReconstruction(DPGMM):
             c = ax_b.scatter(self.sorted_cat[:,0][:-int(n_gals):-1]*180./np.pi, self.sorted_cat[:,1][:-int(n_gals):-1]*180./np.pi, c = self.sorted_p_cat_to_plot[:-int(n_gals):-1], marker = '+', cmap = 'coolwarm', linewidths = 1)
             x_lim = ax_b.get_xlim()
             y_lim = ax_b.get_ylim()
+            plt.close(fig_b)
             fig = plt.figure()
             # Download background
             if self.true_host is not None:
