@@ -140,7 +140,7 @@ class VolumeReconstruction(DPGMM):
                        glade_file          = None,
                        cosmology           = {'h': 0.674, 'om': 0.315, 'ol': 0.685},
                        n_gal_to_plot       = -1,
-                       region_to_plot      = 0.5,
+                       region_to_plot      = 0.9,
                        entropy             = False,
                        n_entropy_MC_draws  = 1e3,
                        true_host           = None,
@@ -647,7 +647,7 @@ class VolumeReconstruction(DPGMM):
             ax.imshow(hdu.data,cmap = 'gray')
             ax.set_autoscale_on(False)
             c = ax.scatter(self.sorted_cat[:,0][:-int(n_gals):-1]*180./np.pi, self.sorted_cat[:,1][:-int(n_gals):-1]*180./np.pi, c = self.sorted_p_cat_to_plot[:-int(n_gals):-1], marker = '+', cmap = 'coolwarm', linewidths = 0.5, transform=ax.get_transform('world'), zorder = 100)
-            c1 = ax.contourf(self.ra_2d*180./np.pi, self.dec_2d*180./np.pi, self.log_p_skymap.T, np.sort(self.skymap_heights), colors = 'white', linewidths = 0.5, linestyles = 'solid', transform=ax.get_transform('world'), zorder = 99, alpha = 0)
+            c1 = ax.contour(self.ra_2d*180./np.pi, self.dec_2d*180./np.pi, self.log_p_skymap.T, np.sort(self.skymap_heights), colors = 'white', linewidths = 0.5, linestyles = 'solid', transform=ax.get_transform('world'), zorder = 99, alpha = 0)
             if self.true_host is not None:
                 ax.scatter([self.true_host[0]*180./np.pi], [self.true_host[1]*180./np.pi], s=80, facecolors='none', edgecolors='g', label = '$\mathrm{' + self.host_name + '}$', transform=ax.get_transform('world'), zorder = 101)
             leg_col = 'white'
@@ -664,7 +664,7 @@ class VolumeReconstruction(DPGMM):
         for i in range(len(self.areas)):
             c1.collections[i].set_label('${0:.0f}\\%'.format(100*self.levels[-i])+ '\ \mathrm{CR}:'+'{0:.1f}'.format(self.areas[-i]) + '\ \mathrm{deg}^2$')
         handles, labels = ax.get_legend_handles_labels()
-        if self.n_gal_to_plot == -1:
+        if self.n_gal_to_plot == -1 or self.n_gal_to_plot == len(self.catalog):
             lab_ngal = '${0}'.format(len(self.cat_to_plot_celestial)) + '\ \mathrm{galaxies}\ \mathrm{in}\ '+'{0:.0f}\\%'.format(100*self.levels[np.where(self.levels == self.region)][0])+ '\ \mathrm{CR}$'
         else:
             lab_ngal = '${0}'.format(len(self.cat_to_plot_celestial)) + '\ \mathrm{galaxies}\ \mathrm{in}\ '+'{0:.0f}\\%'.format(100*self.levels[np.where(self.levels == self.region)][0])+ '\ \mathrm{CR}$\n'+'$({0}'.format(self.n_gal_to_plot)+'\ \mathrm{shown})$'
