@@ -83,9 +83,10 @@ def update_alpha(alpha, n, K, burnin = 1000):
     Update concentration parameter using a Metropolis-Hastings sampling scheme.
     
     Arguments:
-        :int n:      Number of samples
-        :int K:      Number of active clusters
-        :int burnin: MH burnin
+        :double alpha: Initial value for concentration parameter
+        :int n:        Number of samples
+        :int K:        Number of active clusters
+        :int burnin:   MH burnin
     
     Returns:
         :double: new concentration parameter value
@@ -152,11 +153,11 @@ def compute_hyperpars(k, mu, nu, L, mean, S, N):
     k_n  = k + N
     mu_n = (mu*k + N*mean)/k_n
     nu_n = nu + N
-    L_n  = L + S*N + k*N*((mean - mu).T@(mean - mu))/k_n
+    L_n  = L + S + k*N*((mean - mu).T@(mean - mu))/k_n
     return k_n, mu_n, nu_n, L_n
 
 @jit
-def compute_component_suffstats(x, mean, cov, N, p_mu, p_k, p_nu, p_L):
+def compute_component_suffstats(x, mean, S, N, p_mu, p_k, p_nu, p_L):
     """
     Update mean, covariance, number of samples and maximum a posteriori for mean and covariance.
     
@@ -178,12 +179,12 @@ def compute_component_suffstats(x, mean, cov, N, p_mu, p_k, p_nu, p_L):
         :np.ndarray: covariance (maximum a posteriori)
     """
     new_mean  = (mean*N+x)/(N+1)
-    new_cov   = (N*(cov + mean.T@mean) + x.T@x)/(N+1) - new_mean.T@new_mean
+    new_S     = (S + N*mean.T@mean + x.T@x) - new_mean.T@new_mean*(N+1)
     new_N     = N+1
     new_mu    = ((p_mu*p_k + new_N*new_mean)/(p_k + new_N))[0]
-    new_sigma = (p_L + new_cov*new_N + p_k*new_N*((new_mean - p_mu).T@(new_mean - p_mu))/(p_k + new_N))/(p_nu + new_N - x.shape[-1] - 1)
+    new_sigma = (p_L + new_S + p_k*new_N*((new_mean - p_mu).T@(new_mean - p_mu))/(p_k + new_N))/(p_nu + new_N - x.shape[-1] - 1)
     
-    return new_mean, new_cov, new_N, new_mu, new_sigma
+    return new_mean, new_S, new_N, new_mu, new_sigma
 
 #-------------------#
 # Auxiliary classes #
@@ -223,7 +224,7 @@ class component:
     def __init__(self, x, prior):
         self.N     = 1
         self.mean  = x
-        self.cov   = np.identity(x.shape[-1])*0.
+        self.S     = np.identity(x.shape[-1])*0.
         self.mu    = np.atleast_2d((prior.mu*prior.k + self.N*self.mean)/(prior.k + self.N)).astype(np.float64)[0]
         self.sigma = np.identity(x.shape[-1]).astype(np.float64)*prior.L/(prior.nu - x.shape[-1] - 1)
 
@@ -289,12 +290,18 @@ class mixture:
 
     def pdf(self, x):
         if len(np.shape(x)) < 2:
-            x = np.atleast_2d(x).T
+            if self.dim == 1:
+                x = np.atleast_2d(x).T
+            else:
+                x = np.atleast_2d(x)
         return self._pdf(x)
 
     def logpdf(self, x):
         if len(np.shape(x)) < 2:
-            x = np.atleast_2d(x).T
+            if self.dim == 1:
+                x = np.atleast_2d(x).T
+            else:
+                x = np.atleast_2d(x)
         return self._logpdf(x)
 
     @probit
@@ -506,9 +513,9 @@ class DPGMM:
         Returns:
             :component: updated component
         """
-        new_mean, new_cov, new_N, new_mu, new_sigma = compute_component_suffstats(x, ss.mean, ss.cov, ss.N, self.prior.mu, self.prior.k, self.prior.nu, self.prior.L)
+        new_mean, new_S, new_N, new_mu, new_sigma = compute_component_suffstats(x, ss.mean, ss.S, ss.N, self.prior.mu, self.prior.k, self.prior.nu, self.prior.L)
         ss.mean  = new_mean
-        ss.cov   = new_cov
+        ss.S     = new_S
         ss.N     = new_N
         ss.mu    = new_mu
         ss.sigma = new_sigma
@@ -687,7 +694,10 @@ class DPGMM:
         if self.n_cl == 0:
             raise FIGAROException("You are trying to evaluate an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, you may want to evaluate the output of that method.")
         if len(np.shape(x)) < 2:
-            x = np.atleast_2d(x).T
+            if self.dim == 1:
+                x = np.atleast_2d(x).T
+            else:
+                x = np.atleast_2d(x)
         return self._pdf(x)
 
     @probit
@@ -735,7 +745,10 @@ class DPGMM:
         if self.n_cl == 0:
             raise FIGAROException("You are trying to evaluate an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, you may want to evaluate the output of that method.")
         if len(np.shape(x)) < 2:
-            x = np.atleast_2d(x).T
+            if self.dim == 1:
+                x = np.atleast_2d(x).T
+            else:
+                x = np.atleast_2d(x)
         return self._logpdf(x)
         
     @probit
