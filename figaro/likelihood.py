@@ -78,11 +78,36 @@ def log_norm(x, mu, cov):
 #------------#
 
 @jit
-def eval_mix_1d(mu, sigma, means, vars):
+def eval_mix_1d(mu, sigma, means, covs):
+    """
+    Computes N(mu_k| mu, (sigma_k^2+sigma^2) for all the components of a mixture (for predictive likelihood, 1D).
+    
+    Arguments:
+        :np.ndarray mu:    temptative mean of the parent mixture component
+        :np.ndarray sigma: temptative variance of the parent mixture component
+        :np.ndarray means: means of the event mixture components
+        :np.ndarray vars:  variances of the event mixture components
+    
+    Returns:
+        :np.ndarray: probability for each event mixture components
+    """
     return np.array([log_norm_1d(means[i,0], mu, sigma+vars[i,0,0]) for i in prange(len(means))])
 
 @jit
 def evaluate_mixture_MC_draws_1d(mu, sigma, means, vars, w):
+    """
+    Computes N(mu_k| mu, (sigma_k^2+sigma^2) for a set of MC draws for mu and sigma.
+    
+    Arguments:
+        :np.ndarray mu:    MC draws for the mean of the parent mixture component
+        :np.ndarray sigma: MC draws for the variance of the parent mixture component
+        :np.ndarray means: means of the event mixture components
+        :np.ndarray vars:  variances of the event mixture components
+        :np.ndarray w:     component weights
+    
+    Returns:
+        :np.ndarray: probability for each MC draw
+    """
     logP = np.zeros(len(mu), dtype = np.float64)
     for i in prange(len(mu)):
         logP[i] = logsumexp_jit(eval_mix_1d(mu[i], sigma[i], means, vars), b = w)
@@ -93,12 +118,37 @@ def evaluate_mixture_MC_draws_1d(mu, sigma, means, vars, w):
 #------------#
 
 @jit
-def eval_mix(mu, sigma, means, vars):
-    return np.array([log_norm(means[i], mu, sigma+vars[i]) for i in prange(len(means))])
+def eval_mix(mu, sigma, means, covs):
+    """
+    Computes N(mu_k| mu, (sigma_k^2+sigma^2) for all the components of a mixture (for predictive likelihood, ND).
+    
+    Arguments:
+        :np.ndarray mu:    temptative mean of the parent mixture component
+        :np.ndarray sigma: temptative covariance matrix of the parent mixture component
+        :np.ndarray means: means of the event mixture components
+        :np.ndarray covs:  covariance matrices of the event mixture components
+    
+    Returns:
+        :np.ndarray: probability for each event mixture components
+    """
+    return np.array([log_norm(means[i], mu, sigma+covs[i]) for i in prange(len(means))])
 
 @jit
-def evaluate_mixture_MC_draws(mu, sigma, means, vars, w):
+def evaluate_mixture_MC_draws(mu, sigma, means, covs, w):
+    """
+    Computes N(mu_k| mu, (sigma_k^2+sigma^2) for a set of MC draws for mu and sigma.
+    
+    Arguments:
+        :np.ndarray mu:    MC draws for the mean vector of the parent mixture component
+        :np.ndarray sigma: MC draws for the covariance matrix of the parent mixture component
+        :np.ndarray means: means of the event mixture components
+        :np.ndarray covs:  covariance matrices of the event mixture components
+        :np.ndarray w:     component weights
+    
+    Returns:
+        :np.ndarray: probability for each MC draw
+    """
     logP = np.zeros(len(mu), dtype = np.float64)
     for i in prange(len(mu)):
-        logP[i] = logsumexp_jit(eval_mix(mu[i], sigma[i], means, vars), b = w)
+        logP[i] = logsumexp_jit(eval_mix(mu[i], sigma[i], means, covs), b = w)
     return logP
