@@ -42,19 +42,19 @@ gammaln_float64 = functype(addr)
 #-----------#
 
 @njit
-def numba_gammaln(x):
+def _numba_gammaln(x):
     return gammaln_float64(x)
 
 @jit
-def student_t(df, t, mu, sigma, dim):
+def _student_t(df, t, mu, sigma, dim):
     """
     Multivariate student-t pdf.
     As in http://gregorygundersen.com/blog/2020/01/20/multivariate-t/
     
     Arguments:
         :float df:         degrees of freedom
-        :float t:          variable
-        :np.ndarray mu:    mean
+        :float t:          variable (2d array)
+        :np.ndarray mu:    mean (2d array)
         :np.ndarray sigma: variance
         :int dim:          number of dimensions
         
@@ -69,8 +69,8 @@ def student_t(df, t, mu, sigma, dim):
     maha       = np.square(np.dot(dev, U)).sum(axis=-1)
 
     x = 0.5 * (df + dim)
-    A = numba_gammaln(x)
-    B = numba_gammaln(0.5 * df)
+    A = _numba_gammaln(x)
+    B = _numba_gammaln(0.5 * df)
     C = dim/2. * np.log(df * np.pi)
     D = 0.5 * logdet
     E = -x * np.log1p((1./df) * maha)
@@ -95,8 +95,8 @@ def update_alpha(alpha, n, K, burnin = 1000):
     for i in prange(n_draws):
         a_new = a_old + (np.random.random() - 0.5)
         if a_new > 0.:
-            logP_old = numba_gammaln(a_old) - numba_gammaln(a_old + n) + K * np.log(a_old) - 1./a_old
-            logP_new = numba_gammaln(a_new) - numba_gammaln(a_new + n) + K * np.log(a_new) - 1./a_new
+            logP_old = _numba_gammaln(a_old) - _numba_gammaln(a_old + n) + K * np.log(a_old) - 1./a_old
+            logP_new = _numba_gammaln(a_new) - _numba_gammaln(a_new + n) + K * np.log(a_new) - 1./a_new
             if logP_new - logP_old > np.log(np.random.random()):
                 a_old = a_new
     return a_old
@@ -529,7 +529,7 @@ class DPGMM:
             ss = component(np.zeros(self.dim), prior = self.prior)
             ss.N = 0.
         t_df, t_shape, mu_n = compute_t_pars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.cov, ss.N, self.dim)
-        return student_t(df = t_df, t = x, mu = mu_n, sigma = t_shape, dim = self.dim)
+        return _student_t(df = t_df, t = x, mu = mu_n, sigma = t_shape, dim = self.dim)
 
     def _cluster_assignment_distribution(self, x):
         """
