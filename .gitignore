@@ -2,6 +2,7 @@
 *.pdf
 *.pkl
 notebooks/skymap_*
+*.ipynb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
