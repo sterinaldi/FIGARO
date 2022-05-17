@@ -10,7 +10,6 @@ from libc.math cimport log,exp
 From https://github.com/wdpozzo/3d_volume/cumulative.pyx
 '''
 
-cdef inline double d_max(double a, double b) nogil: return a if a >= b else b
 cdef inline double log_add(double x, double y) nogil: return x+log(1+exp(y-x)) if x >= y else y+log(1+exp(x-y))
 
 def fast_log_cumulative(np.ndarray[double, ndim=1, mode="c"]  f):
