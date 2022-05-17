@@ -1,9 +1,12 @@
 import numpy as np
+
+from numba import jit, prange
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
 from distutils.spawn import find_executable
-from numba import jit, prange
-from pathlib import Path
+
 from figaro.cumulative import fast_cumulative
 from figaro.exceptions import FIGAROException
 
@@ -17,7 +20,6 @@ rcParams["legend.fontsize"]=12
 rcParams["axes.labelsize"]=16
 rcParams["axes.grid"] = True
 rcParams["grid.alpha"] = 0.6
-
 
 log2e = np.log2(np.e)
 
@@ -58,6 +60,38 @@ def compute_angular_coefficients(x, L = None):
     for i in range(len(a)):
         a[i] = angular_coefficient(N[i:i+L], x[i:i+L])
     return a
+
+def plot_angular_coefficient(entropy, L = 500, ac_expected = None, out_folder = '.', name = 'event', step = 1, show = False, save = True):
+    """
+    Compute entropy angular coefficient and produce the relevant plot
+    
+    Arguments:
+        :iterable entropy:       container of mixture instances
+        :int L:                  window lenght
+        :double ac_expected:     expected angular coefficient
+        :str or Path out_folder: output folder
+        :str name:               name to be given to outputs
+        :int step:               number of draws between entropy samples (if downsampled by some other method, for plotting purposes only)
+        :bool save:              whether to save the plot or not
+        :bool show:              whether to show the plot during the run or not
+    
+    Returns:
+        :np.ndarray: angular coefficients
+    """
+    S = compute_angular_coefficients(entropy, L = L)
+    fig, ax = plt.subplots()
+    if ac_expected is not None:
+        ax.axhline(ac_expected, lw = 0.5, ls = '--', c = 'r')
+    ax.plot(np.arange(len(S))*step+L, S, ls = '--', marker = '', color = 'steelblue', lw = 0.7)
+    ax.set_ylabel('$\\frac{dS(N)}{dN}$')
+    ax.set_xlabel('$N$')
+    ax.grid(True,dashes=(1,3))
+    if show:
+        plt.show()
+    if save:
+        fig.savefig(Path(out_folder, name+'_angular_coefficient.pdf'), bbox_inches = 'tight')
+    plt.close()
+    return S
 
 @jit
 def compute_autocorrelation(draws, mean, dx):
@@ -208,37 +242,5 @@ def entropy(draws, out_folder = '.', exp_entropy = None, name = 'event', n_draws
         plt.show()
     if save:
         fig.savefig(Path(out_folder, name+'_entropy.pdf'), bbox_inches = 'tight')
-    plt.close()
-    return S
-
-def plot_angular_coefficient(entropy, L = 500, ac_expected = None, out_folder = '.', name = 'event', step = 1, show = False, save = True):
-    """
-    Compute entropy angular coefficient and produce the relevant plot
-    
-    Arguments:
-        :iterable entropy:       container of mixture instances
-        :int L:                  window lenght
-        :double ac_expected:     expected angular coefficient
-        :str or Path out_folder: output folder
-        :str name:               name to be given to outputs
-        :int step:               number of draws between entropy samples (if downsampled by some other method, for plotting purposes only)
-        :bool save:              whether to save the plot or not
-        :bool show:              whether to show the plot during the run or not
-    
-    Returns:
-        :np.ndarray: angular coefficients
-    """
-    S = compute_angular_coefficients(entropy, L = L)
-    fig, ax = plt.subplots()
-    if ac_expected is not None:
-        ax.axhline(ac_expected, lw = 0.5, ls = '--', c = 'r')
-    ax.plot(np.arange(len(S))*step+L, S, ls = '--', marker = '', color = 'steelblue', lw = 0.7)
-    ax.set_ylabel('$\\frac{dS(N)}{dN}$')
-    ax.set_xlabel('$N$')
-    ax.grid(True,dashes=(1,3))
-    if show:
-        plt.show()
-    if save:
-        fig.savefig(Path(out_folder, name+'_angular_coefficient.pdf'), bbox_inches = 'tight')
     plt.close()
     return S
