@@ -764,14 +764,6 @@ class DPGMM:
         """
         p = logsumexp(np.array([w + mn(comp.mu, comp.sigma).logpdf(x) for comp, w in zip(self.mixture, self.log_w)]), axis = 0)
         return p - probit_logJ(x, self.bounds)
-
-    def save_density(self):
-        """
-        Build and save density
-        """
-        mixture = self.build_mixture()
-        with open(Path(self.out_folder, 'mixture.pkl'), 'wb') as dill_file:
-            dill.dump(mixture, dill_file)
         
     def build_mixture(self):
         """
