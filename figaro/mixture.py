@@ -519,7 +519,7 @@ class DPGMM:
         if ss == "new":
             ss = component(np.zeros(self.dim), prior = self.prior)
             ss.N = 0.
-        t_df, t_shape, mu_n = compute_t_pars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.cov, ss.N, self.dim)
+        t_df, t_shape, mu_n = compute_t_pars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.S, ss.N, self.dim)
         return _student_t(df = t_df, t = x, mu = mu_n, sigma = t_shape, dim = self.dim)
 
     def _cluster_assignment_distribution(self, x):
