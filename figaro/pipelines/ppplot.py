@@ -19,7 +19,7 @@ def main():
     parser = op.OptionParser()
     # Input/output
     parser.add_option("-i", "--input", type = "string", dest = "samples_folder", help = "Folder with single-event samples files. .txt files only")
-    parser.add_option("-b", "--bounds", type = "string", dest = "bounds", help = "Density bounds. Must be a string formatted as '[[xmin, xmax], [ymin, ymax],...]'. For 1D distributions use '[[xmin, xmax]]'. Quotation marks are required and scientific notation is accepted", default = None)
+    parser.add_option("-b", "--bounds", type = "string", dest = "bounds", help = "Density bounds. Must be a string formatted as '[[xmin, xmax], [ymin, ymax],...]'. For 1D distributions use '[xmin, xmax]'. Quotation marks are required and scientific notation is accepted", default = None)
     parser.add_option("--true_vals", type = "string", dest = "true_vals", help = "JSON file storing a dictionary with the injected values. Dictionary keys must match single-event samples files names", default = None)
     parser.add_option("-o", "--output", type = "string", dest = "output", help = "Output folder. Default: same directory as samples folder", default = None)
     # Plot
