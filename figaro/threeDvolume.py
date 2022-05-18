@@ -389,7 +389,7 @@ class VolumeReconstruction(DPGMM):
             p = log_add_array(p, wi + mn(comp.mu, comp.sigma).logpdf(x))
         return p
 
-    def add_sample(self, x):
+    def add_new_point(self, x):
         """
         Update the probability density reconstruction adding a new sample
         Sample must be in celestial coordinate and in the following order: [ra, dec, dist].
@@ -783,7 +783,7 @@ class VolumeReconstruction(DPGMM):
             raise FIGAROException("Samples are not in [RA, dec, DL] order or one or more points are outside the [[0, 2π], [-π/2, π/2], [0,{0:.0f}]] boundaries".format(self.max_dist))
         self.ac_cntr = self.n_sign_changes
         for i in tqdm(range(len(samples)), desc=self.name):
-            self.add_sample(samples[i])
+            self.add_new_point(samples[i])
             if self.entropy:
                 if i%self.entropy_step == 0:
                     R_S = compute_entropy_single_draw(self, self.n_entropy_MC_draws)
