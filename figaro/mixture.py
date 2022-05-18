@@ -315,8 +315,7 @@ class mixture:
         Returns:
             :np.ndarray: mixture.pdf(x)
         """
-        p = np.sum(np.array([w*mn(mean, cov).pdf(x) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
-        return p * np.exp(-probit_logJ(x, self.bounds))
+        return self._pdf_probit(x) * np.exp(-probit_logJ(x, self.bounds))
 
     @probit
     def _logpdf(self, x):
@@ -329,8 +328,7 @@ class mixture:
         Returns:
             :np.ndarray: mixture.logpdf(x)
         """
-        p = logsumexp(np.array([w + mn(mean, cov).logpdf(x) for mean, cov, w in zip(self.means, self.covs, self.log_w)]), axis = 0)
-        return p - probit_logJ(x, self.bounds)
+        return self._logpdf_probit(x) - probit_logJ(x, self.bounds)
         
     def _pdf_probit(self, x):
         """
@@ -342,8 +340,7 @@ class mixture:
         Returns:
             :np.ndarray: mixture.pdf(x)
         """
-        p = np.sum(np.array([w*mn(mean, cov).pdf(x) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
-        return p
+        return np.sum(np.array([w*mn(mean, cov).pdf(x) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
 
     def _logpdf_probit(self, x):
         """
@@ -355,8 +352,7 @@ class mixture:
         Returns:
             :np.ndarray: mixture.logpdf(x)
         """
-        p = logsumexp(np.array([w + mn(mean, cov).logpdf(x) for mean, cov, w in zip(self.means, self.covs, self.log_w)]), axis = 0)
-        return p
+        return logsumexp(np.array([w + mn(mean, cov).logpdf(x) for mean, cov, w in zip(self.means, self.covs, self.log_w)]), axis = 0)
 
     def cdf(self, x):
         if self.dim > 1:
@@ -383,8 +379,7 @@ class mixture:
         Returns:
             :np.ndarray: mixture.cdf(x)
         """
-        p = np.sum(np.array([w*norm(mean[0], cov[0,0]).cdf(x) for mean, cov, w in zip(self.means, np.sqrt(self.covs), self.w)]), axis = 0)
-        return p
+        return np.sum(np.array([w*norm(mean[0], cov[0,0]).cdf(x) for mean, cov, w in zip(self.means, np.sqrt(self.covs), self.w)]), axis = 0)
 
     @probit
     def _logcdf(self, x):
@@ -397,8 +392,7 @@ class mixture:
         Returns:
             :np.ndarray: mixture.logcdf(x)
         """
-        p = logsumexp(np.array([w + norm(mean[0], cov[0,0]).logcdf(x) for mean, cov, w in zip(self.means, np.sqrt(self.covs), self.log_w)]), axis = 0)
-        return p
+        return logsumexp(np.array([w + norm(mean[0], cov[0,0]).logcdf(x) for mean, cov, w in zip(self.means, np.sqrt(self.covs), self.log_w)]), axis = 0)
 
     @from_probit
     def rvs(self, n_samps):
@@ -411,18 +405,8 @@ class mixture:
         Returns:
             :np.ndarray: samples
         """
-        idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = int(n_samps))
-        ctr = Counter(idx)
-        if self.dim > 1:
-            samples = np.empty(shape = (1,self.dim))
-            for i, n in zip(ctr.keys(), ctr.values()):
-                samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i]).rvs(size = n))))
-        else:
-            samples = np.array([np.zeros(1)])
-            for i, n in zip(ctr.keys(), ctr.values()):
-                samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i]).rvs(size = n)).T))
-        return np.array(samples[1:])
-
+        return self._rvs_probit(n_samps)
+        
     def _rvs_probit(self, n_samps):
         """
         Draw samples from mixture in probit space
@@ -628,18 +612,8 @@ class DPGMM:
             :np.ndarray: samples
         """
         if self.n_cl == 0:
-            raise FIGAROException("You are trying to draw samples from an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, you may want to draw samples from the output of that method.")
-        idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = n_samps)
-        ctr = Counter(idx)
-        if self.dim > 1:
-            samples = np.empty(shape = (1,self.dim))
-            for i, n in zip(ctr.keys(), ctr.values()):
-                samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n))))
-        else:
-            samples = np.array([np.zeros(1)])
-            for i, n in zip(ctr.keys(), ctr.values()):
-                samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n)).T))
-        return samples[1:]
+            raise FIGAROException("You are trying to draw samples from an empty mixture - perhaps you called the initialise() method.\n If you are using the density_from_samples() method, you may want to draw samples from the output of that method.")
+        return self._rvs_probit(n_samps)
 
     def _rvs_probit(self, n_samps):
         """
@@ -673,11 +647,10 @@ class DPGMM:
         Returns:
             :np.ndarray: mixture.pdf(x)
         """
-        p = np.sum(np.array([w*mn(comp.mu, comp.sigma).pdf(x) for comp, w in zip(self.mixture, self.w)]), axis = 0)
-        return p
+        return np.sum(np.array([w*mn(comp.mu, comp.sigma).pdf(x) for comp, w in zip(self.mixture, self.w)]), axis = 0)
 
     @probit
-    def _pdf_probit_no_jacobian(self, x):
+    def _pdf_no_jacobian(self, x):
         """
         Evaluate mixture at point(s) x without jacobian
         
@@ -687,8 +660,7 @@ class DPGMM:
         Returns:
             :np.ndarray: mixture.pdf(x)
         """
-        p = np.sum(np.array([w*mn(comp.mu, comp.sigma).pdf(x) for comp, w in zip(self.mixture, self.w)]), axis = 0)
-        return p
+        return self._pdf_probit(x)
 
     def pdf(self, x):
         if self.n_cl == 0:
@@ -711,8 +683,7 @@ class DPGMM:
         Returns:
             :np.ndarray: mixture.pdf(x)
         """
-        p = np.sum(np.array([w*mn(comp.mu, comp.sigma).pdf(x) for comp, w in zip(self.mixture, self.w)]), axis = 0)
-        return p * np.exp(-probit_logJ(x, self.bounds))
+        return self._pdf_probit(x) * np.exp(-probit_logJ(x, self.bounds))
 
     def _logpdf_probit(self, x):
         """
@@ -724,8 +695,7 @@ class DPGMM:
         Returns:
             :np.ndarray: mixture.logpdf(x)
         """
-        p = logsumexp(np.array([w + mn(comp.mu, comp.sigma).logpdf(x) for comp, w in zip(self.mixture, self.log_w)]), axis = 0)
-        return p
+        return logsumexp(np.array([w + mn(comp.mu, comp.sigma).logpdf(x) for comp, w in zip(self.mixture, self.log_w)]), axis = 0)
 
     @probit
     def _logpdf_no_jacobian(self, x):
@@ -738,8 +708,7 @@ class DPGMM:
         Returns:
             :np.ndarray: mixture.logpdf(x)
         """
-        p = logsumexp(np.array([w + mn(comp.mu, comp.sigma).logpdf(x) for comp, w in zip(self.mixture, self.log_w)]), axis = 0)
-        return p
+        return self._logpdf_probit(x)
 
     def logpdf(self, x):
         if self.n_cl == 0:
@@ -762,8 +731,7 @@ class DPGMM:
         Returns:
             :np.ndarray: mixture.pdf(x)
         """
-        p = logsumexp(np.array([w + mn(comp.mu, comp.sigma).logpdf(x) for comp, w in zip(self.mixture, self.log_w)]), axis = 0)
-        return p - probit_logJ(x, self.bounds)
+        return self._logpdf_probit(x) - probit_logJ(x, self.bounds)
         
     def build_mixture(self):
         """
