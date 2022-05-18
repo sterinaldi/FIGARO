@@ -59,7 +59,7 @@ def main():
         options.h_name = options.samples_folder.parent.parts[-1]
     # Read bounds
     if options.bounds is not None:
-        options.bounds = np.array(json.loads(options.bounds))
+        options.bounds = np.atleast_2d(json.loads(options.bounds))
     elif options.bounds is None and not options.postprocess:
         raise Exception("Please provide bounds for the inference (use -b '[[xmin,xmax],[ymin,ymax],...]')")
     # If provided, load injected density
