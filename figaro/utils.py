@@ -198,7 +198,7 @@ def save_options(options, out_folder):
 
 class PPPlot(axes.Axes):
     """
-    Construct a probability--probability (P--P) plot.
+    Construct a probability-probability (P-P) plot.
 
     Derived from https://lscsoft.docs.ligo.org/ligo.skymap/_modules/ligo/skymap/plot/pp.html#PPPlot
     This class avoids installing the whole ligo.skymap.plot package.
@@ -233,7 +233,7 @@ class PPPlot(axes.Axes):
         # Plot diagonal line
         return self.plot([0, 1], [0, 1], *args, **kwargs)
 
-    def add_confidence_band(self, nsamples, alpha=0.9, **kwargs):
+    def add_confidence_band(self, nsamples, cl=0.9, **kwargs):
         """
         Add a target confidence band.
 
@@ -241,7 +241,7 @@ class PPPlot(axes.Axes):
         ----------
         nsamples : int
             Number of P-values
-        alpha : float, default: 0.95
+        cl : float, default: 0.9
             Confidence level
 
         Other parameters
@@ -252,7 +252,7 @@ class PPPlot(axes.Axes):
         n = nsamples
         k = np.arange(0, n + 1)
         p = k / n
-        ci_lo, ci_hi = scipy.stats.beta.interval(alpha, k + 1, n - k + 1)
+        ci_lo, ci_hi = scipy.stats.beta.interval(cl, k + 1, n - k + 1)
 
         # Make copy of kwargs to pass to fill_betweenx()
         kwargs = dict(kwargs)
@@ -262,7 +262,7 @@ class PPPlot(axes.Axes):
         kwargs.setdefault('alpha', 0.5)
         fontsize = kwargs.pop('fontsize', 'x-small')
 
-        return self.fill_betweenx(p, ci_lo, ci_hi, **kwargs, label = '${0}\%\ CR$'.format(int(alpha*100)))
+        return self.fill_betweenx(p, ci_lo, ci_hi, **kwargs, label = '${0}\%\ CR$'.format(int(cl*100)))
 
     @classmethod
     def _as_mpl_axes(cls):
@@ -559,7 +559,7 @@ def pp_plot_cdf(draws, injection, n_points = 1000, out_folder = '.', name = 'eve
     
     fig = plt.figure()
     ax  = fig.add_subplot(111, projection = 'pp_plot')
-    ax.add_confidence_band(len(cdf_median), alpha=0.95, color = 'ghostwhite')
+    ax.add_confidence_band(len(cdf_median), cl=0.9, color = 'ghostwhite')
     ax.add_diagonal()
     for cdf in cdf_draws:
         ax.plot(cdf_injection, cdf, lw = 0.5, alpha = 0.5, color = 'darkturquoise')
