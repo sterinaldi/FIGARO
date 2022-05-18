@@ -451,7 +451,7 @@ class DPGMM:
                        alpha0     = 1.,
                        out_folder = '.',
                        ):
-        self.bounds   = np.array(bounds)
+        self.bounds   = np.atleast_2d(bounds)
         self.dim      = len(self.bounds)
         if prior_pars is not None:
             self.prior = prior(*prior_pars)
@@ -765,6 +765,7 @@ class HDPGMM(DPGMM):
                        prior_pars = None,
                        MC_draws   = 2e3,
                        ):
+        bounds   = np.atleast_2d(bounds)
         self.dim = len(bounds)
         if prior_pars == None:
             prior_pars = (1e-2, np.identity(self.dim)*0.2**2, self.dim+2, np.zeros(self.dim))
