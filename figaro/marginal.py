@@ -14,7 +14,7 @@ def _marginalise(mix, axis = -1):
     return mixture(means, covs, mix.w, bounds, dim, mix.n_cl, mix.n_pts)
 
 def marginalise(draws, axis = -1):
-    if iterable(draws):
+    if np.iterable(draws):
         return np.array([_marginalise(d, axis) for d in draws])
     else:
         return _marginalise(draws, axis)
