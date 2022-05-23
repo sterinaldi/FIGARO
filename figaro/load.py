@@ -212,7 +212,13 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1):
                 data = f['PublicationSamples']['posterior_samples']
             # GWTC-3
             except KeyError:
-                data = f['C01:Mixed']['posterior_samples']
+                try:
+                    data = f['C01:Mixed']['posterior_samples']
+                except:
+                    try:
+                        data = f['IMRPhenomXPHM']['posterior_samples']
+                    except:
+                        data = f['SEOBNRv4PHM']['posterior_samples']
                 
             for name, lab in zip(GW_par.keys(), GW_par.values()):
                 if name in par:
