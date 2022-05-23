@@ -34,6 +34,8 @@ def marginalise(draws, axis = -1):
     Returns:
         :figaro.mixture.mixture: the marginalised mixture(s)
     """
+    if axis == []:
+        return draws
     if np.iterable(draws):
         return np.array([_marginalise(d, axis) for d in draws])
     else:
