@@ -480,9 +480,9 @@ def plot_multidim(draws, dim, samples = None, selfunc = None, out_folder = '.', 
     
     # Draw samples from mixture
     if samples is not None:
-        size = np.max([100**dim, len(samples)])
+        size = np.max([1000*dim, len(samples)])
     else:
-        size = 100**dim
+        size = 1000*dim
         
     mix_samples = rvs_median(draws, size)
     
