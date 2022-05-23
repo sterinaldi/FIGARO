@@ -19,6 +19,8 @@ from collections import Counter
 import scipy.stats
 
 from figaro.transform import transform_to_probit
+from figaro.marginal import marginalise
+from figaro.credible_regions import ConfidenceArea
 
 if find_executable('latex'):
     rcParams["text.usetex"] = True
@@ -30,6 +32,7 @@ rcParams["legend.fontsize"]=12
 rcParams["axes.labelsize"]=16
 rcParams["axes.grid"] = True
 rcParams["grid.alpha"] = 0.6
+rcParams["contour.negative_linestyle"] = 'solid'
 
 #-–––––––––-#
 # Utilities #
@@ -449,7 +452,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         plt.close()
     
 
-def plot_multidim(draws, dim, samples = None, selfunc = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False, n_pts = 100, true_value = None):
+def plot_multidim(draws, dim, samples = None, selfunc = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False, n_pts = 100, true_value = None, figsize = 7, levels = [0.5, 0.68, 0.9]):
     """
     Plot the recovered multidimensional distribution along with samples from the true distribution (if available) as corner plot.
     
@@ -477,34 +480,145 @@ def plot_multidim(draws, dim, samples = None, selfunc = None, out_folder = '.', 
     
     if units is not None:
         labels = [l[:-1]+'\ [{0}]$'.format(u) if not u == '' else l for l, u in zip(labels, units)]
+
+    all_bounds = np.atleast_2d([d.bounds for d in draws])
+    x_min = np.min(all_bounds, axis = -1).max(axis = 0)
+    x_max = np.max(all_bounds, axis = -1).min(axis = 0)
     
-    # Draw samples from mixture
-    if samples is not None:
-        size = np.max([1000*dim, len(samples)])
-    else:
-        size = 1000*dim
+    bounds = np.array([x_min, x_max]).T
+    K = dim
+    factor = 2.0          # size of one side of one panel
+    lbdim = 0.5 * factor  # size of left/bottom margin
+    trdim = 0.2 * factor  # size of top/right margin
+    whspace = 0.1         # w/hspace size
+    plotdim = factor * dim + factor * (K - 1.0) * whspace
+    dim_plt = lbdim + plotdim + trdim
+    
+    fig, axs = plt.subplots(K, K, figsize=(figsize, figsize))
+    # Format the figure.
+    lb = lbdim / dim_plt
+    tr = (lbdim + plotdim) / dim_plt
+    fig.subplots_adjust(left=lb, bottom=lb, right=tr, top=tr, wspace=whspace, hspace=whspace)
+    
+    # 1D plots (diagonal)
+    for column in range(K):
+        ax = axs[column, column]
+        # Marginalise over all uninterested columns
+        dims = list(np.arange(dim))
+        dims.remove(column)
+        marg_draws = marginalise(draws, dims)
+        # Credible regions
+        lim = bounds[column]
+        x = np.linspace(lim[0], lim[1], n_pts+2)[1:-1]
+        dx   = x[1]-x[0]
         
-    mix_samples = rvs_median(draws, size)
+        probs = np.array([d.pdf(x) for d in marg_draws])
+        
+        percentiles = [50, 5, 16, 84, 95]
+        p = {}
+        for perc in percentiles:
+            p[perc] = np.percentile(probs, perc, axis = 0)
+        norm = p[50].sum()*dx
+        for perc in percentiles:
+            p[perc] = p[perc]/norm
+        
+        # Samples (if available)
+        if samples is not None:
+            ax.hist(samples[:,column], bins = int(np.sqrt(len(samples[:,column]))), histtype = 'step', density = True)
+        # CR
+        ax.fill_between(x, p[95], p[5], color = 'mediumturquoise', alpha = 0.5)
+        ax.fill_between(x, p[84], p[16], color = 'darkturquoise', alpha = 0.5)
+        if true_value is not None:
+            ax.axvline(true_value[column], c = 'k', lw = 0.5)
+        ax.plot(x, p[50], lw = 0.7, color = 'steelblue')
+        
+        if column < K - 1:
+            ax.set_xticks([])
+            if column != 0:
+                ax.set_yticks([])
+            [l.set_rotation(45) for l in ax.get_yticklabels()]
+        elif column == K - 1:
+            ax.set_yticks([])
+            if labels is not None:
+                ax.set_xlabel(labels[-1])
+            ticks = np.linspace(lim[0], lim[1], 5)
+            ax.set_xticks(ticks)
+            [l.set_rotation(45) for l in ax.get_xticklabels()]
     
-    # Make corner plots
-    if samples is not None:
-        c = corner(samples, color = 'coral', labels = labels, hist_kwargs={'density':True, 'label':'$\mathrm{Samples}$'})
-        c = corner(mix_samples, fig = c, color = 'dodgerblue', labels = labels, truths = true_value, hist_kwargs={'density':True, 'label':'${0}$'.format(rec_label)})
-    else:
-        c = corner(mix_samples, color = 'dodgerblue', labels = labels, truths = true_value, hist_kwargs={'density':True, 'label':'${0}$'.format(rec_label)})
-    plt.legend(loc = 0, frameon = False, fontsize = 12, bbox_to_anchor = (0.95, (dim-1)+0.8))
+    # 2D plots (off-diagonal)
+    for row in range(K):
+        for column in range(K):
+            ax = axs[row,column]
+            ax.grid(visible=False)
+            if column > row:
+                ax.set_frame_on(False)
+                ax.set_xticks([])
+                ax.set_yticks([])
+                continue
+            elif column == row:
+                continue
+            
+            # Marginalise
+            dims = list(np.arange(dim))
+            dims.remove(column)
+            dims.remove(row)
+            marg_draws = marginalise(draws, dims)
+            
+            # Credible regions
+            lim = bounds[[row, column]]
+            grid, dgrid = recursive_grid(lim[::-1], np.ones(2, dtype = int)*int(n_pts))
+            
+            x = np.linspace(lim[0,0], lim[0,1], n_pts+2)[1:-1]
+            y = np.linspace(lim[1,0], lim[1,1], n_pts+2)[1:-1]
+            
+            draws = np.array([d.pdf(grid) for d in marg_draws])
+            median = np.percentile(draws, 50, axis = 0)
+            median = median/(median.sum()*np.prod(dgrid))
+            median = median.reshape(n_pts, n_pts)
+            
+            X,Y = np.meshgrid(x,y)
+            _,_,levs = ConfidenceArea(np.log(median),
+                                        x,
+                                        y,
+                                        adLevels=levels)
+            ax.contourf(Y, X, np.log(median), levels = 900)
+            if true_value is not None:
+                ax.axhline(true_value[row], c = 'k', lw = 0.5)
+                ax.axvline(true_value[column], c = 'k', lw = 0.5)
+                ax.plot(true_value[column], true_value[row], color = 'k', marker = 's', ms = 3)
+            c1 = ax.contour(Y, X, np.log(median), np.sort(levs), colors='k', linewidths=0.5)
+            ax.clabel(c1, fmt = {l:'{0:.0f}\\%'.format(100*s) for l,s in zip(c1.levels, np.sort(levels)[::-1])}, fontsize = 5)
+            ax.set_xticks([])
+            ax.set_yticks([])
+            
+            if column == 0:
+                ax.set_ylabel(labels[row])
+                ticks = np.linspace(lim[0,0], lim[0,1], 5)
+                ax.set_yticks(ticks)
+                [l.set_rotation(45) for l in ax.get_yticklabels()]
+            if row == K - 1:
+                ticks = np.linspace(lim[1,0], lim[1,1], 5)
+                ax.set_xticks(ticks)
+                [l.set_rotation(45) for l in ax.get_xticklabels()]
+                ax.set_xlabel(labels[column])
+                
+            elif row < K - 1:
+                ax.set_xticks([])
+            elif column == 0:
+                ax.set_ylabel(labels[row])
+                
     if show:
         plt.show()
     if save:
         if not subfolder:
-            c.savefig(Path(out_folder, '{0}.pdf'.format(name)), bbox_inches = 'tight')
+            fig.savefig(Path(out_folder, '{0}.pdf'.format(name)), bbox_inches = 'tight')
         else:
             if not Path(out_folder, 'density').exists():
                 try:
                     Path(out_folder, 'density').mkdir()
                 except FileExistsError:
                     pass
-            c.savefig(Path(out_folder, 'density', '{0}.pdf'.format(name)), bbox_inches = 'tight')
+            fig.savefig(Path(out_folder, 'density', '{0}.pdf'.format(name)), bbox_inches = 'tight')
     plt.close()
 
 def plot_n_clusters_alpha(n_cl, alpha, out_folder = '.', name = 'event', show = False, save = True):
