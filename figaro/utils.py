@@ -452,7 +452,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         plt.close()
     
 
-def plot_multidim(draws, dim, samples = None, selfunc = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False, n_pts = 100, true_value = None, figsize = 7, levels = [0.5, 0.68, 0.9]):
+def plot_multidim(draws, dim, samples = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False, n_pts = 100, true_value = None, figsize = 7, levels = [0.5, 0.68, 0.9]):
     """
     Plot the recovered multidimensional distribution along with samples from the true distribution (if available) as corner plot.
     
@@ -467,6 +467,11 @@ def plot_multidim(draws, dim, samples = None, selfunc = None, out_folder = '.', 
         :bool hierarchical:      hierarchical inference, for plotting purposes
         :bool save:              whether to save the plot or not
         :bool show:              whether to show the plot during the run or not
+        :bool subfolder:         whether to save in a dedicated subfolder
+        :int n_pts:              number of grid points (same for each dimension)
+        :iterable true_value:    true value to plot
+        :double figsize:         figure size (matplotlib)
+        :iterable levels:        credible levels to plot
     """
     if hierarchical:
         rec_label = '\mathrm{(H)DPGMM}'
@@ -480,6 +485,8 @@ def plot_multidim(draws, dim, samples = None, selfunc = None, out_folder = '.', 
     
     if units is not None:
         labels = [l[:-1]+'\ [{0}]$'.format(u) if not u == '' else l for l, u in zip(labels, units)]
+    
+    levels = np.atleast_1d(levels)
 
     all_bounds = np.atleast_2d([d.bounds for d in draws])
     x_min = np.min(all_bounds, axis = -1).max(axis = 0)
@@ -577,16 +584,13 @@ def plot_multidim(draws, dim, samples = None, selfunc = None, out_folder = '.', 
             median = median.reshape(n_pts, n_pts)
             
             X,Y = np.meshgrid(x,y)
-            _,_,levs = ConfidenceArea(np.log(median),
-                                        x,
-                                        y,
-                                        adLevels=levels)
+            _,_,levs = ConfidenceArea(np.log(median), x, y, adLevels=levels)
             ax.contourf(Y, X, np.log(median), levels = 900)
             if true_value is not None:
                 ax.axhline(true_value[row], c = 'k', lw = 0.5)
                 ax.axvline(true_value[column], c = 'k', lw = 0.5)
                 ax.plot(true_value[column], true_value[row], color = 'k', marker = 's', ms = 3)
-            c1 = ax.contour(Y, X, np.log(median), np.sort(levs), colors='k', linewidths=0.5)
+            c1 = ax.contour(Y, X, np.log(median), np.sort(levs), colors='k', linewidths=0.5) # cmap = None
             ax.clabel(c1, fmt = {l:'{0:.0f}\\%'.format(100*s) for l,s in zip(c1.levels, np.sort(levels)[::-1])}, fontsize = 5)
             ax.set_xticks([])
             ax.set_yticks([])
