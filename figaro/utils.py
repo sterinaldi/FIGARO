@@ -591,7 +591,10 @@ def plot_multidim(draws, dim, samples = None, out_folder = '.', name = 'density'
                 ax.axvline(true_value[column], c = 'k', lw = 0.5)
                 ax.plot(true_value[column], true_value[row], color = 'k', marker = 's', ms = 3)
             c1 = ax.contour(Y, X, np.log(median), np.sort(levs), colors='k', linewidths=0.5) # cmap = None
-            ax.clabel(c1, fmt = {l:'{0:.0f}\\%'.format(100*s) for l,s in zip(c1.levels, np.sort(levels)[::-1])}, fontsize = 5)
+            if rcParams["text.usetex"] == True:
+                ax.clabel(c1, fmt = {l:'{0:.0f}\\%'.format(100*s) for l,s in zip(c1.levels, np.sort(levels)[::-1])}, fontsize = 5)
+            else:
+                ax.clabel(c1, fmt = {l:'{0:.0f}\%'.format(100*s) for l,s in zip(c1.levels, np.sort(levels)[::-1])}, fontsize = 5)
             ax.set_xticks([])
             ax.set_yticks([])
             
