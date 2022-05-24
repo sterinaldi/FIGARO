@@ -452,7 +452,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         plt.close()
     
 
-def plot_multidim(draws, samples = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False, n_pts = 100, true_value = None, figsize = 7, levels = [0.5, 0.68, 0.9]):
+def plot_multidim(draws, samples = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False, n_pts = 200, true_value = None, figsize = 7, levels = [0.5, 0.68, 0.9]):
     """
     Plot the recovered multidimensional distribution along with samples from the true distribution (if available) as corner plot.
     
@@ -581,23 +581,25 @@ def plot_multidim(draws, samples = None, out_folder = '.', name = 'density', lab
             x = np.linspace(lim[0,0], lim[0,1], n_pts+2)[1:-1]
             y = np.linspace(lim[1,0], lim[1,1], n_pts+2)[1:-1]
             
-            draws = np.array([d.pdf(grid) for d in marg_draws])
-            median = np.percentile(draws, 50, axis = 0)
+            dd = np.array([d.pdf(grid) for d in marg_draws])
+            median = np.percentile(dd, 50, axis = 0)
             median = median/(median.sum()*np.prod(dgrid))
             median = median.reshape(n_pts, n_pts)
             
             X,Y = np.meshgrid(x,y)
-            _,_,levs = ConfidenceArea(np.log(median), x, y, adLevels=levels)
-            ax.contourf(Y, X, np.log(median), levels = 900, cmap = 'Blues')
+            with np.errstate(divide = 'ignore'):
+                logmedian = np.nan_to_num(np.log(median), nan = -np.inf, neginf = -np.inf)
+            _,_,levs = ConfidenceArea(logmedian, x, y, adLevels=levels)
+            ax.contourf(Y, X, np.exp(logmedian), cmap = 'Blues', levels = 900)
             if true_value is not None:
                 ax.axhline(true_value[row], c = 'orangered', lw = 0.5)
                 ax.axvline(true_value[column], c = 'orangered', lw = 0.5)
                 ax.plot(true_value[column], true_value[row], color = 'orangered', marker = 's', ms = 3)
-            c1 = ax.contour(Y, X, np.log(median), np.sort(levs), colors='w', linewidths=0.5)
+            c1 = ax.contour(Y, X, logmedian, np.sort(levs), colors='k', linewidths=0.3)
             if rcParams["text.usetex"] == True:
-                ax.clabel(c1, fmt = {l:'{0:.0f}\\%'.format(100*s) for l,s in zip(c1.levels, np.sort(levels)[::-1])}, fontsize = 5)
+                ax.clabel(c1, fmt = {l:'{0:.0f}\\%'.format(100*s) for l,s in zip(c1.levels, np.sort(levels)[::-1])}, fontsize = 3)
             else:
-                ax.clabel(c1, fmt = {l:'{0:.0f}\%'.format(100*s) for l,s in zip(c1.levels, np.sort(levels)[::-1])}, fontsize = 5)
+                ax.clabel(c1, fmt = {l:'{0:.0f}\%'.format(100*s) for l,s in zip(c1.levels, np.sort(levels)[::-1])}, fontsize = 3)
             ax.set_xticks([])
             ax.set_yticks([])
             
