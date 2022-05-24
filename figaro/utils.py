@@ -544,9 +544,7 @@ def plot_multidim(draws, samples = None, out_folder = '.', name = 'density', lab
         
         if column < K - 1:
             ax.set_xticks([])
-            if column != 0:
-                ax.set_yticks([])
-            [l.set_rotation(45) for l in ax.get_yticklabels()]
+            ax.set_yticks([])
         elif column == K - 1:
             ax.set_yticks([])
             if labels is not None:
