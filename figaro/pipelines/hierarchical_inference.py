@@ -142,7 +142,7 @@ def main():
                     if dim == 1:
                         plot_median_cr(draws, samples = ev, out_folder = output_plots, name = name, label = options.symbol, unit = options.unit, subfolder = True)
                     else:
-                        plot_multidim(draws, dim, samples = ev, out_folder = output_plots, name = name, labels = symbols, units = units)
+                        plot_multidim(draws, samples = ev, out_folder = output_plots, name = name, labels = symbols, units = units)
                 # Save single-event draws
                 with open(Path(output_pkl, 'draws_'+name+'.pkl'), 'wb') as f:
                     dill.dump(np.array(draws), f)

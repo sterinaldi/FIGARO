@@ -106,7 +106,7 @@ def main():
             units = options.unit.split(',')
         else:
             units = options.unit
-        plot_multidim(draws, dim, samples = samples, out_folder = options.output, name = name, labels = symbols, units = units)
+        plot_multidim(draws, samples = samples, out_folder = options.output, name = name, labels = symbols, units = units)
 
 if __name__ == '__main__':
     main()
