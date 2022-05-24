@@ -452,7 +452,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         plt.close()
     
 
-def plot_multidim(draws, dim, samples = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False, n_pts = 100, true_value = None, figsize = 7, levels = [0.5, 0.68, 0.9]):
+def plot_multidim(draws, samples = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False, n_pts = 100, true_value = None, figsize = 7, levels = [0.5, 0.68, 0.9]):
     """
     Plot the recovered multidimensional distribution along with samples from the true distribution (if available) as corner plot.
     
@@ -473,6 +473,9 @@ def plot_multidim(draws, dim, samples = None, out_folder = '.', name = 'density'
         :double figsize:         figure size (matplotlib)
         :iterable levels:        credible levels to plot
     """
+    
+    dim = draws[0].dim
+    
     if hierarchical:
         rec_label = '\mathrm{(H)DPGMM}'
     else:
@@ -536,7 +539,7 @@ def plot_multidim(draws, dim, samples = None, out_folder = '.', name = 'density'
         ax.fill_between(x, p[95], p[5], color = 'mediumturquoise', alpha = 0.5)
         ax.fill_between(x, p[84], p[16], color = 'darkturquoise', alpha = 0.5)
         if true_value is not None:
-            ax.axvline(true_value[column], c = 'k', lw = 0.5)
+            ax.axvline(true_value[column], c = 'orangered', lw = 0.5)
         ax.plot(x, p[50], lw = 0.7, color = 'steelblue')
         
         if column < K - 1:
@@ -585,12 +588,12 @@ def plot_multidim(draws, dim, samples = None, out_folder = '.', name = 'density'
             
             X,Y = np.meshgrid(x,y)
             _,_,levs = ConfidenceArea(np.log(median), x, y, adLevels=levels)
-            ax.contourf(Y, X, np.log(median), levels = 900)
+            ax.contourf(Y, X, np.log(median), levels = 900, cmap = 'Blues')
             if true_value is not None:
-                ax.axhline(true_value[row], c = 'k', lw = 0.5)
-                ax.axvline(true_value[column], c = 'k', lw = 0.5)
-                ax.plot(true_value[column], true_value[row], color = 'k', marker = 's', ms = 3)
-            c1 = ax.contour(Y, X, np.log(median), np.sort(levs), colors='k', linewidths=0.5) # cmap = None
+                ax.axhline(true_value[row], c = 'orangered', lw = 0.5)
+                ax.axvline(true_value[column], c = 'orangered', lw = 0.5)
+                ax.plot(true_value[column], true_value[row], color = 'orangered', marker = 's', ms = 3)
+            c1 = ax.contour(Y, X, np.log(median), np.sort(levs), colors='w', linewidths=0.5)
             if rcParams["text.usetex"] == True:
                 ax.clabel(c1, fmt = {l:'{0:.0f}\\%'.format(100*s) for l,s in zip(c1.levels, np.sort(levels)[::-1])}, fontsize = 5)
             else:
