@@ -539,7 +539,8 @@ def plot_multidim(draws, samples = None, out_folder = '.', name = 'density', lab
         ax.fill_between(x, p[95], p[5], color = 'mediumturquoise', alpha = 0.5)
         ax.fill_between(x, p[84], p[16], color = 'darkturquoise', alpha = 0.5)
         if true_value is not None:
-            ax.axvline(true_value[column], c = 'orangered', lw = 0.5)
+            if true_value[column] is not None:
+                ax.axvline(true_value[column], c = 'orangered', lw = 0.5)
         ax.plot(x, p[50], lw = 0.7, color = 'steelblue')
         
         if column < K - 1:
