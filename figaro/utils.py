@@ -588,11 +588,14 @@ def plot_multidim(draws, samples = None, out_folder = '.', name = 'density', lab
             with np.errstate(divide = 'ignore'):
                 logmedian = np.nan_to_num(np.log(median), nan = -np.inf, neginf = -np.inf)
             _,_,levs = ConfidenceArea(logmedian, x, y, adLevels=levels)
-            ax.contourf(Y, X, np.exp(logmedian), cmap = 'Blues', levels = 900)
+            ax.contourf(Y, X, np.exp(logmedian), cmap = 'Blues', levels = 100)
             if true_value is not None:
-                ax.axhline(true_value[row], c = 'orangered', lw = 0.5)
-                ax.axvline(true_value[column], c = 'orangered', lw = 0.5)
-                ax.plot(true_value[column], true_value[row], color = 'orangered', marker = 's', ms = 3)
+                if true_value[row] is not None:
+                    ax.axhline(true_value[row], c = 'orangered', lw = 0.5)
+                if true_value[column] is not None:
+                    ax.axvline(true_value[column], c = 'orangered', lw = 0.5)
+                if true_value[column] is not None and true_value[row] is not None:
+                    ax.plot(true_value[column], true_value[row], color = 'orangered', marker = 's', ms = 3)
             c1 = ax.contour(Y, X, logmedian, np.sort(levs), colors='k', linewidths=0.3)
             if rcParams["text.usetex"] == True:
                 ax.clabel(c1, fmt = {l:'{0:.0f}\\%'.format(100*s) for l,s in zip(c1.levels, np.sort(levels)[::-1])}, fontsize = 3)
