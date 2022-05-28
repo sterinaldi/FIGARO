@@ -2,11 +2,15 @@
 
 https://www.youtube.com/watch?v=uJeJ4YiVFz8
 
+FIGARO is an inference code designed to estimate multivariate probability densities given samples from an unknown distribution using a Dirichlet Process Gaussian Mixture Model (DPGMM) as nonparameteric model.
+It is also possible to perform hierarchical inferences: in this case, the model used is (H)DPGMM, described in [Rinaldi & Del Pozzo (2022)](https://ui.adsabs.harvard.edu/abs/2022MNRAS.509.5454R/abstract).
+Differently from other DPGMM implementations relying on variational algorithms, FIGARO does not require the user to specify a priori the maximum allowed number of mixture components. The required number of Gaussian distributions to be included in the mixture is inferred from the data.
+
 To install FIGARO, run `python setup.py build_ext --inplace` and `python setup.py install`.
 
 An introductive guide on how to use FIGARO can be found in the `introductive_guide.ipynb` notebook, where it is shown how to to reconstruct a probability density with FIGARO and how to use its products.
 We strongly encourage the interested user to go through the whole notebook, since it provides a (hopefully detailed) tutorial on how to properly set and use FIGARO.\
-To learn how to use FIGARO to reconstruct skymaps, have a look at the `skymaps.ipynb` notebook. In that notebook we show how to obtain the skymaps included in the [methods paper](https://arxiv.org/pdf/2205.07252.pdf) - please cite it if you use FIGARO in your research.
+To learn how to use FIGARO to reconstruct skymaps, have a look at the `skymaps.ipynb` notebook. In that notebook we show how to obtain the skymaps included in the [methods paper](https://ui.adsabs.harvard.edu/abs/2022arXiv220507252R/abstract) - please cite it if you use FIGARO in your research.
 
 FIGARO comes with several plug-and-play console scripts:
 * `figaro-density` reconstructs a probability density given a set of samples;
