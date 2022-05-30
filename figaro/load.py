@@ -28,6 +28,8 @@ GW_par = {'m1'                 : 'mass_1_source',
           'cos_theta_jn'       : 'cos_theta_jn',
           'cos_tilt_1'         : 'cos_tilt_1',
           'cos_tilt_2'         : 'cos_tilt_2',
+          's1z'                : 'spin_1z',
+          's2z'                : 'spin_2z',
           }
 
 def _find_redshift(omega, dl):
@@ -273,7 +275,10 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1):
             ss['mc']      = (ss['m1']*ss['m2'])**(3./5.)/(ss['m1']+ss['m2'])**(1./5.)
             ss['mt']      = ss['m1']+ss['m2']
             ss['q']       = ss['m2']/ss['m1']
-            ss['chi_eff'] = (ss['s1']*ss['cos_tilt_1'] + ss['q']*ss['s2']*ss['cos_tilt_2'])/(1+ss['q'])
+            ss['s1z']     = ss['s1']*ss['cos_tilt_1']
+            ss['s2z']     = ss['s2']*ss['cos_tilt_2']
+            ss['chi_eff'] = (ss['s1z'] + ss['q']*ss['s2z'])/(1+ss['q'])
+
 
             for name in GW_par.keys():
                 if name in par:
