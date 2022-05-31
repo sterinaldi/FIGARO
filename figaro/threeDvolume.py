@@ -399,7 +399,7 @@ class VolumeReconstruction(DPGMM):
         """
         self.volume_already_evaluated = False
         cart_x = celestial_to_cartesian(x)
-        self.add_new_point(cart_x)
+        super().add_new_point(cart_x)
         if self.flag_skymap and self.n_pts == self.next_plot:
             self.N.append(self.next_plot)
             self.next_plot = 2*self.next_plot
