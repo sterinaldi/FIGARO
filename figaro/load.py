@@ -30,8 +30,8 @@ GW_par = {'m1'                 : 'mass_1_source',
           'cos_tilt_2'         : 'cos_tilt_2',
           's1z'                : 'spin_1z',
           's2z'                : 'spin_2z',
-          's1'                 : 'spin1',
-          's2'                 : 'spin2',
+          's1'                 : 'spin_1',
+          's2'                 : 'spin_2',
           }
 
 def _find_redshift(omega, dl):
@@ -226,9 +226,9 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1):
                 
             for name, lab in zip(GW_par.keys(), GW_par.values()):
                 if name in par:
-                    if name == 'spin1':
+                    if name == 's1':
                         samples.append(np.sqrt(data['spin_1x']**2+data['spin_1y']**2+data['spin_1z']**2))
-                    elif name == 'spin2':
+                    elif name == 's2':
                         samples.append(np.sqrt(data['spin_2x']**2+data['spin_2y']**2+data['spin_2z']**2))
                     else:
                         samples.append(data[lab])
