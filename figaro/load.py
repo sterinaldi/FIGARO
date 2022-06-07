@@ -30,6 +30,8 @@ GW_par = {'m1'                 : 'mass_1_source',
           'cos_tilt_2'         : 'cos_tilt_2',
           's1z'                : 'spin_1z',
           's2z'                : 'spin_2z',
+          's1'                 : 'spin_1',
+          's2'                 : 'spin_2',
           }
 
 def _find_redshift(omega, dl):
