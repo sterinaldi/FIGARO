@@ -226,9 +226,9 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1):
                 
             for name, lab in zip(GW_par.keys(), GW_par.values()):
                 if name in par:
-                    if name = 'spin1':
+                    if name == 'spin1':
                         samples.append(np.sqrt(data['spin_1x']**2+data['spin_1y']**2+data['spin_1z']**2))
-                    elif name = 'spin2':
+                    elif name == 'spin2':
                         samples.append(np.sqrt(data['spin_2x']**2+data['spin_2y']**2+data['spin_2z']**2))
                     else:
                         samples.append(data[lab])
