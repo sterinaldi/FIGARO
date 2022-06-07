@@ -91,7 +91,7 @@ def eval_mix_1d(mu, sigma, means, covs):
     Returns:
         :np.ndarray: probability for each event mixture components
     """
-    return np.array([log_norm_1d(means[i,0], mu, sigma+vars[i,0,0]) for i in prange(len(means))])
+    return np.array([log_norm_1d(means[i,0], mu, sigma+covs[i,0,0]) for i in prange(len(means))])
 
 @jit
 def evaluate_mixture_MC_draws_1d(mu, sigma, means, vars, w):
