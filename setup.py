@@ -63,6 +63,36 @@ if lal_flag:
 
 ext_modules = cythonize(ext_modules, compiler_directives={'language_level' : "3"})
 
+scripts = ['figaro-density=figaro.pipelines.probability_density:main',
+           'figaro-hierarchical=figaro.pipelines.hierarchical_inference:main',
+           'figaro-glade=figaro.pipelines.create_glade:main',
+           'figaro-pp_plot=figaro.pipelines.ppplot:main',
+           'figaro-mockdata=figaro.pipelines.gen_mock_data:main',
+           ]
+pymodules = ['figaro/pipelines/probability_density',
+             'figaro/pipelines/hierarchical_inference',
+             'figaro/pipelines/create_glade',
+             'figaro/pipelines/ppplot',
+             'figaro/pipelines/gen_mock_data',
+             ]
+
+par_scripts = ['figaro-par-hierarchical=figaro.pipelines.par_hierarchical_inference:main',
+               'figaro-par-density=figaro.pipelines.par_probability_density:main',
+               ]
+par_modules = ['figaro/pipelines/par_hierarchical_inference',
+               'figaro/pipelines/par_probability_density',
+              ]
+
+ray_flag = True
+try:
+    import ray
+except ModuleNotFoundError:
+    ray_flag = False
+
+if ray_flag:
+    scripts   = scripts + par_scripts
+    pymodules = pymodules + par_modules
+
 setup(
     name = 'figaro',
     description = 'FIGARO: Fast Inference for GW Astronomy, Research & Observations',
@@ -71,24 +101,14 @@ setup(
     url = 'https://github.com/sterinaldi/figaro',
     python_requires = '>=3.7',
     packages = ['figaro'],
-    py_modules = ['figaro/pipelines/probability_density',
-                  'figaro/pipelines/hierarchical_inference',
-                  'figaro/pipelines/create_glade',
-                  'figaro/pipelines/ppplot',
-                  'figaro/pipelines/gen_mock_data',
-                  ],
+    py_modules = pymodules,
     install_requires=requirements,
     include_dirs = ['figaro', numpy.get_include()],
     setup_requires=['numpy', 'cython'],
     package_data={"": ['*.c', '*.pyx', '*.pxd']},
     ext_modules=ext_modules,
     entry_points = {
-        'console_scripts': ['figaro-density=figaro.pipelines.probability_density:main',
-                            'figaro-hierarchical=figaro.pipelines.hierarchical_inference:main',
-                            'figaro-glade=figaro.pipelines.create_glade:main',
-                            'figaro-pp_plot=figaro.pipelines.ppplot:main',
-                            'figaro-mockdata=figaro.pipelines.gen_mock_data:main',
-                            ],
+        'console_scripts': scripts,
         }
     )
 
@@ -107,3 +127,5 @@ if lal_flag:
 
 if not lal_flag:
     warnings.warn("No LAL installation found, please install LAL - see https://wiki.ligo.org/Computing/LALSuiteInstall. Some functions - GW posterior samples loading and catalog loading - won't be available and errors might be raised.")
+if not ray_flag:
+    warnings.warn("ray is not installed: parallelized pipelines won't be available. If you wish to use them, please install ray (pip install ray) and reinstall FIGARO.")
