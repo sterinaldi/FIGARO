@@ -96,8 +96,8 @@ if ray_flag:
 setup(
     name = 'figaro',
     description = 'FIGARO: Fast Inference for GW Astronomy, Research & Observations',
-    author = 'Stefano Rinaldi, Walter Del Pozzo',
-    author_email = 'stefano.rinaldi@phd.unipi.it, walter.delpozzo@unipi.it',
+    author = 'Stefano Rinaldi, Walter Del Pozzo, Daniele Sanfratello',
+    author_email = 'stefano.rinaldi@phd.unipi.it, walter.delpozzo@unipi.it, d.sanfratello@studenti.unipi.it',
     url = 'https://github.com/sterinaldi/figaro',
     python_requires = '>=3.7',
     packages = ['figaro'],
@@ -128,4 +128,4 @@ if lal_flag:
 if not lal_flag:
     warnings.warn("No LAL installation found, please install LAL - see https://wiki.ligo.org/Computing/LALSuiteInstall. Some functions - GW posterior samples loading and catalog loading - won't be available and errors might be raised.")
 if not ray_flag:
-    warnings.warn("ray is not installed: parallelized pipelines won't be available. If you wish to use them, please install ray (pip install ray) and reinstall FIGARO.")
+    warnings.warn("Ray is not installed: parallelized pipelines won't be available. If you want to use them, please install Ray (pip install ray) and reinstall FIGARO.")
