@@ -51,7 +51,7 @@ class worker:
             if self.dim == 1:
                 plot_median_cr(draws, samples = ev, out_folder = self.out_folder_plots, name = name, label = self.label, unit = self.unit, subfolder = True)
             else:
-                plot_multidim(draws, samples = ev, out_folder = self.out_folder_plots, name = name, labels = symbols, units = units)
+                plot_multidim(draws, samples = ev, out_folder = self.out_folder_plots, name = name, labels = self.label, units = self.unit, subfolder = True)
         
         with open(Path(self.out_folder_pkl, 'draws_'+name+'.pkl'), 'wb') as f:
             dill.dump(np.array(draws), f)
