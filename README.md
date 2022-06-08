@@ -17,6 +17,9 @@ FIGARO comes with several plug-and-play console scripts:
 * `figaro-hierarchical` reconstructs a probability density given a set of single-event samples, each of them drawn around a sample from the initial probability density;
 * `figaro-pp_plot` produces the so-called *pp-plots* for a set of single-event posterior samples to assess the validity of a simulated dataset;
 * `figaro-mockdata` generates a set of synthetic posterior samples from a given hierarchical distribution.
+In addition to these, the parallelized version of the inference scripts are available:
+* `figaro-par-density`, parallelized sampling;
+* `figaro-par-hierarchical`, parallelized single-event analysis and parallelized sampling.
 
 In order to see the available options, run `console_script_name -h`.
 
@@ -26,5 +29,6 @@ If you decide not to use `igwn-py39`, please remember that in order to have acce
 Without LALSuite, the following FIGARO functions won't be available:
 * `figaro.load` module won't be able to load GW posterior samples and will raise an exception;
 * `figaro.threeDvolume.VolumeReconstruction` will ignore any provided galaxy catalog. The volume reconstruction will be available.
-
-To install LALSuite, follow the instructions provided in https://wiki.ligo.org/Computing/LALSuiteInstall
+To install LALSuite, follow the instructions provided in https://wiki.ligo.org/Computing/LALSuiteInstall\
+The parallelized scripts use [Ray](https://docs.ray.io/en/latest/) to parallelize. Ray is not included in `igwn-py39` nor is automatically installed with FIGARO.
+If you wish to use these scripts, please install Ray via `pip install ray` and then (re-)install FIGARO to include also the parallelized scripts.
