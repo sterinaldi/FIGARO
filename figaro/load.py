@@ -1,7 +1,9 @@
 import numpy as np
 import h5py
 import warnings
+import json
 from figaro.exceptions import FIGAROException
+from figaro.mixture import mixture
 try:
     from figaro.cosmology import CosmologicalParameters
     lal_flag = True
@@ -306,3 +308,50 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1):
                 return samples[rdstate.choice(np.arange(len(samples)), size = s, replace = False)]
             else:
                 return samples
+
+def save_density(density, folder = '.', name = 'density'):
+    """
+    Exports a figaro.mixture instance into a json file
+
+    Arguments:
+        :figaro.mixture density: mixture to be saved for later analysis.
+        :string or Path folder:  The folder in which the output json file will be saved.
+        :string name:            Name to be given to output file.
+    """
+    dict_ = density.__dict__
+
+    for key in dict_.keys():
+        value = dict_[key]
+        if isinstance(value, np.ndarray):
+            value = value.tolist()
+        dict_[key] = value
+        
+    s = json.dumps(dict_, indent=4)
+
+    with open(Path(folder, name + '.json'), 'w') as f:
+        json.dump(s, f)
+
+def load_density(file):
+    """
+    Reads a json file containing the parameters for a saved figaro.mixture object and returns an instance of such object.
+
+    Arguments:
+        :string or Path file:  The path to the json file of the mixture.
+        
+    Returns
+        :figaro.mixture: An instance of the class containing the data stored in the json file.
+    """
+
+    with open(Path(file), 'r') as fjson:
+        dictjson = json.load(fjson)
+
+    dict_ = json.loads(dictjson)
+    dict_.pop('log_w')
+
+    for key in dict_.keys():
+        value = dict_[key]
+        if isinstance(value, list):
+            dict_[key] = np.array(value)
+    density = mixture(**dict_)
+
+    return density
