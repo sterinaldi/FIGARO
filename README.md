@@ -24,11 +24,12 @@ In addition to these, the parallelized version of the inference scripts are avai
 In order to see the available options, run `console_script_name -h`.
 
 We recommend using the `igwn-py39` conda environment, which includes all the required packages apart from ImageIO.
-This environment is available at https://computing.docs.ligo.org/conda/environments/igwn-py39/   
+This environment is available [here](https://computing.docs.ligo.org/conda/environments/igwn-py39).
 If you decide not to use `igwn-py39`, please remember that in order to have access to all the functions, LALSuite is required.
 Without LALSuite, the following FIGARO functions won't be available:
 * `figaro.load` module won't be able to load GW posterior samples and will raise an exception;
 * `figaro.threeDvolume.VolumeReconstruction` will ignore any provided galaxy catalog. The volume reconstruction will be available.
-To install LALSuite, follow the instructions provided in https://wiki.ligo.org/Computing/LALSuiteInstall\
+
+To install LALSuite, follow the instructions provided [here](https://wiki.ligo.org/Computing/LALSuiteInstall).
 The parallelized scripts use [Ray](https://docs.ray.io/en/latest/) to parallelize. Ray is not included in `igwn-py39` nor is automatically installed with FIGARO.
 If you wish to use these scripts, please install Ray via `pip install ray` and then (re-)install FIGARO to include also the parallelized scripts.
