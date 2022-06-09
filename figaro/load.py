@@ -318,7 +318,7 @@ def save_density(density, folder = '.', name = 'density'):
         :string or Path folder:  The folder in which the output json file will be saved.
         :string name:            Name to be given to output file.
     """
-    dict_ = density.__dict__
+    dict_ = density.__dict__.copy()
 
     for key in dict_.keys():
         value = dict_[key]
