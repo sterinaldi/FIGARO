@@ -542,7 +542,6 @@ def plot_multidim(draws, samples = None, out_folder = '.', name = 'density', lab
             if true_value[column] is not None:
                 ax.axvline(true_value[column], c = 'orangered', lw = 0.5)
         ax.plot(x, p[50], lw = 0.7, color = 'steelblue')
-        ax.set_xlim(bounds[column, 0], bounds[column, 1])
         if column < K - 1:
             ax.set_xticks([])
             ax.set_yticks([])
@@ -553,6 +552,7 @@ def plot_multidim(draws, samples = None, out_folder = '.', name = 'density', lab
             ticks = np.linspace(lim[0], lim[1], 5)
             ax.set_xticks(ticks)
             [l.set_rotation(45) for l in ax.get_xticklabels()]
+        ax.set_xlim(lim[0], lim[1])
     
     # 2D plots (off-diagonal)
     for row in range(K):
