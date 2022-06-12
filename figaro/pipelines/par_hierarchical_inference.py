@@ -234,7 +234,7 @@ def main():
     if dim == 1:
         plot_median_cr(draws, injected = inj_density, selfunc = selfunc, samples = true_vals, out_folder = output_plots, name = options.h_name, label = options.symbol, unit = options.unit, hierarchical = True)
     else:
-        plot_multidim(draws, samples = true_vals, selfunc = selfunc, out_folder = output_plots, name = options.h_name, labels = symbols, units = units, hierarchical = True)
+        plot_multidim(draws, samples = true_vals, out_folder = output_plots, name = options.h_name, labels = symbols, units = units, hierarchical = True)
 
 if __name__ == '__main__':
     main()
