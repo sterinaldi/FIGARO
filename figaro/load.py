@@ -57,7 +57,7 @@ def available_gw_pars():
     """
     print([p for p in GW_par.keys()])
 
-def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.315, ol = 0.685, volume = False):
+def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.315, ol = 0.685, volume = False, waveform = 'combined'):
     '''
     Loads the data from .txt/.dat files (for simulations) or .h5/.hdf5 files (posteriors from GWTC) for a single event.
     Default cosmological parameters from Planck Collaboration (2021) in a flat Universe (https://www.aanda.org/articles/aa/pdf/2020/09/aa33910-18.pdf)
@@ -108,7 +108,7 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674
             raise FIGAROException("LAL is not installed. GW posterior samples cannot be loaded.")
         # If everything is ok, load the samples
         else:
-            out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate)
+            out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate, waveform = waveform)
     
     if out is None:
         return out, name
@@ -117,7 +117,7 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674
         out = np.atleast_2d(out).T
     return out, name
 
-def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.315, ol = 0.685, volume = False):
+def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.315, ol = 0.685, volume = False, waveform = 'combined'):
     '''
     Loads the data from .txt files (for simulations) or .h5/.hdf5/.dat files (posteriors from GWTC-x).
     Default cosmological parameters from Planck Collaboration (2021) in a flat Universe (https://www.aanda.org/articles/aa/pdf/2020/09/aa33910-18.pdf)
@@ -183,7 +183,7 @@ def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.
                 raise FIGAROException("LAL is not installed. GW posterior samples cannot be loaded.")
             # If everything is ok, load the samples
             else:
-                out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate)
+                out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate, waveform = waveform)
                 if out is not None:
                     events.append(out)
                 else:
@@ -191,7 +191,7 @@ def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.
                 
     return (events, np.array(names))
 
-def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1):
+def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, waveform = 'combined'):
     '''
     Reads data from .h5/.hdf5 GW posterior files.
     For GWTC-3 data release, it uses by default the Mixed posterior samples.
@@ -213,18 +213,25 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1):
         loaded_pars = []
         # GWTC-2, GWTC-3
         try:
-            # GWTC-2
-            try:
-                data = f['PublicationSamples']['posterior_samples']
-            # GWTC-3
-            except KeyError:
+            if waveform == 'combined':
+                # GWTC-2
                 try:
-                    data = f['C01:Mixed']['posterior_samples']
-                except:
+                    data = f['PublicationSamples']['posterior_samples']
+                # GWTC-3
+                except KeyError:
                     try:
-                        data = f['IMRPhenomXPHM']['posterior_samples']
+                        data = f['C01:Mixed']['posterior_samples']
                     except:
-                        data = f['SEOBNRv4PHM']['posterior_samples']
+                        try:
+                            data = f['IMRPhenomXPHM']['posterior_samples']
+                        except:
+                            data = f['SEOBNRv4PHM']['posterior_samples']
+            else:
+                if waveform == 'imr':
+                    label = 'C01:IMRPhenomPv2'
+                elif waveform == 'seob':
+                    label = 'C01:SEOBNRv4P'
+                data = f[label]['posterior_samples']
                 
             for name, lab in zip(GW_par.keys(), GW_par.values()):
                 if name in par:
@@ -253,10 +260,17 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1):
 
         # GWTC-1
         except KeyError:
+            if waveform == 'combined':
+                label = 'Overall_posterior'
+            elif waveform == 'imr':
+                label = 'IMRPhenomPv2_posterior'
+            elif waveform == 'seob':
+                label = 'SEOBNRv3_posterior'
             try:
-                data = f['Overall_posterior']
+                data = f[label]
             except KeyError:
                 try:
+                    # GW170817
                     data = f['IMRPhenomPv2NRT_lowSpin_posterior']
                 except:
                     print("Skipped event {0} (not loadable yet)".format(Path(event).parts[-1].split('.')[0]))
