@@ -14,6 +14,7 @@ from scipy.optimize import newton
 from tqdm import tqdm
 
 supported_extensions = ['h5', 'hdf5', 'txt', 'dat']
+supported_waveforms  = ['combined', 'imr', 'seob']
 
 GW_par = {'m1'                 : 'mass_1_source',
           'm2'                 : 'mass_2_source',
@@ -208,6 +209,9 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
     '''
     h, om, ol = cosmology
     omega = CosmologicalParameters(h, om, ol, -1, 0)
+    if not waveform in supported_waveforms:
+        raise FIGAROException("Unknown waveform: please use 'combined' (default), 'imr' or 'seob'")
+        
     with h5py.File(Path(event), 'r') as f:
         samples     = []
         loaded_pars = []
