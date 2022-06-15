@@ -440,7 +440,7 @@ class mixture:
         return self._gradient_pdf_probit(x)*J + self._pdf(x)*J*(-x)
     
     def _gradient_pdf_probit(self, x):
-        return np.sum(np.array([-w*mn(mean, cov).pdf(x)*np.dot(inv_jit(cov),(mean-x)) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0))
+        return np.sum(np.array([-w*mn(mean, cov).pdf(x)*np.dot(inv_jit(cov),(mean-x)) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
 
     def gradient_logpdf(self, x):
         if len(np.shape(x)) < 2:
@@ -452,7 +452,7 @@ class mixture:
         return self._gradient_logpdf_probit(x) - x
     
     def _gradient_logpdf_probit(self, x):
-        return np.sum(np.array([-w*np.dot(inv_jit(cov),(mean-x)) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0))
+        return np.sum(np.array([-w*np.dot(inv_jit(cov),(mean-x)) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
     
 #-------------------#
 # Inference classes #
@@ -798,7 +798,7 @@ class DPGMM:
         Returns:
             :np.ndarray: mixture.gradient_pdf(x)
         """
-        return np.sum(np.array([-w*mn(comp.mean, comp.cov).pdf(x)*np.dot(inv_jit(comp.cov),(comp.mean-x)) for comp, w in zip(self.mixture, self.w)]), axis = 0))
+        return np.sum(np.array([-w*mn(comp.mean, comp.cov).pdf(x)*np.dot(inv_jit(comp.cov),(comp.mean-x)) for comp, w in zip(self.mixture, self.w)]), axis = 0)
 
     def gradient_logpdf(self, x):
         """
@@ -839,7 +839,7 @@ class DPGMM:
         Returns:
             :np.ndarray: mixture.gradient_logpdf(x)
         """
-        return np.sum(np.array([-w*np.dot(inv_jit(comp.cov),(comp.mean-x)) for comp, w in zip(self.mixture, self.w)]), axis = 0))
+        return np.sum(np.array([-w*np.dot(inv_jit(comp.cov),(comp.mean-x)) for comp, w in zip(self.mixture, self.w)]), axis = 0)
 
     def build_mixture(self):
         """
@@ -851,7 +851,6 @@ class DPGMM:
         if self.n_cl == 0:
             raise FIGAROException("You are trying to build an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, the inferred mixture is returned from that method as an instance of mixture class.")
         return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, self.n_pts)
-
 
 class HDPGMM(DPGMM):
     """
