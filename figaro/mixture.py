@@ -754,10 +754,93 @@ class DPGMM:
             :np.ndarray x: point(s) to evaluate the mixture at
         
         Returns:
-            :np.ndarray: mixture.pdf(x)
+            :np.ndarray: mixture.logpdf(x)
         """
         return self._logpdf_probit(x) - probit_logJ(x, self.bounds)
+
+    def gradient_pdf(self, x):
+        """
+        Evaluate mixture gradient at point(s) x
         
+        Arguments:
+            :np.ndarray x: point(s) to evaluate the mixture at
+        
+        Returns:
+            :np.ndarray: mixture.gradient_pdf(x)
+        """
+        if self.n_cl == 0:
+            raise FIGAROException("You are trying to evaluate an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, you may want to evaluate the output of that method.")
+        if len(np.shape(x)) < 2:
+            x = np.atleast_2d(x).T
+        return self._gradient_pdf(x)
+    
+    @probit
+    def _gradient_pdf(self, x):
+        """
+        Evaluate mixture gradient at point(s) x
+        
+        Arguments:
+            :np.ndarray x: point(s) to evaluate the mixture at
+        
+        Returns:
+            :np.ndarray: mixture.gradient_pdf(x)
+        """
+        J = np.exp(-probit_logJ(x, self.bounds))
+        return self._gradient_pdf_probit(x)*J + self._pdf(x)*J*(-x)
+    
+    def _gradient_pdf_probit(self, x):
+        """
+        Evaluate mixture gradient at point(s) x in probit space
+        
+        Arguments:
+            :np.ndarray x: point(s) to evaluate the mixture at
+        
+        Returns:
+            :np.ndarray: mixture.gradient_pdf(x)
+        """
+        return np.sum(np.array([-w*mn(comp.mean, comp.cov).pdf(x)*np.dot(inv_jit(comp.cov),(comp.mean-x)) for comp, w in zip(self.mixture, self.w)]), axis = 0))
+
+    def gradient_logpdf(self, x):
+        """
+        Evaluate log mixture gradient at point(s) x
+        
+        Arguments:
+            :np.ndarray x: point(s) to evaluate the mixture at
+        
+        Returns:
+            :np.ndarray: mixture.gradient_logpdf(x)
+        """
+        if self.n_cl == 0:
+            raise FIGAROException("You are trying to evaluate an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, you may want to evaluate the output of that method.")
+        if len(np.shape(x)) < 2:
+            x = np.atleast_2d(x).T
+        return self._gradient_logpdf(x)
+    
+    @probit
+    def _gradient_logpdf(self, x):
+        """
+        Evaluate log mixture gradient at point(s) x
+        
+        Arguments:
+            :np.ndarray x: point(s) to evaluate the mixture at
+        
+        Returns:
+            :np.ndarray: mixture.gradient_logpdf(x)
+        """
+        return self._gradient_logpdf_probit(x) - x
+    
+    def _gradient_logpdf_probit(self, x):
+        """
+        Evaluate log mixture gradient at point(s) x in probit space
+        
+        Arguments:
+            :np.ndarray x: point(s) to evaluate the mixture at
+        
+        Returns:
+            :np.ndarray: mixture.gradient_logpdf(x)
+        """
+        return np.sum(np.array([-w*np.dot(inv_jit(comp.cov),(comp.mean-x)) for comp, w in zip(self.mixture, self.w)]), axis = 0))
+
     def build_mixture(self):
         """
         Instances a mixture class representing the inferred distribution
