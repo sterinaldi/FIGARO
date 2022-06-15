@@ -11,7 +11,7 @@ from scipy.stats import invgamma, invwishart, norm
 
 from figaro.decorators import *
 from figaro.transform import *
-from figaro.likelihood import evaluate_mixture_MC_draws, evaluate_mixture_MC_draws_1d, logsumexp_jit
+from figaro.likelihood import evaluate_mixture_MC_draws, evaluate_mixture_MC_draws_1d, logsumexp_jit, inv_jit
 from figaro.exceptions import except_hook, FIGAROException
 
 from numba import jit, njit, prange
@@ -428,7 +428,32 @@ class mixture:
             for i, n in zip(ctr.keys(), ctr.values()):
                 samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i]).rvs(size = n)).T))
         return np.array(samples[1:])
-        
+    
+    def gradient_pdf(self, x):
+        if len(np.shape(x)) < 2:
+            x = np.atleast_2d(x).T
+        return self._gradient_pdf(x)
+    
+    @probit
+    def _gradient_pdf(self, x):
+        J = np.exp(-probit_logJ(x, self.bounds))
+        return self._gradient_pdf_probit(x)*J + self._pdf(x)*J*(-x)
+    
+    def _gradient_pdf_probit(self, x):
+        return np.sum(np.array([-w*mn(mean, cov).pdf(x)*np.dot(inv_jit(cov),(mean-x)) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0))
+
+    def gradient_logpdf(self, x):
+        if len(np.shape(x)) < 2:
+            x = np.atleast_2d(x).T
+        return self._gradient_logpdf(x)
+    
+    @probit
+    def _gradient_logpdf(self, x):
+        return self._gradient_logpdf_probit(x) - x
+    
+    def _gradient_logpdf_probit(self, x):
+        return np.sum(np.array([-w*np.dot(inv_jit(cov),(mean-x)) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0))
+    
 #-------------------#
 # Inference classes #
 #-------------------#
