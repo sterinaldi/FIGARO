@@ -440,7 +440,7 @@ class mixture:
         return self._gradient_pdf_probit(x)*J + self._pdf(x)[:,None]*J*(-x)
     
     def _gradient_pdf_probit(self, x):
-        return np.sum(np.array([-w*mn(mean, cov).pdf(x)[:,None]*np.array([np.dot(inv_jit(cov),(xi-mean).T) for xi in x]) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
+        return np.sum(np.array([-2*w*mn(mean, cov).pdf(x)[:,None]*np.array([np.dot(inv_jit(cov),(xi-mean).T) for xi in x]) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
 
     def gradient_logpdf(self, x):
         if len(np.shape(x)) < 2:
@@ -932,11 +932,9 @@ class HDPGMM(DPGMM):
                 scores[i] += np.log(self.alpha)
             else:
                 scores[i] += np.log(ss.N)
-        scores = {cid: (score if score < np.inf else -np.inf)  for cid, score in scores.items()} # score < inf checks also for NaNs
-        arr_scores = np.array([score for score in scores.values()])
-        normalization = logsumexp_jit(arr_scores, b = self.b_ones)
-        scores = {cid: np.exp(score - normalization) for cid, score in scores.items()}
-        print(np.sum([np.exp(score) for score in scores.values()]))
+        scores = {cid: (np.exp(score) if score < np.inf else 0)  for cid, score in scores.items()} # score < inf checks also for NaNs
+        normalization = 1/sum(scores.values())
+        scores = {cid: score*normalization for cid, score in scores.items()}
         return scores, logL_N
 
     def _assign_to_cluster(self, x):
@@ -949,7 +947,10 @@ class HDPGMM(DPGMM):
         scores, logL_N = self._cluster_assignment_distribution(x)
         scores = scores.items()
         labels, scores = zip(*scores)
-        cid = np.random.choice(labels, p=scores)
+        try:
+            cid = np.random.choice(labels, p=scores)
+        except ValueError:
+            cid = "new"
         if cid == "new":
             self.mixture.append(component_h(x, self.dim, self.prior, logL_N[cid], self.mu_MC, self.sigma_MC, self.b_ones))
             self.N_list.append(1.)
