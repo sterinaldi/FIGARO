@@ -561,7 +561,7 @@ class DPGMM:
                 scores[i] += np.log(self.alpha)
             else:
                 scores[i] += np.log(ss.N)
-        scores = {cid: (np.exp(score) if score!=score else 0) for cid, score in scores.items()} # x!=x is a fast NaN check
+        scores = {cid: (np.exp(score) if score==score else 0) for cid, score in scores.items()} # x==x is a fast NaN check
         normalization = 1/sum(scores.values())
         scores = {cid: score*normalization for cid, score in scores.items()}
         return scores
@@ -933,7 +933,7 @@ class HDPGMM(DPGMM):
                 scores[i] += np.log(self.alpha)
             else:
                 scores[i] += np.log(ss.N)
-        scores = {cid: (np.exp(score) if score!=score else 0)  for cid, score in scores.items()} # x!=x is a fast NaN check
+        scores = {cid: (np.exp(score) if score==score else 0)  for cid, score in scores.items()} # x==x is a fast NaN check
         normalization = 1/sum(scores.values())
         scores = {cid: score*normalization for cid, score in scores.items()}
         return scores, logL_N
