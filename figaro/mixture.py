@@ -919,7 +919,7 @@ class HDPGMM(DPGMM):
             logL_x = evaluate_mixture_MC_draws_1d(self.mu_MC, self.sigma_MC, x.means, x.covs, x.w)
         else:
             logL_x = evaluate_mixture_MC_draws(self.mu_MC, self.sigma_MC, x.means, x.covs, x.w)
-
+        print(logL_x)
         for i in list(np.arange(self.n_cl)) + ["new"]:
             if i == "new":
                 ss = "new"
@@ -931,7 +931,6 @@ class HDPGMM(DPGMM):
             logL_N[i] = logL_D + logL_x
             if ss == "new":
                 scores[i] += np.log(self.alpha)
-                print(scores[i])
             else:
                 scores[i] += np.log(ss.N)
         scores = {cid: (np.exp(score) if score < np.inf else 0)  for cid, score in scores.items()} # score < inf checks also for NaNs
