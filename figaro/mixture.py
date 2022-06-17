@@ -933,7 +933,8 @@ class HDPGMM(DPGMM):
             else:
                 scores[i] += np.log(ss.N)
         scores = {cid: (score if score < np.inf else -np.inf)  for cid, score in scores.items()} # score < inf checks also for NaNs
-        normalization = logsumexp_jit(np.array(scores.values()), b = self.b_ones)
+        arr_scores = np.array([score for score in scores.values()])
+        normalization = logsumexp_jit(arr_scores, b = self.b_ones)
         scores = {cid: np.exp(score - normalization) for cid, score in scores.items()}
         return scores, logL_N
 
