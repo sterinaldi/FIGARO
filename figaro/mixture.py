@@ -931,6 +931,7 @@ class HDPGMM(DPGMM):
             logL_N[i] = logL_D + logL_x
             if ss == "new":
                 scores[i] += np.log(self.alpha)
+                print(scores[i])
             else:
                 scores[i] += np.log(ss.N)
         scores = {cid: (np.exp(score) if score < np.inf else 0)  for cid, score in scores.items()} # score < inf checks also for NaNs
