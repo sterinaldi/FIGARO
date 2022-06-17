@@ -936,7 +936,7 @@ class HDPGMM(DPGMM):
         arr_scores = np.array([score for score in scores.values()])
         normalization = logsumexp_jit(arr_scores, b = self.b_ones)
         scores = {cid: np.exp(score - normalization) for cid, score in scores.items()}
-        print(np.sum([score for score in scores.values()]))
+        print(np.sum([np.exp(score) for score in scores.values()]))
         return scores, logL_N
 
     def _assign_to_cluster(self, x):
