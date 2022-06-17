@@ -919,7 +919,6 @@ class HDPGMM(DPGMM):
             logL_x = evaluate_mixture_MC_draws_1d(self.mu_MC, self.sigma_MC, x.means, x.covs, x.w)
         else:
             logL_x = evaluate_mixture_MC_draws(self.mu_MC, self.sigma_MC, x.means, x.covs, x.w)
-        print(logL_x)
         for i in list(np.arange(self.n_cl)) + ["new"]:
             if i == "new":
                 ss = "new"
@@ -928,6 +927,7 @@ class HDPGMM(DPGMM):
                 ss = self.mixture[i]
                 logL_D = ss.logL_D
             scores[i] = logsumexp_jit(logL_D + logL_x, b = self.b_ones) - logsumexp_jit(logL_D, b = self.b_ones)
+            print(scores[i])
             logL_N[i] = logL_D + logL_x
             if ss == "new":
                 scores[i] += np.log(self.alpha)
