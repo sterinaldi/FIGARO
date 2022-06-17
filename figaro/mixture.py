@@ -947,10 +947,11 @@ class HDPGMM(DPGMM):
         scores, logL_N = self._cluster_assignment_distribution(x)
         scores = scores.items()
         labels, scores = zip(*scores)
-        try:
-            cid = np.random.choice(labels, p=scores)
-        except ValueError:
-            cid = "new"
+        cid = np.random.choice(labels, p=scores)
+#        try:
+#            cid = np.random.choice(labels, p=scores)
+#        except ValueError:
+#            cid = "new"
         if cid == "new":
             self.mixture.append(component_h(x, self.dim, self.prior, logL_N[cid], self.mu_MC, self.sigma_MC, self.b_ones))
             self.N_list.append(1.)
