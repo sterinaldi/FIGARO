@@ -436,24 +436,17 @@ class mixture:
     
     @probit
     def _gradient_pdf(self, x):
-        J = np.exp(-probit_logJ(x, self.bounds))
-        return self._gradient_pdf_probit(x)*J + self._pdf(x)*J*(-x)
+        J = np.exp(-probit_logJ(x, self.bounds))[:, None]
+        return self._gradient_pdf_probit(x)*J + self._pdf(x)[:,None]*J*(-x)
     
     def _gradient_pdf_probit(self, x):
-        return np.sum(np.array([-w*mn(mean, cov).pdf(x)*np.dot(inv_jit(cov),(mean-x)) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
+        return np.sum(np.array([-w*mn(mean, cov).pdf(x)[:,None]*np.array([np.dot(inv_jit(cov),(xi-mean).T) for xi in x]) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
 
     def gradient_logpdf(self, x):
         if len(np.shape(x)) < 2:
             x = np.atleast_2d(x).T
-        return self._gradient_logpdf(x)
-    
-    @probit
-    def _gradient_logpdf(self, x):
-        return self._gradient_logpdf_probit(x) - x
-    
-    def _gradient_logpdf_probit(self, x):
-        return np.sum(np.array([-w*np.dot(inv_jit(cov),(mean-x)) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
-    
+        return self._gradient_pdf(x)/self._pdf(x)[:,None]
+
 #-------------------#
 # Inference classes #
 #-------------------#
@@ -568,7 +561,7 @@ class DPGMM:
                 scores[i] += np.log(self.alpha)
             else:
                 scores[i] += np.log(ss.N)
-        scores = {cid: np.exp(score) for cid, score in scores.items()}
+        scores = {cid: (np.exp(score) if score!=score else 0) for cid, score in scores.items()} # x!=x is a fast NaN check
         normalization = 1/sum(scores.values())
         scores = {cid: score*normalization for cid, score in scores.items()}
         return scores
@@ -798,7 +791,7 @@ class DPGMM:
         Returns:
             :np.ndarray: mixture.gradient_pdf(x)
         """
-        return np.sum(np.array([-w*mn(comp.mean, comp.cov).pdf(x)*np.dot(inv_jit(comp.cov),(comp.mean-x)) for comp, w in zip(self.mixture, self.w)]), axis = 0)
+        return np.sum(np.array([-w*mn(comp.mean, comp.cov).pdf(x).reshape(-1,self.dim)*np.einsum("ij,ij->i",inv_jit(comp.cov),(x-comp.mean)).reshape(-1,len(x)) for comp, w in zip(self.mixture, self.w)]), axis = 0)
 
     def gradient_logpdf(self, x):
         """
@@ -839,7 +832,7 @@ class DPGMM:
         Returns:
             :np.ndarray: mixture.gradient_logpdf(x)
         """
-        return np.sum(np.array([-w*np.dot(inv_jit(comp.cov),(comp.mean-x)) for comp, w in zip(self.mixture, self.w)]), axis = 0)
+        return np.sum(np.array([-w*np.einsum("ij,ij->i",inv_jit(comp.cov),(x-comp.mean)).reshape(-1,self.dim) for comp, w in zip(self.mixture, self.w)]), axis = 0)
 
     def build_mixture(self):
         """
@@ -940,7 +933,7 @@ class HDPGMM(DPGMM):
                 scores[i] += np.log(self.alpha)
             else:
                 scores[i] += np.log(ss.N)
-        scores = {cid: np.exp(score) for cid, score in scores.items()}
+        scores = {cid: (np.exp(score) if score!=score else 0)  for cid, score in scores.items()} # x!=x is a fast NaN check
         normalization = 1/sum(scores.values())
         scores = {cid: score*normalization for cid, score in scores.items()}
         return scores, logL_N
