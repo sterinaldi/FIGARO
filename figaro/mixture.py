@@ -440,7 +440,7 @@ class mixture:
         return self._gradient_pdf_probit(x)*J + self._pdf(x)[:,None]*J*(-x)
     
     def _gradient_pdf_probit(self, x):
-        return np.sum(np.array([-2*w*mn(mean, cov).pdf(x)[:,None]*np.array([np.dot(inv_jit(cov),(xi-mean).T) for xi in x]) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
+        return np.sum(np.array([-w*mn(mean, cov).pdf(x)[:,None]*np.array([np.dot(inv_jit(cov),(xi-mean).T) for xi in x]) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
 
     def gradient_logpdf(self, x):
         if len(np.shape(x)) < 2:
@@ -932,9 +932,9 @@ class HDPGMM(DPGMM):
                 scores[i] += np.log(self.alpha)
             else:
                 scores[i] += np.log(ss.N)
-        scores = {cid: (np.exp(score) if score < np.inf else 0)  for cid, score in scores.items()} # score < inf checks also for NaNs
-        normalization = 1/sum(scores.values())
-        scores = {cid: score*normalization for cid, score in scores.items()}
+        scores = {cid: (score if score < np.inf else -np.inf)  for cid, score in scores.items()} # score < inf checks also for NaNs
+        normalization = logsumexp_jit(scores.values(), b = self.b_ones)
+        scores = {cid: np.exp(score - normalization) for cid, score in scores.items()}
         return scores, logL_N
 
     def _assign_to_cluster(self, x):
