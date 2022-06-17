@@ -927,7 +927,6 @@ class HDPGMM(DPGMM):
                 ss = self.mixture[i]
                 logL_D = ss.logL_D
             scores[i] = logsumexp_jit(logL_D + logL_x, b = self.b_ones) - logsumexp_jit(logL_D, b = self.b_ones)
-            print(scores[i])
             logL_N[i] = logL_D + logL_x
             if ss == "new":
                 scores[i] += np.log(self.alpha)
