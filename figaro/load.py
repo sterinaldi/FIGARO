@@ -239,9 +239,21 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                             data = f['IMRPhenomXPHM']['posterior_samples']
                     except:
                         try:
-                            data = f['C01:IMRPhenomPv2']['posterior_samples']
+                            try:
+                                data = f['C01:IMRPhenomPv2']['posterior_samples']
+                            except:
+                                data = f['IMRPhenomPv2']['posterior_samples']
                         except:
-                            data = f['IMRPhenomPv2']['posterior_samples']
+                            try:
+                                try:
+                                    data = f['C01:IMRPhenomPv3HM']['posterior_samples']
+                                except:
+                                    data = f['IMRPhenomPv3HM']['posterior_samples']
+                            except:
+                                try:
+                                    data = f['C01:IMRPhenomXPHM:LowSpin']['posterior_samples']
+                                except:
+                                    data = f['IMRPhenomXPHM:LowSpin']['posterior_samples']
                 elif waveform == 'seob':
                     try:
                         try:
