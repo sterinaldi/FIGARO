@@ -232,10 +232,19 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                             data = f['SEOBNRv4PHM']['posterior_samples']
             else:
                 if waveform == 'imr':
-                    label = 'C01:IMRPhenomPv2'
+                    try:
+                        data = f['C01:IMRPhenomXPHM']['posterior_samples']
+                    except:
+                        data = f['C01:IMRPhenomPv2']['posterior_samples']
                 elif waveform == 'seob':
-                    label = 'C01:SEOBNRv4P'
-                data = f[label]['posterior_samples']
+                    try:
+                        data = f['C01:SEOBNRv4PHM']['posterior_samples']
+                    except:
+                        try:
+                            data = f['C01:SEOBNRv4P']['posterior_samples']
+                        except:
+                            data = f['C01:SEOBNRv4']['posterior_samples']
+                
                 
             for name, lab in zip(GW_par.keys(), GW_par.values()):
                 if name in par:
