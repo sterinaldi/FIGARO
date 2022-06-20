@@ -233,17 +233,32 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
             else:
                 if waveform == 'imr':
                     try:
-                        data = f['C01:IMRPhenomXPHM']['posterior_samples']
-                    except:
-                        data = f['C01:IMRPhenomPv2']['posterior_samples']
-                elif waveform == 'seob':
-                    try:
-                        data = f['C01:SEOBNRv4PHM']['posterior_samples']
+                        try:
+                            data = f['C01:IMRPhenomXPHM']['posterior_samples']
+                        except:
+                            data = f['IMRPhenomXPHM']['posterior_samples']
                     except:
                         try:
-                            data = f['C01:SEOBNRv4P']['posterior_samples']
+                            data = f['C01:IMRPhenomXPHM']['posterior_samples']
                         except:
-                            data = f['C01:SEOBNRv4']['posterior_samples']
+                            data = f['IMRPhenomXPHM']['posterior_samples']
+                elif waveform == 'seob':
+                    try:
+                        try:
+                            data = f['C01:SEOBNRv4PHM']['posterior_samples']
+                        except:
+                            data = f['SEOBNRv4PHM']['posterior_samples']
+                    except:
+                        try:
+                            try:
+                                data = f['C01:SEOBNRv4P']['posterior_samples']
+                            except:
+                                data = f['SEOBNRv4P']['posterior_samples']
+                        except:
+                            try:
+                                data = f['C01:SEOBNRv4']['posterior_samples']
+                            except:
+                                data = f['SEOBNRv4']['posterior_samples']
                 
                 
             for name, lab in zip(GW_par.keys(), GW_par.values()):
