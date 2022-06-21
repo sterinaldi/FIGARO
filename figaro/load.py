@@ -72,6 +72,8 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674
         :double h:         Hubble constant H0/100 [km/(s*Mpc)]
         :double om:        matter density parameter
         :double ol:        cosmological constant density parameter
+        :bool volume:      if True, loads RA, dec and Luminosity distance (for skymaps)
+        :str waveform:     waveform family to be used ('combined', 'seob', 'imr')
     
     Returns:
         :np.ndarray: samples
@@ -132,7 +134,8 @@ def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.
         :double h:         Hubble constant H0/100 [km/(s*Mpc)]
         :double om:        matter density parameter
         :double ol:        cosmological constant density parameter
-    
+        :str waveform:     waveform family to be used ('combined', 'seob', 'imr')
+        
     Returns:
         :np.ndarray: samples
         :np.ndarray: names
@@ -197,12 +200,22 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
     Reads data from .h5/.hdf5 GW posterior files.
     For GWTC-3 data release, it uses by default the Mixed posterior samples.
     Not all parameters are implemented: run figaro.load.available_gw_pars() for a list of available parameters.
+    The waveform argument allows the user to select a waveform family. The default value, 'combined' uses samples from both imr and seob waveforms.
+    For SEOB waveforms, the following waveform models are used (in descending priority order):
+        * SEOBNRv4PHM
+        * SEOBNRv4P
+        * SEOBNRv4
+    For IMR waveforms, in descending order:
+        * IMRPhenomXPHM
+        * IMRPhenomPv2
+        * IMRPhenomPv3HM
     
     Arguments:
         :str event:       file to read
         :str par:         parameter to extract
         :tuple cosmology: cosmological parameters (h, om, ol)
         :int n_samples:   number of samples for (random) downsampling. Default -1: all samples
+        :str waveform:    waveform family to be used ('combined', 'imr', 'seob')
     
     Returns:
         :np.ndarray:    samples
@@ -254,7 +267,7 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                                     data = f['C01:IMRPhenomXPHM:LowSpin']['posterior_samples']
                                 except:
                                     data = f['IMRPhenomXPHM:LowSpin']['posterior_samples']
-                elif waveform == 'seob':
+                if waveform == 'seob':
                     try:
                         try:
                             data = f['C01:SEOBNRv4PHM']['posterior_samples']
