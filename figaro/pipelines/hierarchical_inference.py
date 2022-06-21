@@ -38,6 +38,7 @@ def main():
     parser.add_option("--cosmology", type = "string", dest = "cosmology", help = "Cosmological parameters (h, om, ol). Default values from Planck (2021)", default = '0.674,0.315,0.685')
     parser.add_option("-e", "--events", dest = "run_events", action = 'store_false', help = "Skip single-event analysis", default = True)
     parser.add_option("--sigma_prior", dest = "sigma_prior", type = "string", help = "Expected standard deviation (prior) for hierarchical inference - single value or n-dim values. If None, it is estimated from samples", default = None)
+    parser.add_option("--MC_draws", dest = "MC_draws", type = "int", help = "Number of draws for assignment MC integral", default = 2000)
     (options, args) = parser.parse_args()
 
     # Paths
@@ -158,7 +159,7 @@ def main():
             except FileNotFoundError:
                 raise FileNotFoundError("No posteriors_single_event.pkl file found. Please provide it or re-run the single-event inference")
         # Run hierarchical analysis
-        mix   = HDPGMM(options.bounds, prior_pars = get_priors(options.bounds, samples = all_samples, std = options.sigma_prior), MC_draws = 1e3)
+        mix   = HDPGMM(options.bounds, prior_pars = get_priors(options.bounds, samples = all_samples, std = options.sigma_prior), MC_draws = options.MC_draws)
         draws = np.array([mix.density_from_samples(posteriors) for _ in tqdm(range(options.n_draws), desc = 'Hierarchical')])
         # Save draws
         with open(Path(output_pkl, 'draws_'+options.h_name+'.pkl'), 'wb') as f:

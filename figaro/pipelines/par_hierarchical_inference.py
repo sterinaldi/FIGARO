@@ -25,11 +25,13 @@ class worker:
                        label = None,
                        unit = None,
                        save_se = True,
+                       MC_draws = 2000,
                        ):
         self.dim                  = bounds.shape[-1]
         self.bounds               = bounds
         self.mixture              = DPGMM(self.bounds)
         self.hierarchical_mixture = HDPGMM(self.bounds,
+                                           MC_draws = MC_draws,
                                            prior_pars = get_priors(self.bounds,
                                                                    samples = all_samples,
                                                                    std = sigma))
@@ -94,6 +96,7 @@ def main():
     parser.add_option("--sigma_prior", dest = "sigma_prior", type = "string", help = "Expected standard deviation (prior) for hierarchical inference - single value or n-dim values. If None, it is estimated from samples", default = None)
     parser.add_option("--n_parallel", dest = "n_parallel", type = "int", help = "Number of parallel threads", default = 4)
     (options, args) = parser.parse_args()
+    parser.add_option("--MC_draws", dest = "MC_draws", type = "int", help = "Number of draws for assignment MC integral", default = 2000)
 
     # Paths
     options.samples_folder = Path(options.samples_folder).resolve()
@@ -193,6 +196,7 @@ def main():
                                         label            = symbols,
                                         unit             = units,
                                         save_se          = options.save_single_event,
+                                        MC_draws         = options.MC_draws,
                                         )
                           for _ in range(options.n_parallel)])
         
