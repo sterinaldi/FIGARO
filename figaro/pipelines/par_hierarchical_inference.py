@@ -95,8 +95,8 @@ def main():
     parser.add_option("-e", "--events", dest = "run_events", action = 'store_false', help = "Skip single-event analysis", default = True)
     parser.add_option("--sigma_prior", dest = "sigma_prior", type = "string", help = "Expected standard deviation (prior) for hierarchical inference - single value or n-dim values. If None, it is estimated from samples", default = None)
     parser.add_option("--n_parallel", dest = "n_parallel", type = "int", help = "Number of parallel threads", default = 4)
-    (options, args) = parser.parse_args()
     parser.add_option("--MC_draws", dest = "MC_draws", type = "int", help = "Number of draws for assignment MC integral", default = 2000)
+    (options, args) = parser.parse_args()
 
     # Paths
     options.samples_folder = Path(options.samples_folder).resolve()
