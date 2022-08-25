@@ -436,11 +436,16 @@ class mixture:
     
     @probit
     def _gradient_pdf(self, x):
-        J = np.exp(-probit_logJ(x, self.bounds))[:, None]
-        return self._gradient_pdf_probit(x)*J + self._pdf(x)[:,None]*J*(-x)
+        J = np.exp(probit_logJ(x, self.bounds))[:, None]
+        dJ = np.exp(-probit_log_jacobian(x, self.bounds))
+        dF = self._gradient_pdf_probit(x)
+        F  = self._pdf(x)[:,None]
+#        print(J.shape, dJ.shape, dF.shape, F.shape, x.shape)
+        
+        return (dF - x*F)*J*dJ
     
     def _gradient_pdf_probit(self, x):
-        return np.sum(np.array([-2*w*mn(mean, cov).pdf(x)[:,None]*np.array([np.dot(inv_jit(cov),(xi-mean).T) for xi in x]) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
+        return np.sum(np.array([-w*mn(mean, cov).pdf(x)[:,None]*np.array([np.dot(inv_jit(cov),(xi-mean)) for xi in x]) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
 
     def gradient_logpdf(self, x):
         if len(np.shape(x)) < 2:
