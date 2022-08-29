@@ -455,7 +455,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         plt.close()
     
 
-def plot_multidim(draws, samples = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False, n_pts = 200, true_value = None, figsize = 7, levels = [0.5, 0.68, 0.9]):
+def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False, n_pts = 200, true_value = None, figsize = 7, levels = [0.5, 0.68, 0.9]):
     """
     Plot the recovered multidimensional distribution along with samples from the true distribution (if available) as corner plot.
     
@@ -463,6 +463,7 @@ def plot_multidim(draws, samples = None, out_folder = '.', name = 'density', lab
         :iterable draws:         container for mixture instances
         :int dim:                number of dimensions
         :np.ndarray samples:     samples from the true distribution (if available)
+        :iterable bounds:        bounds for the recovered distribution. If None, bounds from mixture instances are used.
         :str or Path out_folder: output folder
         :str name:               name to be given to outputs
         :list-of-str labels:     LaTeX-style quantity label, for plotting purposes
@@ -497,8 +498,24 @@ def plot_multidim(draws, samples = None, out_folder = '.', name = 'density', lab
     all_bounds = np.atleast_2d([d.bounds for d in draws])
     x_min = np.min(all_bounds, axis = -1).max(axis = 0)
     x_max = np.max(all_bounds, axis = -1).min(axis = 0)
+    print(x_min, x_max)
     
+    if bounds is not None:
+        bounds = np.atleast_2d(bounds)
+        if bounds.shape == (1, 2):
+            bounds = np.array([bounds[0] for _ in range(dim)])
+        if bounds.shape == (dim, 2):
+            if not (bounds[:,0] >= x_min).all():
+                warnings.warn("The provided lower bound is invalid for at least one draw. Default values will be used instead.")
+            x_min[np.where(bounds[:,0] >= x_min)] = bounds[:,0][np.where(bounds[:,0] >= x_min)]
+            print(x_min, bounds[:,0], np.where(bounds[:,0] >= x_min))
+            if not (bounds[:,1] <= x_max).all():
+                warnings.warn("The provided upper bound is invalid for at least one draw. Default values will be used instead.")
+            print(x_max, bounds[:,1], np.where(bounds[:,1] <= x_max))
+            x_max[np.where(bounds[:,1] <= x_max)] = bounds[:,1][np.where(bounds[:,1] <= x_max)]
+            print(x_max, bounds[:,1], np.where(bounds[:,1] <= x_max))
     bounds = np.array([x_min, x_max]).T
+    
     K = dim
     factor = 2.0          # size of one side of one panel
     lbdim = 0.5 * factor  # size of left/bottom margin
