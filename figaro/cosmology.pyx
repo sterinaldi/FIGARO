@@ -43,8 +43,16 @@ cdef class CosmologicalParameters:
     cdef double _UniformComovingVolumeDistribution(self, double z, double zmax) nogil:
         return XLALUniformComovingVolumeDistribution(self._LALCosmologicalParameters, z, zmax)
 
-    cdef double _ComovingVolumeElement(self,double z) nogil:
+    cdef double _ComovingVolumeElement_double(self,double z) nogil:
         return XLALComovingVolumeElement(z, self._LALCosmologicalParameters)
+        
+    cdef np.ndarray[double, ndim=1, mode="c"] _ComovingVolumeElement(self, np.ndarray[double, ndim=1, mode="c"] z):
+        cdef unsigned int i, n = z.shape[0]
+        cdef np.ndarray[double, ndim=1, mode="c"] dVdz = np.zeros(n)
+        cdef double[:] dVdz_view = dVdz
+        for i in range(n):
+            dVdz_view[i] = self._ComovingVolumeElement_double(z[i])
+        return dVdz
 
     cdef double _ComovingVolume(self,double z) nogil:
         return XLALComovingVolume(self._LALCosmologicalParameters, z)
@@ -77,7 +85,10 @@ cdef class CosmologicalParameters:
     def UniformComovingVolumeDistribution(self, double z, double zmax):
         return self._UniformComovingVolumeDistribution(z, zmax)
 
-    def ComovingVolumeElement(self, double z):
+    def ComovingVolumeElement_double(self, double z):
+        return self._ComovingVolumeElement_double(z)
+        
+    def ComovingVolumeElement(self, np.ndarray[double, ndim=1, mode="c"] z):
         return self._ComovingVolumeElement(z)
 
     def ComovingVolume(self, double z):

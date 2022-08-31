@@ -87,6 +87,7 @@ cdef class CosmologicalParameters:
     cdef public double _IntegrateComovingVolume(self, double zmax) nogil
     cdef public double _UniformComovingVolumeDensity(self, double z) nogil
     cdef public double _UniformComovingVolumeDistribution(self, double z, double zmax) nogil
-    cdef public double _ComovingVolumeElement(self,double z) nogil
+    cdef public double _ComovingVolumeElement_double(self,double z) nogil
+    cdef public np.ndarray[double, ndim=1, mode="c"] _ComovingVolumeElement(self, np.ndarray[double, ndim=1, mode="c"] z)
     cdef public double _ComovingVolume(self,double z) nogil
     cdef void _DestroyCosmologicalParameters(self) nogil
