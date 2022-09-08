@@ -37,14 +37,9 @@ cdef extern from "lal/LALCosmologyCalculator.h" nogil:
 
     cdef double XLALIntegrateHubbleParameter(LALCosmologicalParameters *omega, double z)
 
-    cdef double XLALUniformComovingVolumeDistribution(
-            LALCosmologicalParameters *omega,
-            double z,
-            double zmax)
+    cdef double XLALUniformComovingVolumeDistribution(LALCosmologicalParameters *omega, double z, double zmax)
 
-    cdef double XLALUniformComovingVolumeDensity(
-            double z,
-            void *omega)
+    cdef double XLALUniformComovingVolumeDensity(double z, void *omega)
 
     cdef double XLALIntegrateComovingVolumeDensity(LALCosmologicalParameters *omega, double z)
 
@@ -85,7 +80,8 @@ cdef class CosmologicalParameters:
     cdef public double _HubbleDistance(self) nogil
     cdef public double _IntegrateComovingVolumeDensity(self, double zmax) nogil
     cdef public double _IntegrateComovingVolume(self, double zmax) nogil
-    cdef public double _UniformComovingVolumeDensity(self, double z) nogil
+    cdef public double _UniformComovingVolumeDensity_double(self, double z) nogil
+    cdef public np.ndarray[double, ndim=1, mode="c"] _UniformComovingVolumeDensity(self, np.ndarray[double, ndim=1, mode="c"] z)
     cdef public double _UniformComovingVolumeDistribution(self, double z, double zmax) nogil
     cdef public double _ComovingVolumeElement_double(self,double z) nogil
     cdef public np.ndarray[double, ndim=1, mode="c"] _ComovingVolumeElement(self, np.ndarray[double, ndim=1, mode="c"] z)

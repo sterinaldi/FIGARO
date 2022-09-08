@@ -37,8 +37,16 @@ cdef class CosmologicalParameters:
     cdef double _IntegrateComovingVolume(self, double zmax) nogil:
         return XLALIntegrateComovingVolume(self._LALCosmologicalParameters,zmax)
 
-    cdef double _UniformComovingVolumeDensity(self, double z) nogil:
+    cdef double _UniformComovingVolumeDensity_double(self, double z) nogil:
         return XLALUniformComovingVolumeDensity(z, self._LALCosmologicalParameters)
+    
+    cdef np.ndarray[double, ndim=1, mode="c"] _UniformComovingVolumeDensity(self, np.ndarray[double, ndim=1, mode="c"] z):
+        cdef unsigned int i, n = z.shape[0]
+        cdef np.ndarray[double, ndim=1, mode="c"] p_z = np.zeros(n)
+        cdef double[:] p_z_view = p_z
+        for i in range(n):
+            p_z_view[i] = self._UniformComovingVolumeDensity_double(z[i])
+        return p_z
 
     cdef double _UniformComovingVolumeDistribution(self, double z, double zmax) nogil:
         return XLALUniformComovingVolumeDistribution(self._LALCosmologicalParameters, z, zmax)
@@ -79,7 +87,10 @@ cdef class CosmologicalParameters:
     def IntegrateComovingVolume(self, double zmax):
         return self._IntegrateComovingVolume(zmax)
 
-    def UniformComovingVolumeDensity(self, double z):
+    def UniformComovingVolumeDensity_double(self, double z):
+        return self._UniformComovingVolumeDensity_double(z)
+
+    def UniformComovingVolumeDensity(self, np.ndarray[double, ndim=1, mode="c"] z):
         return self._UniformComovingVolumeDensity(z)
 
     def UniformComovingVolumeDistribution(self, double z, double zmax):
