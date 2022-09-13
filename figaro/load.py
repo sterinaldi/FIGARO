@@ -228,62 +228,66 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
     with h5py.File(Path(event), 'r') as f:
         samples     = []
         loaded_pars = []
-        # GWTC-2, GWTC-3
         try:
-            if waveform == 'combined':
-                # GWTC-2
-                try:
-                    data = f['PublicationSamples']['posterior_samples']
-                # GWTC-3
-                except KeyError:
+            # LVK R&P mock data challenge file format
+            try:
+                data = f['MDC']['posterior_samples']
+            # GWTC-2, GWTC-3
+            except:
+                if waveform == 'combined':
+                    # GWTC-2
                     try:
-                        data = f['C01:Mixed']['posterior_samples']
-                    except:
+                        data = f['PublicationSamples']['posterior_samples']
+                    # GWTC-3
+                    except KeyError:
                         try:
-                            data = f['IMRPhenomXPHM']['posterior_samples']
+                            data = f['C01:Mixed']['posterior_samples']
                         except:
-                            data = f['SEOBNRv4PHM']['posterior_samples']
-            else:
-                if waveform == 'imr':
-                    try:
-                        try:
-                            data = f['C01:IMRPhenomXPHM']['posterior_samples']
-                        except:
-                            data = f['IMRPhenomXPHM']['posterior_samples']
-                    except:
+                            try:
+                                data = f['IMRPhenomXPHM']['posterior_samples']
+                            except:
+                                data = f['SEOBNRv4PHM']['posterior_samples']
+                else:
+                    if waveform == 'imr':
                         try:
                             try:
-                                data = f['C01:IMRPhenomPv2']['posterior_samples']
+                                data = f['C01:IMRPhenomXPHM']['posterior_samples']
                             except:
-                                data = f['IMRPhenomPv2']['posterior_samples']
+                                data = f['IMRPhenomXPHM']['posterior_samples']
                         except:
                             try:
                                 try:
-                                    data = f['C01:IMRPhenomPv3HM']['posterior_samples']
+                                    data = f['C01:IMRPhenomPv2']['posterior_samples']
                                 except:
-                                    data = f['IMRPhenomPv3HM']['posterior_samples']
+                                    data = f['IMRPhenomPv2']['posterior_samples']
                             except:
                                 try:
-                                    data = f['C01:IMRPhenomXPHM:LowSpin']['posterior_samples']
+                                    try:
+                                        data = f['C01:IMRPhenomPv3HM']['posterior_samples']
+                                    except:
+                                        data = f['IMRPhenomPv3HM']['posterior_samples']
                                 except:
-                                    data = f['IMRPhenomXPHM:LowSpin']['posterior_samples']
-                if waveform == 'seob':
-                    try:
-                        try:
-                            data = f['C01:SEOBNRv4PHM']['posterior_samples']
-                        except:
-                            data = f['SEOBNRv4PHM']['posterior_samples']
-                    except:
+                                    try:
+                                        data = f['C01:IMRPhenomXPHM:LowSpin']['posterior_samples']
+                                    except:
+                                        data = f['IMRPhenomXPHM:LowSpin']['posterior_samples']
+                    if waveform == 'seob':
                         try:
                             try:
-                                data = f['C01:SEOBNRv4P']['posterior_samples']
+                                data = f['C01:SEOBNRv4PHM']['posterior_samples']
                             except:
-                                data = f['SEOBNRv4P']['posterior_samples']
+                                data = f['SEOBNRv4PHM']['posterior_samples']
                         except:
                             try:
-                                data = f['C01:SEOBNRv4']['posterior_samples']
+                                try:
+                                    data = f['C01:SEOBNRv4P']['posterior_samples']
+                                except:
+                                    data = f['SEOBNRv4P']['posterior_samples']
                             except:
-                                data = f['SEOBNRv4']['posterior_samples']
+                                try:
+                                    data = f['C01:SEOBNRv4']['posterior_samples']
+                                except:
+                                    data = f['SEOBNRv4']['posterior_samples']
                 
                 
             for name, lab in zip(GW_par.keys(), GW_par.values()):
