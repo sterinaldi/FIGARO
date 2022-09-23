@@ -11,7 +11,7 @@ from scipy.stats import invgamma, invwishart, norm
 
 from figaro.decorators import *
 from figaro.transform import *
-from figaro.likelihood import evaluate_mixture_MC_draws, evaluate_mixture_MC_draws_1d, logsumexp_jit, inv_jit
+from figaro.likelihood import evaluate_mixture_MC_draws, evaluate_mixture_MC_draws_1d, logsumexp_jit, inv_jit, log_norm
 from figaro.exceptions import except_hook, FIGAROException
 
 from numba import jit, njit, prange
@@ -251,10 +251,10 @@ class component_h:
         self.log_w  = [x.log_w]
         self.logL_D = logL_D
         
-        log_norm = logsumexp_jit(logL_D, b = b_ones)
+        log_norm_D = logsumexp_jit(logL_D, b = b_ones)
         
-        self.mu    = np.average(mu_MC, weights = np.exp(logL_D - log_norm), axis = 0)
-        self.sigma = np.average(sigma_MC, weights = np.exp(logL_D - log_norm), axis = 0)
+        self.mu    = np.average(mu_MC, weights = np.exp(logL_D - log_norm_D), axis = 0)
+        self.sigma = np.average(sigma_MC, weights = np.exp(logL_D - log_norm_D), axis = 0)
         if dim == 1:
             self.mu = np.atleast_2d(self.mu).T
             self.sigma = np.atleast_2d(self.sigma).T
@@ -329,7 +329,95 @@ class mixture:
             :np.ndarray: mixture.logpdf(x)
         """
         return self._logpdf_probit(x) - probit_logJ(x, self.bounds)
+
+    def fast_pdf(self, x):
+        """
+        Fast pdf evaluation using FIGARO implementation of log_norm (JIT) rather than Numpy's.
+        WARNING: it is meant to be used with MCMC samplers, therefore accepts only one point at a time.
         
+        Arguments:
+            :np.ndarray x: point to evaluate the mixture at
+        
+        Returns:
+            :np.ndarray: mixture.pdf(x)
+        """
+        x = np.atleast_1d(x)
+        if x.shape == (1,self.dim):
+            return self._fast_pdf(x[0])
+        elif x.shape == (self.dim,):
+            return self._fast_pdf(x)
+        else:
+            raise FIGAROException("Please provide one point at a time.")
+
+    def fast_logpdf(self, x):
+        """
+        Fast logpdf evaluation using FIGARO implementation of log_norm (JIT) rather than Numpy's.
+        WARNING: it is meant to be used with MCMC samplers, therefore accepts only one point at a time.
+        
+        Arguments:
+            :np.ndarray x: point to evaluate the mixture at
+        
+        Returns:
+            :np.ndarray: mixture.pdf(x)
+        """
+        x = np.atleast_1d(x)
+        if x.shape == (1,self.dim):
+            return self._fast_logpdf(x[0])
+        elif x.shape == (self.dim,):
+            return self._fast_logpdf(x)
+        else:
+            raise FIGAROException("Please provide one point at a time.")
+
+    @probit
+    def _fast_pdf(self, x):
+        """
+        Evaluate mixture at point x
+        
+        Arguments:
+            :np.ndarray x: point to evaluate the mixture at
+        
+        Returns:
+            :np.ndarray: mixture.pdf(x)
+        """
+        return self._fast_pdf_probit(x) * np.exp(-probit_logJ(x, self.bounds))
+
+    @probit
+    def _fast_logpdf(self, x):
+        """
+        Evaluate log mixture at point x
+        
+        Arguments:
+            :np.ndarray x: point to evaluate the mixture at
+        
+        Returns:
+            :np.ndarray: mixture.logpdf(x)
+        """
+        return self._fast_logpdf_probit(x) - probit_logJ(x, self.bounds)
+
+    def _fast_pdf_probit(self, x):
+        """
+        Evaluate mixture at point x in probit space
+        
+        Arguments:
+            :np.ndarray x: point to evaluate the mixture at (in probit space)
+        
+        Returns:
+            :np.ndarray: mixture.pdf(x)
+        """
+        return np.sum(np.array([w*np.exp(log_norm(x[0], mean, cov)) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
+
+    def _fast_logpdf_probit(self, x):
+        """
+        Evaluate log mixture at point x in probit space
+        
+        Arguments:
+            :np.ndarray x: point to evaluate the mixture at (in probit space)
+        
+        Returns:
+            :np.ndarray: mixture.logpdf(x)
+        """
+        return logsumexp(np.array([w + log_norm(x[0], mean, cov) for mean, cov, w in zip(self.means, self.covs, self.log_w)]), axis = 0)
+
     def _pdf_probit(self, x):
         """
         Evaluate mixture at point(s) x in probit space
@@ -839,6 +927,94 @@ class DPGMM:
         """
         return np.sum(np.array([-w*np.einsum("ij,ij->i",inv_jit(comp.cov),(x-comp.mean)).reshape(-1,self.dim) for comp, w in zip(self.mixture, self.w)]), axis = 0)
 
+    def fast_pdf(self, x):
+        """
+        Fast pdf evaluation using FIGARO implementation of log_norm (JIT) rather than Numpy's.
+        WARNING: it is meant to be used with MCMC samplers, therefore accepts only one point at a time.
+        
+        Arguments:
+            :np.ndarray x: point to evaluate the mixture at
+        
+        Returns:
+            :np.ndarray: mixture.pdf(x)
+        """
+        x = np.atleast_1d(x)
+        if x.shape == (1,self.dim):
+            return self._fast_pdf(x[0])
+        elif x.shape == (self.dim,):
+            return self._fast_pdf(x)
+        else:
+            raise FIGAROException("Please provide one point at a time.")
+
+    def fast_logpdf(self, x):
+        """
+        Fast logpdf evaluation using FIGARO implementation of log_norm (JIT) rather than Numpy's.
+        WARNING: it is meant to be used with MCMC samplers, therefore accepts only one point at a time.
+        
+        Arguments:
+            :np.ndarray x: point to evaluate the mixture at
+        
+        Returns:
+            :np.ndarray: mixture.pdf(x)
+        """
+        x = np.atleast_1d(x)
+        if x.shape == (1,self.dim):
+            return self._fast_logpdf(x[0])
+        elif x.shape == (self.dim,):
+            return self._fast_logpdf(x)
+        else:
+            raise FIGAROException("Please provide one point at a time.")
+
+    @probit
+    def _fast_pdf(self, x):
+        """
+        Evaluate mixture at point x
+        
+        Arguments:
+            :np.ndarray x: point to evaluate the mixture at
+        
+        Returns:
+            :np.ndarray: mixture.pdf(x)
+        """
+        return self._fast_pdf_probit(x) * np.exp(-probit_logJ(x, self.bounds))
+
+    @probit
+    def _fast_logpdf(self, x):
+        """
+        Evaluate log mixture at point x
+        
+        Arguments:
+            :np.ndarray x: point to evaluate the mixture at
+        
+        Returns:
+            :np.ndarray: mixture.logpdf(x)
+        """
+        return self._fast_logpdf_probit(x) - probit_logJ(x, self.bounds)
+
+    def _fast_pdf_probit(self, x):
+        """
+        Evaluate mixture at point x in probit space
+        
+        Arguments:
+            :np.ndarray x: point to evaluate the mixture at (in probit space)
+        
+        Returns:
+            :np.ndarray: mixture.pdf(x)
+        """
+        return np.sum(np.array([w*np.exp(log_norm(x[0], comp.mean, comp.cov)) for comp, w in zip(self.mixture, self.w)]), axis = 0)
+
+    def _fast_logpdf_probit(self, x):
+        """
+        Evaluate log mixture at point x in probit space
+        
+        Arguments:
+            :np.ndarray x: point to evaluate the mixture at (in probit space)
+        
+        Returns:
+            :np.ndarray: mixture.logpdf(x)
+        """
+        return logsumexp(np.array([w + log_norm(x[0], comp.mean, comp.cov) for comp, w in zip(self.mixture, self.log_w)]), axis = 0)
+
     def build_mixture(self):
         """
         Instances a mixture class representing the inferred distribution
@@ -987,10 +1163,10 @@ class HDPGMM(DPGMM):
         ss.log_w.append(x.log_w)
         ss.logL_D = logL_D
 
-        log_norm = logsumexp_jit(logL_D, self.b_ones)
+        log_norm_D = logsumexp_jit(logL_D, self.b_ones)
 
-        ss.mu    = np.average(self.mu_MC, weights = np.exp(logL_D - log_norm), axis = 0)
-        ss.sigma = np.average(self.sigma_MC, weights = np.exp(logL_D - log_norm), axis = 0)
+        ss.mu    = np.average(self.mu_MC, weights = np.exp(logL_D - log_norm_D), axis = 0)
+        ss.sigma = np.average(self.sigma_MC, weights = np.exp(logL_D - log_norm_D), axis = 0)
         if self.dim == 1:
             ss.mu = np.atleast_2d(ss.mu).T
             ss.sigma = np.atleast_2d(ss.sigma).T
