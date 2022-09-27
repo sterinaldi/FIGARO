@@ -498,7 +498,6 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
     all_bounds = np.atleast_2d([d.bounds for d in draws])
     x_min = np.min(all_bounds, axis = -1).max(axis = 0)
     x_max = np.max(all_bounds, axis = -1).min(axis = 0)
-    print(x_min, x_max)
     
     if bounds is not None:
         bounds = np.atleast_2d(bounds)
