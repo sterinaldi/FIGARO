@@ -210,7 +210,7 @@ def make_single_gaussian_mixture(mu, cov, bounds, out_folder = '.', save = False
     mixtures = np.array(mixtures)
     
     if save:
-        with open(Path(out_folder, 'posteriors_single_event.pkl'), 'wb') as f:
+        with open(Path(draws_folder, 'posteriors_single_event.pkl'), 'wb') as f:
             dill.dump(mixtures, f)
     
     return mixtures
