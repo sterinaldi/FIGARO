@@ -1,5 +1,6 @@
 import numpy as np
 import warnings
+import dill
 
 from pathlib import Path
 from tqdm import tqdm
@@ -176,29 +177,40 @@ def make_single_gaussian_mixture(mu, cov, bounds, out_folder = '.', save = False
         :np.ndarray: mixtures
     """
     bounds = np.atleast_2d(bounds)
+    
+    draws_folder = Path(out_folder, 'draws')
+    if not draws_folder.exists():
+        draws_folder.mkdir()
+    
+    events_folder = Path(out_folder, 'events')
+    if not events_folder.exists():
+        events_folder.mkdir()
+    
     if len(cov.shape) == 1:
-        cov     = np.atleast_2d(cov).T
+        cov = np.atleast_2d(cov).T
     
     mixtures = []
-    for m, c, in mu, cov:
-        ss = mn(m, c).rvs(n_samps)
-        # Keeping only samples within bounds
-        ss = ss[np.where((np.prod(bounds[:,0] < ss, axis = 1) & np.prod(ss < bounds[:,1], axis = 1)))]
+    for i, (m, c) in enumerate(zip(mu, cov)):
+        ss = np.atleast_2d(mn(m, c).rvs(n_samps))
         # 1D issue
         if c.shape == (1,1):
             ss = ss.T
+        # Keeping only samples within bounds
+        ss = ss[np.where((np.prod(bounds[:,0] < ss, axis = 1) & np.prod(ss < bounds[:,1], axis = 1)))]
+        if save:
+            np.savetxt(Path(events_folder, 'event_{0}.txt'.format(i+1)), ss)
         # Probit samples
         p_ss = transform_to_probit(ss, bounds)
         mm = np.mean(p_ss)
-        cc = np.atleast_2d(np.cov(probit_samples.T))
+        cc = np.atleast_2d(np.cov(ss.T))
         
-        mix = mixture(np.array([mm]), np.array([cc]), np.ones(1), bounds, len(bounds), 1, None)
+        mix = mixture(np.atleast_2d([mm]), np.atleast_3d([cc]), np.ones(1), bounds, len(bounds), 1, None)
         mixtures.append([mix])
     
     mixtures = np.array(mixtures)
     
     if save:
-        with open(Path(out_folder, 'posteriors_single_event.pkl'), 'rb') as f:
+        with open(Path(out_folder, 'posteriors_single_event.pkl'), 'wb') as f:
             dill.dump(mixtures, f)
     
     return mixtures
