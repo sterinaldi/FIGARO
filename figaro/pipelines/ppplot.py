@@ -10,7 +10,8 @@ from tqdm import tqdm
 
 from figaro.mixture import DPGMM
 from figaro.transform import transform_to_probit
-from figaro.utils import save_options, plot_median_cr, plot_multidim, recursive_grid, pp_plot_levels, get_priors
+from figaro.utils import save_options, recursive_grid, get_priors
+from figaro.plot import plot_median_cr, plot_multidim, pp_plot_levels
 from figaro.credible_regions import FindLevelForHeight, FindNearest_Grid
 from figaro.load import load_data
 

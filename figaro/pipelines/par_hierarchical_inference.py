@@ -9,7 +9,8 @@ from tqdm import tqdm
 
 from figaro.mixture import DPGMM, HDPGMM
 from figaro.transform import transform_to_probit
-from figaro.utils import save_options, plot_median_cr, plot_multidim, get_priors
+from figaro.utils import save_options, get_priors
+from figaro.plot import plot_median_cr, plot_multidim
 from figaro.load import load_data
 
 import ray
