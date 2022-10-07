@@ -9,6 +9,9 @@ from scipy.stats import multivariate_normal as mn
 
 from figaro.transform import transform_to_probit
 from figaro.mixture import mixture
+# Compatibility - to be removed in the future
+from figaro.plot import plot_median_cr as pcr
+from figaro.plot import plot_multidim as pmd
 
 #-–––––––––-#
 # Utilities #
@@ -230,3 +233,19 @@ def save_options(options, out_folder):
     for key, val in zip(vars(options).keys(), vars(options).values()):
         logfile.write('{0}: {1}\n'.format(key,val))
     logfile.close()
+
+#--------------------#
+#    Compatibility   #
+#--------------------#
+
+def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True, subfolder = False, true_value = None):
+
+    warnings.warn("Please use figaro.plot.plot_median_cr - this method will be removed in a future version", DeprecationWarning)
+    pcr(draws, injected, samples, selfunc, bounds, out_folder, name, n_pts, label, unit, hierarchical, show, save, subfolder, true_value)
+
+def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False, n_pts = 200, true_value = None, figsize = 7, levels = [0.5, 0.68, 0.9]):
+    """
+    For backward compatibily only. See figaro.plot.plot_multidim
+    """
+    warnings.warn("Please use figaro.plot.plot_multidim - this method will be removed in a future version", DeprecationWarning)
+    pmd(draws, samples, bounds, out_folder, name, labels, units, hierarchical, show, save, subfolder, n_pts, true_value, figsize, levels)
