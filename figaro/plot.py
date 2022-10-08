@@ -14,6 +14,7 @@ from distutils.spawn import find_executable
 
 from figaro.marginal import marginalise
 from figaro.credible_regions import ConfidenceArea
+from figaro.utils import recursive_grid
 
 if find_executable('latex'):
     rcParams["text.usetex"] = True
