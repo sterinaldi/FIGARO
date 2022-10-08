@@ -9,9 +9,6 @@ from scipy.stats import multivariate_normal as mn
 
 from figaro.transform import transform_to_probit
 from figaro.mixture import mixture
-# Compatibility - to be removed in the future
-from figaro.plot import plot_median_cr as pcr
-from figaro.plot import plot_multidim as pmd
 
 #-–––––––––-#
 # Utilities #
@@ -239,7 +236,7 @@ def save_options(options, out_folder):
 #--------------------#
 
 def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True, subfolder = False, true_value = None):
-
+    from figaro.plot import plot_median_cr as pcr
     warnings.warn('Please use figaro.plot.plot_median_cr - the method figaro.utils.plot_median_cr will be removed in a future version')
     pcr(draws, injected, samples, selfunc, bounds, out_folder, name, n_pts, label, unit, hierarchical, show, save, subfolder, true_value)
 
@@ -247,5 +244,6 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
     """
     For backward compatibily only. See figaro.plot.plot_multidim
     """
+    from figaro.plot import plot_multidim as pmd
     warnings.warn('Please use figaro.plot.plot_multidim - the method figaro.utils.plot_multidim will be removed in a future version')
     pmd(draws, samples, bounds, out_folder, name, labels, units, hierarchical, show, save, subfolder, n_pts, true_value, figsize, levels)
