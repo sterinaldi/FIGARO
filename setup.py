@@ -13,7 +13,13 @@ try:
     import lal
 except ModuleNotFoundError:
     lal_flag = False
-    
+
+ray_flag = True
+try:
+    import ray
+except ModuleNotFoundError:
+    ray_flag = False
+
 try:
     from Cython.Build import cythonize
 except ImportError:
@@ -84,12 +90,6 @@ par_modules = ['figaro/pipelines/par_hierarchical_inference',
                'figaro/pipelines/par_probability_density',
               ]
 
-ray_flag = True
-try:
-    import ray
-except ModuleNotFoundError:
-    ray_flag = False
-
 if ray_flag:
     scripts   = scripts + par_scripts
     pymodules = pymodules + par_modules
@@ -127,6 +127,6 @@ if lal_flag:
 
 
 if not lal_flag:
-    warnings.warn("No LAL installation found, please install LAL - see https://wiki.ligo.org/Computing/LALSuiteInstall. Some functions - GW posterior samples loading and catalog loading - won't be available and errors might be raised.")
+    warnings.warn("\n\nWARNING: No LAL installation found, please install LAL - see https://wiki.ligo.org/Computing/LALSuiteInstall. Some functions - GW posterior samples loading and catalog loading - won't be available and errors might be raised.\n", stacklevel = 2)
 if not ray_flag:
-    warnings.warn("Ray is not installed: parallelized pipelines won't be available. If you want to use them, please install Ray (pip install ray) and reinstall FIGARO.")
+    warnings.warn("\n\nWARNING: Ray is not installed: parallelized pipelines won't be available. If you want to use them, please install Ray (pip install ray) and reinstall FIGARO.\n", stacklevel = 2)
