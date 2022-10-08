@@ -8,10 +8,11 @@ from distutils.extension import Extension
 import os
 import warnings
 
-if not("LAL_DATADIR" in os.environ):
+lal_flag = True
+try:
+    import lal
+except ModuleNotFoundError:
     lal_flag = False
-else:
-    lal_flag   = True
     
 try:
     from Cython.Build import cythonize
