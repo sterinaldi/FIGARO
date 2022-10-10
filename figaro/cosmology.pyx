@@ -62,8 +62,16 @@ cdef class CosmologicalParameters:
             dVdz_view[i] = self._ComovingVolumeElement_double(z[i])
         return dVdz
 
-    cdef double _ComovingVolume(self,double z) nogil:
+    cdef double _ComovingVolume_double(self, double z) nogil:
         return XLALComovingVolume(self._LALCosmologicalParameters, z)
+
+    cdef np.ndarray[double, ndim=1, mode="c"] _ComovingVolume(self, np.ndarray[double, ndim=1, mode="c"] z):
+        cdef unsigned int i, n = z.shape[0]
+        cdef np.ndarray[double, ndim=1, mode="c"] V = np.zeros(n)
+        cdef double[:] V_view = V
+        for i in range(n):
+            V_view[i] = self._ComovingVolume_double(z[i])
+        return V
 
     cdef void _DestroyCosmologicalParameters(self) nogil:
         XLALDestroyCosmologicalParameters(self._LALCosmologicalParameters)
@@ -102,7 +110,10 @@ cdef class CosmologicalParameters:
     def ComovingVolumeElement(self, np.ndarray[double, ndim=1, mode="c"] z):
         return self._ComovingVolumeElement(z)
 
-    def ComovingVolume(self, double z):
+    def ComovingVolume_double(self, double z):
+        return self._ComovingVolume_double(z)
+
+    def ComovingVolume(self, np.ndarray[double, ndim=1, mode="c"] z):
         return self._ComovingVolume(z)
 
     def DestroyCosmologicalParameters(self):
