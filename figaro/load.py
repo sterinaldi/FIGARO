@@ -387,7 +387,6 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
             ss['s2z']     = ss['s2']*ss['cos_tilt_2']
             ss['chi_eff'] = (ss['s1z'] + ss['q']*ss['s2z'])/(1+ss['q'])
 
-
             for name in GW_par.keys():
                 if name in par:
                     samples.append(ss[name])
