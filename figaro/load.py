@@ -35,6 +35,7 @@ GW_par = {'m1'                 : 'mass_1_source',
           's2z'                : 'spin_2z',
           's1'                 : 'spin_1',
           's2'                 : 'spin_2',
+          'snr'                : 'snr',
           }
 
 def _find_redshift(omega, dl):
@@ -56,9 +57,9 @@ def available_gw_pars():
     """
     Print a list of available GW parameters
     """
-    print([p for p in GW_par.keys()])
+    print([p for p in GW_par.keys() if not p == 'snr'])
 
-def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.315, ol = 0.685, volume = False, waveform = 'combined'):
+def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.315, ol = 0.685, volume = False, waveform = 'combined', snr_threshold = None):
     '''
     Loads the data from .txt/.dat files (for simulations) or .h5/.hdf5 files (posteriors from GWTC) for a single event.
     Default cosmological parameters from Planck Collaboration (2021) in a flat Universe (https://www.aanda.org/articles/aa/pdf/2020/09/aa33910-18.pdf)
@@ -111,7 +112,7 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674
             raise FIGAROException("LAL is not installed. GW posterior samples cannot be loaded.")
         # If everything is ok, load the samples
         else:
-            out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate, waveform = waveform)
+            out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate, waveform = waveform, snr_threshold = snr_threshold)
     
     if out is None:
         return out, name
@@ -120,7 +121,7 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674
         out = np.atleast_2d(out).T
     return out, name
 
-def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.315, ol = 0.685, volume = False, waveform = 'combined'):
+def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.315, ol = 0.685, volume = False, waveform = 'combined', snr_threshold = None):
     '''
     Loads the data from .txt files (for simulations) or .h5/.hdf5/.dat files (posteriors from GWTC-x).
     Default cosmological parameters from Planck Collaboration (2021) in a flat Universe (https://www.aanda.org/articles/aa/pdf/2020/09/aa33910-18.pdf)
@@ -187,7 +188,7 @@ def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.
                 raise FIGAROException("LAL is not installed. GW posterior samples cannot be loaded.")
             # If everything is ok, load the samples
             else:
-                out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate, waveform = waveform)
+                out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate, waveform = waveform, snr_threshold = snr_threshold)
                 if out is not None:
                     events.append(out)
                 else:
@@ -195,7 +196,7 @@ def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.
                 
     return (events, np.array(names))
 
-def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, waveform = 'combined'):
+def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, waveform = 'combined', snr_threshold = None):
     '''
     Reads data from .h5/.hdf5 GW posterior files.
     For GWTC-3 data release, it uses by default the Mixed posterior samples.
@@ -224,7 +225,11 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
     omega = CosmologicalParameters(h, om, ol, -1, 0)
     if not waveform in supported_waveforms:
         raise FIGAROException("Unknown waveform: please use 'combined' (default), 'imr' or 'seob'")
-        
+    
+    if snr_threshold is not None:
+        if not 'snr' in par:
+            par = np.append(par, 'snr')
+    
     with h5py.File(Path(event), 'r') as f:
         samples     = []
         loaded_pars = []
@@ -292,10 +297,28 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                 
             for name, lab in zip(GW_par.keys(), GW_par.values()):
                 if name in par:
+                    if name == 'snr' and snr_threshold is not None:
+                        try:
+                            flag_snr = True
+                            snr = np.array(data[lab])
+                        except:
+                            flag_snr = False
+                            warnings.warn("SNR filter is not available with this dataset.")
                     if name == 's1':
-                        samples.append(np.sqrt(data['spin_1x']**2+data['spin_1y']**2+data['spin_1z']**2))
+                        try:
+                            samples.append(data[lab])
+                        except:
+                            samples.append(np.sqrt(data['spin_1x']**2+data['spin_1y']**2+data['spin_1z']**2))
                     elif name == 's2':
-                        samples.append(np.sqrt(data['spin_2x']**2+data['spin_2y']**2+data['spin_2z']**2))
+                        try:
+                            samples.append(data[lab])
+                        except:
+                            samples.append(np.sqrt(data['spin_2x']**2+data['spin_2y']**2+data['spin_2z']**2))
+                    elif name == 'luminosity_distance':
+                        try:
+                            samples.append(data[lab])
+                        except:
+                            samples.append(np.exp(data['logdistance']))
                     else:
                         samples.append(data[lab])
                     loaded_pars.append(name)
@@ -305,10 +328,15 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
             else:
                 par = np.array(par)
                 loaded_pars = np.array(loaded_pars)
+                samples_loaded = np.array(samples)
+                samples = []
+                for pi in par:
+                    if not pi == 'snr':
+                        samples.append(samples_loaded[np.where(loaded_pars == pi)[0]].flatten())
                 samples = np.array(samples)
-                samples = samples[np.array([np.where(pi == par) for pi in loaded_pars]).flatten()]
+                if snr_threshold is not None and flag_snr:
+                    samples = samples[:, np.where(snr > snr_threshold)[0]]
                 samples = samples.T
-
             if n_samples > -1:
                 s = int(min([n_samples, len(samples)]))
                 return samples[rdstate.choice(np.arange(len(samples)), size = s, replace = False)]
@@ -370,8 +398,11 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
             else:
                 par = np.array(par)
                 loaded_pars = np.array(loaded_pars)
+                samples_loaded = np.array(samples)
+                samples = []
+                for pi in par:
+                    samples.append(samples_loaded[np.where(loaded_pars == pi)[0]].flatten())
                 samples = np.array(samples)
-                samples = samples[np.array([np.where(pi == par) for pi in loaded_pars]).flatten()]
                 samples = samples.T
 
             if n_samples > -1:
