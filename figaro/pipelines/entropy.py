@@ -86,7 +86,7 @@ def main():
         options.sigma_prior = np.array([float(s) for s in options.sigma_prior.split(',')])
     # Entropy derivative window
     if options.window is None:
-        options.window = len(samples)//10
+        options.window = len(samples)//5
         
     # Reconstruction
     if not options.postprocess:
