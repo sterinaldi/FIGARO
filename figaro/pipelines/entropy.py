@@ -87,6 +87,7 @@ def main():
     # Entropy derivative window
     if options.window is None:
         options.window = len(samples)//10
+    print(options.window)
         
     # Reconstruction
     if not options.postprocess:
@@ -105,20 +106,17 @@ def main():
             draws.append(mix.build_mixture())
             entropy.append(S)
         draws     = np.array(draws)
-        entropy   = np.array(entropy)
-        ang_coeff = np.array([compute_angular_coefficients(S, options.window) for S in entropy])
+        entropy   = np.atleast_2d(entropy)
         # Save reconstruction
         with open(Path(options.output, 'draws_'+name+'.pkl'), 'wb') as f:
             dill.dump(draws, f)
         np.savetxt(Path(options.output, 'entropy_'+name+'.txt'), entropy)
-        np.savetxt(Path(options.output, 'ang_coeff_'+name+'.txt'), ang_coeff)
 
     else:
         try:
             with open(Path(options.output, 'draws_'+name+'.pkl'), 'rb') as f:
                 draws = dill.load(f)
-            entropy   = np.loadtxt(Path(options.output, 'entropy_'+name+'.txt'))
-            ang_coeff = np.loadtxt(Path(options.output, 'ang_coeff_'+name+'.txt'))
+            entropy   = np.atleast_2d(np.loadtxt(Path(options.output, 'entropy_'+name+'.txt')))
         except FileNotFoundError:
             raise FileNotFoundError("No draws_{0}.pkl, entropy_{0}.txt or ang_coeff_{0}.txt file(s) found. Please provide them or re-run the inference".format(name))
 
@@ -137,8 +135,10 @@ def main():
                 units = options.unit
             plot_multidim(draws, samples = samples, out_folder = options.output, name = name, labels = symbols, units = units)
     
+    # Angular coefficients
+    ang_coeff = np.atleast_2d([compute_angular_coefficients(S, options.window) for S in entropy])
     # Zero-crossings
-    zero_crossings = np.array([options.window + numpy.where(numpy.diff(numpy.sign(ac)))[0] for ac in ang_coeff])
+    zero_crossings = np.array([options.window + np.where(np.diff(np.sign(ac)))[0] for ac in ang_coeff])
     endpoints = []
     for zc in zero_crossings:
         try:
@@ -156,7 +156,7 @@ def main():
         print('Convergence not reached yet')
     
     # Entropy & entropy derivative plot
-    plot_1d_dist(np.arange(1, len(samples)), entropy, out_folder = options.output, name = 'entropy_'+name, label = 'N_{s}', median_label = '\mathrm{Entropy}')
+    plot_1d_dist(np.arange(1, len(samples)+1), entropy, out_folder = options.output, name = 'entropy_'+name, label = 'N_{s}', median_label = '\mathrm{Entropy}')
     plot_1d_dist(np.arange(options.window, len(samples)), ang_coeff, out_folder = options.output, name = 'ang_coeff_'+name, label = 'N_{s}', injected = np.zeros(len(samples)-options.window), true_value = EP, true_value_label = EP_label, median_label = '\mathrm{Entropy\ derivative}')
 
 if __name__ == '__main__':
