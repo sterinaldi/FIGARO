@@ -75,12 +75,14 @@ scripts = ['figaro-density=figaro.pipelines.probability_density:main',
            'figaro-glade=figaro.pipelines.create_glade:main',
            'figaro-pp_plot=figaro.pipelines.ppplot:main',
            'figaro-mockdata=figaro.pipelines.gen_mock_data:main',
+           'figaro-entropy=figaro.pipelines.entropy:main',
            ]
 pymodules = ['figaro/pipelines/probability_density',
              'figaro/pipelines/hierarchical_inference',
              'figaro/pipelines/create_glade',
              'figaro/pipelines/ppplot',
              'figaro/pipelines/gen_mock_data',
+             'figaro/pipelines/entropy',
              ]
 
 par_scripts = ['figaro-par-hierarchical=figaro.pipelines.par_hierarchical_inference:main',
