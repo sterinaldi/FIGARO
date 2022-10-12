@@ -493,15 +493,15 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
             fig.savefig(Path(out_folder, 'density', '{0}.pdf'.format(name)), bbox_inches = 'tight')
     plt.close()
     
-def plot_1d_dist(draws, x, injected = None, samples = None, out_folder = '.', name = 'density', label = None, unit = None, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}', median_label = '\mathrm{Median}'):
+def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', name = 'density', label = None, unit = None, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}', median_label = '\mathrm{Median}'):
     """
     Plot a 1D distribution along with samples from the true distribution (if available).
     Differently from plot_median_cr, this method requires the distribution to be already evaluated.
     For FIGARO mixture instances, please use plot_median_cr.
 
     Arguments:
-        :list-of-iterables draws:         container for realisations
         :iterable x:                      values at which realisations are evaluated
+        :list-of-iterables draws:         container for realisations
         :callable or np.ndarray injected: injected distribution (if available)
         :np.ndarray samples:              samples from the true distribution (if available)
         :str or Path out_folder:          output folder
