@@ -10,7 +10,7 @@ from figaro.mixture import DPGMM
 from figaro.utils import save_options, get_priors
 from figaro.plot import plot_median_cr, plot_multidim, plot_1d_dist
 from figaro.load import load_single_event
-from figaro.diagnostic import compute_entropy_single_draw, compute_angular_coefficient
+from figaro.diagnostic import compute_entropy_single_draw, compute_angular_coefficients
 
 def main():
 
@@ -106,7 +106,7 @@ def main():
             entropy.append(S)
         draws     = np.array(draws)
         entropy   = np.array(entropy)
-        ang_coeff = np.array([compute_angular_coefficient(S, options.window) for S in entropy])
+        ang_coeff = np.array([compute_angular_coefficients(S, options.window) for S in entropy])
         # Save reconstruction
         with open(Path(options.output, 'draws_'+name+'.pkl'), 'wb') as f:
             dill.dump(draws, f)
