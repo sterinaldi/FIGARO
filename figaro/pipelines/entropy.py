@@ -86,12 +86,15 @@ def main():
     if options.sigma_prior is not None:
         options.sigma_prior = np.array([float(s) for s in options.sigma_prior.split(',')])
     # Entropy derivative window
+    min_window = 200 # Default (empiric) value
     if options.window is None:
-        min_window = 50 # Default (empiric) value
-        options.window = np.max([len(samples)//5, min_window])
-        if len(samples) < min_window:
-            warnings.warn("The available number of samples is smaller than the minimum recommended number for entropy derivative estimate. Results might be unreliable")
-        
+        if len(samples) > min_window:
+            options.window = np.max([len(samples)//5, min_window])
+        else:
+            options.window = len(samples)//5
+    if options.window < min_window:
+        warnings.warn("The window is smaller than the minimum recommended window for entropy derivative estimate. Results might be unreliable")
+    
     # Reconstruction
     if not options.postprocess:
         # Actual analysis
@@ -141,18 +144,22 @@ def main():
     # Angular coefficients
     ang_coeff = np.atleast_2d([compute_angular_coefficients(S, options.window) for S in entropy])
     # Zero-crossings
-    zero_crossings = np.array([options.window + np.where(np.diff(np.sign(ac)))[0] for ac in ang_coeff])
+    zero_crossings = [options.window + np.where(np.diff(np.sign(ac)))[0] for ac in ang_coeff]
     endpoints = []
+    conv_not_reached_flag = False
     for zc in zero_crossings:
         try:
             endpoints.append(zc[options.zero_crossings])
         except IndexError:
-            pass
+            conv_not_reached_flag = True
     if not len(endpoints) == 0:
         EP = int(np.mean(endpoints))
-        EP_label = '{0}\ \mathrm{samples}'
+        EP_label = '{0}'.format(EP) + '\ \mathrm{samples}'
         np.savetxt(Path(options.output, 'endpoint_'+name+'.txt'), np.atleast_1d(int(EP)))
-        print('Average number of samples required for convergence: {0}'.format(EP))
+        if not conv_not_reached_flag:
+            print('Average number of samples required for convergence: {0}'.format(EP))
+        else:
+            print('Average number of samples required for convergence: {0}\nWARNING: at least one draw did not converge.'.format(EP))
     else:
         EP = None
         EP_label = None
