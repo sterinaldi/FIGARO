@@ -1,4 +1,5 @@
 import numpy as np
+import warnings
 
 import optparse as op
 import dill
@@ -86,7 +87,10 @@ def main():
         options.sigma_prior = np.array([float(s) for s in options.sigma_prior.split(',')])
     # Entropy derivative window
     if options.window is None:
-        options.window = len(samples)//5
+        min_window = 50 # Default (empiric) value
+        options.window = np.max(len(samples)//5, min_window)
+        if len(samples) < min_window:
+            warnings.warn("The available number of samples is smaller than the minimum recommended number for entropy derivative estimate. Results might be unreliable")
         
     # Reconstruction
     if not options.postprocess:
