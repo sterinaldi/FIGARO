@@ -88,7 +88,7 @@ def main():
     # Entropy derivative window
     if options.window is None:
         min_window = 50 # Default (empiric) value
-        options.window = np.max(len(samples)//5, min_window)
+        options.window = np.max([len(samples)//5, min_window])
         if len(samples) < min_window:
             warnings.warn("The available number of samples is smaller than the minimum recommended number for entropy derivative estimate. Results might be unreliable")
         
