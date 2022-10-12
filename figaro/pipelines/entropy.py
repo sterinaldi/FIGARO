@@ -37,6 +37,7 @@ def main():
     parser.add_option("--snr_threshold", dest = "snr_threshold", type = "float", help = "SNR threshold for simulated GW datasets", default = None)
     parser.add_option("--zero_crossings", dest = "zero_crossings", type = "int", help = "Number of zero-crossings of the entropy derivative to call the number of samples sufficient. Default as in Appendix B of Rinaldi & Del Pozzo (2021)", default = 5)
     parser.add_option("--window", dest = "window", type = "int", help = "Number of points to use to approximate the entropy derivative", default = None)
+    parser.add_option("--entropy_interval", dest = "entropy_interval", type = "int", help = "Number of samples between two entropy evaluations", default = 1)
     
     (options, args) = parser.parse_args()
 
@@ -94,6 +95,7 @@ def main():
             options.window = len(samples)//5
     if options.window < min_window:
         warnings.warn("The window is smaller than the minimum recommended window for entropy derivative estimate. Results might be unreliable")
+    options.window = options.window//options.entropy_interval
     
     # Reconstruction
     if not options.postprocess:
@@ -103,16 +105,19 @@ def main():
         entropy = []
         # This reproduces what it is done inside mix.density_from_samples while computing entropy for each new sample
         for _ in tqdm(range(options.n_draws), desc = name):
-            S = np.zeros(len(samples))
+            S        = np.zeros(len(samples)//options.entropy_interval)
+            n_eval_S = np.zeros(len(samples)//options.entropy_interval)
             mix.initialise()
             np.random.shuffle(samples)
             for i, s in enumerate(samples):
                 mix.add_new_point(s)
-                S[i] = compute_entropy_single_draw(mix)
+                if i%options.entropy_interval == 0:
+                    S[i]        = compute_entropy_single_draw(mix)
+                    n_eval_S[i] = i
             draws.append(mix.build_mixture())
             entropy.append(S)
         draws     = np.array(draws)
-        entropy   = np.atleast_2d(entropy)
+        entropy   = np.concatenate(([n_eval_S], np.atleast_2d(entropy)))
         # Save reconstruction
         with open(Path(options.output, 'draws_'+name+'.pkl'), 'wb') as f:
             dill.dump(draws, f)
@@ -140,11 +145,15 @@ def main():
             else:
                 units = options.unit
             plot_multidim(draws, samples = samples, out_folder = options.output, name = name, labels = symbols, units = units)
-    
+
+    n_samps_S = entropy[0]
+    entropy   = entropy[1:]
+    entropy_interval = n_samps_S[1]-n_samps_S[0]
+
     # Angular coefficients
     ang_coeff = np.atleast_2d([compute_angular_coefficients(S, options.window) for S in entropy])
     # Zero-crossings
-    zero_crossings = [options.window + np.where(np.diff(np.sign(ac)))[0] for ac in ang_coeff]
+    zero_crossings = [(options.window + np.where(np.diff(np.sign(ac)))[0])*entropy_interval for ac in ang_coeff]
     endpoints = []
     conv_not_reached_flag = False
     for zc in zero_crossings:
@@ -166,8 +175,8 @@ def main():
         print('Convergence not reached yet')
     
     # Entropy & entropy derivative plot
-    plot_1d_dist(np.arange(1, len(samples)+1), entropy, out_folder = options.output, name = 'entropy_'+name, label = 'N_{s}', median_label = '\mathrm{Entropy}')
-    plot_1d_dist(np.arange(options.window, len(samples)), ang_coeff, out_folder = options.output, name = 'ang_coeff_'+name, label = 'N_{s}', injected = np.zeros(len(samples)-options.window), true_value = EP, true_value_label = EP_label, median_label = '\mathrm{Entropy\ derivative}')
+    plot_1d_dist(n_samps_S, entropy, out_folder = options.output, name = 'entropy_'+name, label = 'N_{s}', median_label = '\mathrm{Entropy}')
+    plot_1d_dist(np.arange(options.window*entropy_interval, len(samples)), ang_coeff, out_folder = options.output, name = 'ang_coeff_'+name, label = 'N_{s}', injected = np.zeros(len(samples)-options.window), true_value = EP, true_value_label = EP_label, median_label = '\mathrm{Entropy\ derivative}')
 
 if __name__ == '__main__':
     main()
