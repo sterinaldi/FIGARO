@@ -1,4 +1,5 @@
 import numpy as np
+import warnings
 
 from pathlib import Path
 from scipy.stats import beta
@@ -27,6 +28,9 @@ rcParams["axes.labelsize"]=16
 rcParams["axes.grid"] = True
 rcParams["grid.alpha"] = 0.6
 rcParams["contour.negative_linestyle"] = 'solid'
+
+# Telling python to ignore empty legend warning from matplotlib
+warnings.filterwarnings("ignore", message = "No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.")
 
 class PPPlot(axes.Axes):
     """
@@ -106,7 +110,7 @@ class PPPlot(axes.Axes):
         
 projection_registry.register(PPPlot)
 
-def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True, subfolder = False, true_value = None):
+def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}'):
     """
     Plot the recovered 1D distribution along with the injected distribution and samples from the true distribution (both if available).
     
@@ -114,6 +118,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         :iterable draws:                  container for mixture instances
         :callable or np.ndarray injected: injected distribution (if available)
         :np.ndarray samples:              samples from the true distribution (if available)
+        :callable or np.ndarray selfunc:  selection function (if available)
         :iterable bounds:                 bounds for the recovered distribution. If None, bounds from mixture instances are used.
         :str or Path out_folder:          output folder
         :str name:                        name to be given to outputs
@@ -121,8 +126,12 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         :str label:                       LaTeX-style quantity label, for plotting purposes
         :str unit:                        LaTeX-style quantity unit, for plotting purposes
         :bool hierarchical:               hierarchical inference, for plotting purposes
-        :bool save:                       whether to save the plot or not
-        :bool show:                       whether to show the plot during the run or not
+        :bool save:                       whether to save the plots or not
+        :bool show:                       whether to show the plots during the run or not
+        :bool subfolder:                  whether to save the plots in different subfolders (for multiple events)
+        :float true_value:                true value to infer
+        :str true_value_label:            label to assign to the true value marker
+        :str injected_label:              label to assign to the injected distribution
     """
     if hierarchical:
         rec_label = '\mathrm{(H)DPGMM}'
@@ -167,15 +176,17 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         ax.set_yscale('log')
     
     # CR
-    ax.fill_between(x, p[95], p[5], color = 'mediumturquoise', alpha = 0.5)
-    ax.fill_between(x, p[84], p[16], color = 'darkturquoise', alpha = 0.5)
+    ax.fill_between(x, p[95], p[5], color = 'mediumturquoise', alpha = 0.25)
+    ax.fill_between(x, p[84], p[16], color = 'darkturquoise', alpha = 0.25)
     # Injection (if available)
     if injected is not None:
         if callable(injected):
             p_x = injected(x)
         else:
             p_x = injected
-        ax.plot(x, p_x, lw = 0.5, color = 'red', label = '$\mathrm{Simulated}$')
+        if injected_label is not None:
+            injected_label = '$'+injected_label+'$'
+        ax.plot(x, p_x, lw = 0.5, color = 'red', label = injected_label)
         if selfunc is not None:
             if callable(selfunc):
                 f_x = selfunc(x)
@@ -186,7 +197,9 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         
     # Median
     if true_value is not None:
-        ax.axvline(true_value, ls = '--', color = 'r', lw = 0.5, label = '$\mathrm{True\ value}$')
+        if true_value_label is not None:
+            true_value_label = '$'+true_value_label+'$'
+        ax.axvline(true_value, ls = '--', color = 'r', lw = 0.5, label = true_value_label)
     ax.plot(x, p[50], lw = 0.7, color = 'steelblue', label = '${0}$'.format(rec_label))
     if label is None:
         label = 'x'
@@ -251,8 +264,8 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         fig, ax = plt.subplots()
         ax.set_yscale('log')
         # CR
-        ax.fill_between(x, p[95], p[5], color = 'mediumturquoise', alpha = 0.5)
-        ax.fill_between(x, p[84], p[16], color = 'darkturquoise', alpha = 0.5)
+        ax.fill_between(x, p[95], p[5], color = 'mediumturquoise', alpha = 0.25)
+        ax.fill_between(x, p[84], p[16], color = 'darkturquoise', alpha = 0.25)
         # Injection
         ax.plot(x, p_x, lw = 0.5, color = 'red', label = '$\mathrm{Simulated}$')
         # Median
@@ -381,8 +394,8 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
         if samples is not None:
             ax.hist(samples[:,column], bins = int(np.sqrt(len(samples[:,column]))), histtype = 'step', density = True)
         # CR
-        ax.fill_between(x, p[95], p[5], color = 'mediumturquoise', alpha = 0.5)
-        ax.fill_between(x, p[84], p[16], color = 'darkturquoise', alpha = 0.5)
+        ax.fill_between(x, p[95], p[5], color = 'mediumturquoise', alpha = 0.25)
+        ax.fill_between(x, p[84], p[16], color = 'darkturquoise', alpha = 0.25)
         if true_value is not None:
             if true_value[column] is not None:
                 ax.axvline(true_value[column], c = 'orangered', lw = 0.5)
@@ -479,6 +492,110 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
                     pass
             fig.savefig(Path(out_folder, 'density', '{0}.pdf'.format(name)), bbox_inches = 'tight')
     plt.close()
+    
+def plot_1d_dist(draws, x, injected = None, samples = None, out_folder = '.', name = 'density', label = None, unit = None, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}', median_label = '\mathrm{Median}'):
+    """
+    Plot a 1D distribution along with samples from the true distribution (if available).
+    Differently from plot_median_cr, this method requires the distribution to be already evaluated.
+    For FIGARO mixture instances, please use plot_median_cr.
+
+    Arguments:
+        :list-of-iterables draws:         container for realisations
+        :iterable x:                      values at which realisations are evaluated
+        :callable or np.ndarray injected: injected distribution (if available)
+        :np.ndarray samples:              samples from the true distribution (if available)
+        :str or Path out_folder:          output folder
+        :str name:                        name to be given to outputs
+        :str label:                       LaTeX-style quantity label, for plotting purposes
+        :str unit:                        LaTeX-style quantity unit, for plotting purposes
+        :bool save:                       whether to save the plots or not
+        :bool show:                       whether to show the plots during the run or not
+        :bool subfolder:                  whether to save the plots in different subfolders (for multiple events)
+        :float true_value:                true value to infer
+        :str true_value_label:            label to assign to the true value marker
+        :str injected_label:              label to assign to the injected distribution
+        :str median_label:                label to assign to the median distribution
+    """
+    
+    if not np.shape(x)[0] == np.shape(draws)[-1]:
+        raise ValueError("x and each draw must have the same length")
+    
+    percentiles = [50, 5, 16, 84, 95]
+    p = {}
+    for perc in percentiles:
+        p[perc] = np.percentile(draws, perc, axis = 0)
+    
+    fig, ax = plt.subplots()
+    
+    # Samples (if available)
+    if samples is not None:
+        ax.hist(samples, bins = int(np.sqrt(len(samples))), histtype = 'step', density = True, label = '$\mathrm{Samples}$')
+        xlim = ax.get_xlim()
+        ylim = ax.get_ylim()
+    
+    # CR
+    ax.fill_between(x, p[95], p[5], color = 'mediumturquoise', alpha = 0.25)
+    ax.fill_between(x, p[84], p[16], color = 'darkturquoise', alpha = 0.25)
+    # Injection (if available)
+    if injected is not None:
+        if callable(injected):
+            p_x = injected(x)
+        else:
+            p_x = injected
+        if injected_label is not None:
+            injected_label = '$'+injected_label+'$'
+        ax.plot(x, p_x, lw = 0.5, color = 'red', label = injected_label)
+        
+    # Median
+    if true_value is not None:
+        if true_value_label is not None:
+            true_value_label = '$'+true_value_label+'$'
+        ax.axvline(true_value, ls = '--', color = 'r', lw = 0.5, label = true_value_label)
+    if median_label is not None:
+        median_label = '$'+median_label+'$'
+    ax.plot(x, p[50], lw = 0.7, color = 'steelblue', label = median_label)
+    if label is None:
+        label = 'x'
+    if unit is None or unit == '':
+        ax.set_xlabel('${0}$'.format(label))
+    else:
+        ax.set_xlabel('${0}\ [{1}]$'.format(label, unit))
+    ax.set_ylabel('$p({0})$'.format(label))
+    if samples is not None:
+        ax.set_xlim(xlim)
+    ax.set_ylim(bottom = 1e-5, top = np.max(p[95])*1.1)
+    ax.grid(True,dashes=(1,3))
+    ax.legend(loc = 0, frameon = False)
+    if save:
+        if subfolder:
+            plot_folder = Path(out_folder, 'density')
+            if not plot_folder.exists():
+                try:
+                    plot_folder.mkdir()
+                except FileExistsError:
+                    # Avoids issue with parallelisation
+                    pass
+            txt_folder = Path(out_folder, 'txt')
+            if not txt_folder.exists():
+                try:
+                    txt_folder.mkdir()
+                except FileExistsError:
+                    pass
+        else:
+            plot_folder = out_folder
+            txt_folder  = out_folder
+        ax.autoscale(True)
+        if samples is not None:
+            ax.set_xlim(xlim)
+        fig.savefig(Path(plot_folder, '{0}.pdf'.format(name)), bbox_inches = 'tight')
+        np.savetxt(Path(txt_folder, 'prob_{0}.txt'.format(name)), np.array([x, p[50], p[5], p[16], p[84], p[95]]).T, header = 'x 50 5 16 84 95')
+    if show:
+        ax.autoscale(True)
+        if samples is not None:
+            ax.set_xlim(xlim)
+        plt.show()
+    plt.close()
+    
 
 def plot_n_clusters_alpha(n_cl, alpha, out_folder = '.', name = 'event', show = False, save = True):
     """
