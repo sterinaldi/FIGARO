@@ -87,7 +87,6 @@ def main():
     # Entropy derivative window
     if options.window is None:
         options.window = len(samples)//10
-    print(options.window)
         
     # Reconstruction
     if not options.postprocess:
