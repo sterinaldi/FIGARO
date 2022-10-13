@@ -38,6 +38,7 @@ def main():
     parser.add_option("--zero_crossings", dest = "zero_crossings", type = "int", help = "Number of zero-crossings of the entropy derivative to call the number of samples sufficient. Default as in Appendix B of Rinaldi & Del Pozzo (2021)", default = 5)
     parser.add_option("--window", dest = "window", type = "int", help = "Number of points to use to approximate the entropy derivative", default = None)
     parser.add_option("--entropy_interval", dest = "entropy_interval", type = "int", help = "Number of samples between two entropy evaluations", default = 100)
+    parser.add_option("--entropy_draws", dest = "entropy_draws", type = "string", help = "Number of monte carlo samples for entropy evaluation", default = '1e3')
     
     (options, args) = parser.parse_args()
 
@@ -67,7 +68,8 @@ def main():
     # Read parameter(s)
     if options.par is not None:
         options.par = options.par.split(',')
-
+    # Read number of samples
+    options.entropy_draws = int(eval(options.entropy_draws))
 
     save_options(options, options.output)
     
@@ -90,7 +92,7 @@ def main():
     min_window = 200 # Default (empiric) value
     if options.window is None:
         if len(samples) > min_window:
-            options.window = np.max([len(samples)//5, min_window])
+            options.window = min_window
         else:
             options.window = len(samples)//5
     if options.window < min_window:
@@ -112,7 +114,7 @@ def main():
             for i, s in tqdm(enumerate(samples), total = len(samples), disable = (j > 0)):
                 mix.add_new_point(s)
                 if i%options.entropy_interval == 0:
-                    S.append(compute_entropy_single_draw(mix))
+                    S.append(compute_entropy_single_draw(mix, n_draws = options.entropy_draws))
                     n_eval_S.append(i)
             draws.append(mix.build_mixture())
             entropy.append(S)
