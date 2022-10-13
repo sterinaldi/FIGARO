@@ -109,11 +109,11 @@ def main():
             n_eval_S = np.zeros(len(samples)//options.entropy_interval)
             mix.initialise()
             np.random.shuffle(samples)
-            for i, s in enumerate(samples):
+            for i, s in tqdm(enumerate(samples), total = len(samples)):
                 mix.add_new_point(s)
                 if i%options.entropy_interval == 0:
-                    S[i]        = compute_entropy_single_draw(mix)
-                    n_eval_S[i] = i
+                    S[i//options.entropy_interval]        = compute_entropy_single_draw(mix)
+                    n_eval_S[i//options.entropy_interval] = i
             draws.append(mix.build_mixture())
             entropy.append(S)
         draws     = np.array(draws)
@@ -148,7 +148,7 @@ def main():
 
     n_samps_S = entropy[0]
     entropy   = entropy[1:]
-    entropy_interval = n_samps_S[1]-n_samps_S[0]
+    entropy_interval = int(n_samps_S[1]-n_samps_S[0])
 
     # Angular coefficients
     ang_coeff = np.atleast_2d([compute_angular_coefficients(S, options.window) for S in entropy])
@@ -176,7 +176,7 @@ def main():
     
     # Entropy & entropy derivative plot
     plot_1d_dist(n_samps_S, entropy, out_folder = options.output, name = 'entropy_'+name, label = 'N_{s}', median_label = '\mathrm{Entropy}')
-    plot_1d_dist(np.arange(options.window*entropy_interval, len(samples)), ang_coeff, out_folder = options.output, name = 'ang_coeff_'+name, label = 'N_{s}', injected = np.zeros(len(samples)-options.window), true_value = EP, true_value_label = EP_label, median_label = '\mathrm{Entropy\ derivative}')
+    plot_1d_dist(np.arange(options.window*entropy_interval, len(samples))[::entropy_interval], ang_coeff, out_folder = options.output, name = 'ang_coeff_'+name, label = 'N_{s}', injected = np.zeros((len(samples)-options.window*entropy_interval)//entropy_interval), true_value = EP, true_value_label = EP_label, median_label = '\mathrm{Entropy\ derivative}')
 
 if __name__ == '__main__':
     main()
