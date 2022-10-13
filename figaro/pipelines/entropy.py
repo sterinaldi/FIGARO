@@ -176,7 +176,7 @@ def main():
     
     # Entropy & entropy derivative plot
     plot_1d_dist(n_samps_S, entropy, out_folder = options.output, name = 'entropy_'+name, label = 'N_{s}', median_label = '\mathrm{Entropy}')
-    plot_1d_dist(np.linspace(options.window*entropy_interval, len(samples), len(ang_coeff[0]), dtype = int), ang_coeff, out_folder = options.output, name = 'ang_coeff_'+name, label = 'N_{s}', injected = np.zeros((len(samples)-options.window*entropy_interval)//entropy_interval), true_value = EP, true_value_label = EP_label, median_label = '\mathrm{Entropy\ derivative}', injected_label = None)
+    plot_1d_dist(np.linspace(options.window*entropy_interval, len(samples), len(ang_coeff[0]), dtype = int), ang_coeff, out_folder = options.output, name = 'ang_coeff_'+name, label = 'N_{s}', injected = np.zeros(len(ang_coeff[0])), true_value = EP, true_value_label = EP_label, median_label = '\mathrm{Entropy\ derivative}', injected_label = None)
 
 if __name__ == '__main__':
     main()
