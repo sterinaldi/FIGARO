@@ -12,6 +12,7 @@ from figaro.utils import save_options, get_priors
 from figaro.plot import plot_median_cr, plot_multidim, plot_1d_dist
 from figaro.load import load_single_event
 from figaro.diagnostic import compute_entropy_single_draw, compute_angular_coefficients
+from figaro.exceptions import FIGAROException
 
 def main():
 
@@ -92,7 +93,8 @@ def main():
     if len(samples) < options.window:
         options.window = len(samples)//5
         warnings.warn("The window is smaller than the minimum recommended window for entropy derivative estimate. Results might be unreliable")
-    options.window = options.window//options.entropy_interval
+    if len(samples)//options.entropy_interval <= options.window:
+        raise FIGAROException("The number of entropy evaluations ({0}) must be greater than the window length ({1}).".format(len(samples)//options.entropy_interval, options.window))
     
     # Reconstruction
     if not options.postprocess:
