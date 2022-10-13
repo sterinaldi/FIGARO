@@ -112,8 +112,8 @@ def main():
             for i, s in tqdm(enumerate(samples), total = len(samples), disable = (j > 0)):
                 mix.add_new_point(s)
                 if i%options.entropy_interval == 0:
-                    S[i//options.entropy_interval]        = compute_entropy_single_draw(mix)
-                    n_eval_S[i//options.entropy_interval] = i
+                    S[i//options.entropy_interval-1]        = compute_entropy_single_draw(mix)
+                    n_eval_S[i//options.entropy_interval-1] = i
             draws.append(mix.build_mixture())
             entropy.append(S)
         draws     = np.array(draws)
