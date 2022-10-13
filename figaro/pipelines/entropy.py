@@ -36,7 +36,7 @@ def main():
     parser.add_option("--sigma_prior", dest = "sigma_prior", type = "string", help = "Expected standard deviation (prior) - single value or n-dim values. If None, it is estimated from samples", default = None)
     parser.add_option("--snr_threshold", dest = "snr_threshold", type = "float", help = "SNR threshold for simulated GW datasets", default = None)
     parser.add_option("--zero_crossings", dest = "zero_crossings", type = "int", help = "Number of zero-crossings of the entropy derivative to call the number of samples sufficient. Default as in Appendix B of Rinaldi & Del Pozzo (2021)", default = 5)
-    parser.add_option("--window", dest = "window", type = "int", help = "Number of points to use to approximate the entropy derivative", default = None)
+    parser.add_option("--window", dest = "window", type = "int", help = "Number of points to use to approximate the entropy derivative", default = 200)
     parser.add_option("--entropy_interval", dest = "entropy_interval", type = "int", help = "Number of samples between two entropy evaluations", default = 100)
     parser.add_option("--entropy_draws", dest = "entropy_draws", type = "string", help = "Number of monte carlo samples for entropy evaluation", default = '1e3')
     
@@ -89,13 +89,8 @@ def main():
     if options.sigma_prior is not None:
         options.sigma_prior = np.array([float(s) for s in options.sigma_prior.split(',')])
     # Entropy derivative window
-    min_window = 200 # Default (empiric) value
-    if options.window is None:
-        if len(samples) > min_window:
-            options.window = min_window
-        else:
-            options.window = len(samples)//5
-    if options.window < min_window:
+    if len(samples) < options.window:
+        options.window = len(samples)//5
         warnings.warn("The window is smaller than the minimum recommended window for entropy derivative estimate. Results might be unreliable")
     options.window = options.window//options.entropy_interval
     
