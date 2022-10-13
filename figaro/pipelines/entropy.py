@@ -37,7 +37,7 @@ def main():
     parser.add_option("--snr_threshold", dest = "snr_threshold", type = "float", help = "SNR threshold for simulated GW datasets", default = None)
     parser.add_option("--zero_crossings", dest = "zero_crossings", type = "int", help = "Number of zero-crossings of the entropy derivative to call the number of samples sufficient. Default as in Appendix B of Rinaldi & Del Pozzo (2021)", default = 5)
     parser.add_option("--window", dest = "window", type = "int", help = "Number of points to use to approximate the entropy derivative", default = None)
-    parser.add_option("--entropy_interval", dest = "entropy_interval", type = "int", help = "Number of samples between two entropy evaluations", default = 1)
+    parser.add_option("--entropy_interval", dest = "entropy_interval", type = "int", help = "Number of samples between two entropy evaluations", default = 100)
     
     (options, args) = parser.parse_args()
 
@@ -176,7 +176,7 @@ def main():
     
     # Entropy & entropy derivative plot
     plot_1d_dist(n_samps_S, entropy, out_folder = options.output, name = 'entropy_'+name, label = 'N_{s}', median_label = '\mathrm{Entropy}')
-    plot_1d_dist(np.arange(options.window*entropy_interval, len(samples))[::entropy_interval], ang_coeff, out_folder = options.output, name = 'ang_coeff_'+name, label = 'N_{s}', injected = np.zeros((len(samples)-options.window*entropy_interval)//entropy_interval), true_value = EP, true_value_label = EP_label, median_label = '\mathrm{Entropy\ derivative}', injected_label = None)
+    plot_1d_dist(np.arange(options.window*entropy_interval, len(samples))[::entropy_interval][:-1], ang_coeff, out_folder = options.output, name = 'ang_coeff_'+name, label = 'N_{s}', injected = np.zeros((len(samples)-options.window*entropy_interval)//entropy_interval), true_value = EP, true_value_label = EP_label, median_label = '\mathrm{Entropy\ derivative}', injected_label = None)
 
 if __name__ == '__main__':
     main()
