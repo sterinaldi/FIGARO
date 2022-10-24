@@ -7,10 +7,10 @@ import dill
 from pathlib import Path
 from tqdm import tqdm
 
-from figaro.mixture import DPGMM
+from figaro.mixture import DPGMM, HDPGMM
 from figaro.utils import save_options, get_priors
 from figaro.plot import plot_median_cr, plot_multidim, plot_1d_dist
-from figaro.load import load_single_event
+from figaro.load import load_single_event, load_data
 from figaro.diagnostic import compute_entropy_single_draw, compute_angular_coefficients
 from figaro.exceptions import FIGAROException
 
@@ -25,16 +25,21 @@ def main():
     parser.add_option("--parameter", type = "string", dest = "par", help = "GW parameter(s) to be read from file", default = None)
     parser.add_option("--waveform", type = "string", dest = "wf", help = "Waveform to load from samples file. To be used in combination with --parameter. Accepted values: 'combined', 'imr', 'seob'", default = 'combined')
     # Plot
+    parser.add_option("--name", type = "string", dest = "h_name", help = "Name to be given to hierarchical inference files. Default: same name as samples folder parent directory", default = None)
     parser.add_option("-p", "--postprocess", dest = "postprocess", action = 'store_true', help = "Postprocessing", default = False)
     parser.add_option("--symbol", type = "string", dest = "symbol", help = "LaTeX-style quantity symbol, for plotting purposes", default = None)
     parser.add_option("--unit", type = "string", dest = "unit", help = "LaTeX-style quantity unit, for plotting purposes", default = None)
     parser.add_option("-n", "--no_plot_dist", dest = "plot_dist", action = 'store_false', help = "Skip distribution plot", default = True)
+    parser.add_option("-s", "--save_se", dest = "save_single_event", action = 'store_true', help = "Save single event plots", default = False)
+    parser.add_option("--hier_samples", type = "string", dest = "true_vals", help = "Samples from hierarchical distribution (true single-event values, for simulations only)", default = None)
     # Settings
     parser.add_option("--draws", type = "int", dest = "n_draws", help = "Number of draws", default = 100)
+    parser.add_option("--se_draws", type = "int", dest = "n_se_draws", help = "Number of draws for single-event distribution. Default: same as hierarchical distribution", default = None)
     parser.add_option("--n_samples_dsp", type = "int", dest = "n_samples_dsp", help = "Number of samples to analyse (downsampling). Default: all", default = -1)
     parser.add_option("--exclude_points", dest = "exclude_points", action = 'store_true', help = "Exclude points outside bounds from analysis", default = False)
     parser.add_option("--cosmology", type = "string", dest = "cosmology", help = "Cosmological parameters (h, om, ol). Default values from Planck (2021)", default = '0.674,0.315,0.685')
     parser.add_option("--sigma_prior", dest = "sigma_prior", type = "string", help = "Expected standard deviation (prior) - single value or n-dim values. If None, it is estimated from samples", default = None)
+    parser.add_option("-e", "--events", dest = "run_events", action = 'store_false', help = "Skip single-event analysis", default = True)
     parser.add_option("--snr_threshold", dest = "snr_threshold", type = "float", help = "SNR threshold for simulated GW datasets", default = None)
     parser.add_option("--zero_crossings", dest = "zero_crossings", type = "int", help = "Number of zero-crossings of the entropy derivative to call the number of samples sufficient. Default as in Appendix B of Rinaldi & Del Pozzo (2021)", default = 5)
     parser.add_option("--window", dest = "window", type = "int", help = "Number of points to use to approximate the entropy derivative", default = 200)
@@ -74,32 +79,108 @@ def main():
 
     save_options(options, options.output)
     
-    # Load samples
-    samples, name = load_single_event(options.samples_file, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol, waveform = options.wf, snr_threshold = options.snr_threshold)
-    try:
-        dim = np.shape(samples)[-1]
-    except IndexError:
-        dim = 1
-    if options.exclude_points:
-        print("Ignoring points outside bounds.")
-        samples = samples[np.where((np.prod(options.bounds[:,0] < samples, axis = 1) & np.prod(samples < options.bounds[:,1], axis = 1)))]
+    if options.samples_file.is_file():
+        hier_flag = False
+        # Load samples
+        samples, name = load_single_event(options.samples_file, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol, waveform = options.wf, snr_threshold = options.snr_threshold)
+        n_pts = len(samples)
+        try:
+            dim = np.shape(samples)[-1]
+        except IndexError:
+            dim = 1
+        if options.exclude_points:
+            print("Ignoring points outside bounds.")
+            samples = samples[np.where((np.prod(options.bounds[:,0] < samples, axis = 1) & np.prod(samples < options.bounds[:,1], axis = 1)))]
+        else:
+            # Check if all samples are within bounds
+            if not np.alltrue([(samples[:,i] > options.bounds[i,0]).all() and (samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
+                raise ValueError("One or more samples are outside the given bounds.")
     else:
-        # Check if all samples are within bounds
-        if not np.alltrue([(samples[:,i] > options.bounds[i,0]).all() and (samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
-            raise ValueError("One or more samples are outside the given bounds.")
+        hier_flag = True
+        # Load events
+        events, names = load_data(options.samples_file, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol, waveform = options.wf, snr_threshold = options.snr_threshold)
+        n_pts = len(events)
+        try:
+            dim = np.shape(events[0][0])[-1]
+        except IndexError:
+            dim = 1
+        # Read hierarchical name
+        if options.h_name is None:
+            name = options.samples_folder.parent.parts[-1]
+        else:
+            name = options.h_name
+        if options.exclude_points:
+            print("Ignoring points outside bounds.")
+            for i, ev in enumerate(events):
+                events[i] = ev[np.where((np.prod(options.bounds[:,0] < ev, axis = 1) & np.prod(ev < options.bounds[:,1], axis = 1)))]
+            all_samples = np.atleast_2d(np.concatenate(events))
+        else:
+            # Check if all samples are within bounds
+            all_samples = np.atleast_2d(np.concatenate(events))
+            if not np.alltrue([(all_samples[:,i] > options.bounds[i,0]).all() and (all_samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
+                raise ValueError("One or more samples are outside the given bounds.")
+        output_plots = Path(options.output, 'plots')
+        if not output_plots.exists():
+            output_plots.mkdir()
+        output_pkl = Path(options.output, 'draws')
+        if not output_pkl.exists():
+            output_pkl.mkdir()
+    # If provided, load true values
+    true_vals = None
+    if not hier_flag:
+        true_vals = samples
+    if hier_flag and options.true_vals is not None:
+        options.true_vals = Path(options.true_vals).resolve()
+        true_vals = np.loadtxt(options.true_vals)
     if options.sigma_prior is not None:
         options.sigma_prior = np.array([float(s) for s in options.sigma_prior.split(',')])
-    # Entropy derivative window
-    if len(samples) < options.window:
-        options.window = len(samples)//5
+    # Entropy derivative
+    if n_pts < options.window:
+        options.window = n_pts//5
         warnings.warn("The window is smaller than the minimum recommended window for entropy derivative estimate. Results might be unreliable")
-    if len(samples)//options.entropy_interval <= options.window:
-        raise FIGAROException("The number of entropy evaluations ({0}) must be greater than the window length ({1}).".format(len(samples)//options.entropy_interval, options.window))
+    if n_pts//options.entropy_interval <= options.window:
+        raise FIGAROException("The number of entropy evaluations ({0}) must be greater than the window length ({1}).".format(n_pts//options.entropy_interval, options.window))
     
     # Reconstruction
     if not options.postprocess:
+        if hier_flag:
+            if options.run_events:
+                mix = DPGMM(options.bounds)
+                posteriors = []
+                # Run each single-event analysis
+                for i in tqdm(range(len(events)), desc = 'Events'):
+                    ev     = events[i]
+                    name_ev = names[i]
+                    mix.initialise(prior_pars = get_priors(mix.bounds, samples = ev))
+                    # Draw samples
+                    draws = [mix.density_from_samples(ev) for _ in range(options.n_se_draws)]
+                    posteriors.append(draws)
+                    # Make plots
+                    if options.save_single_event:
+                        if dim == 1:
+                            plot_median_cr(draws, samples = ev, out_folder = output_plots, name = name_ev, label = options.symbol, unit = options.unit, subfolder = True)
+                        else:
+                            plot_multidim(draws, samples = ev, out_folder = output_plots, name = name_ev, labels = symbols, units = units)
+                    # Save single-event draws
+                    with open(Path(output_pkl, 'draws_'+name_ev+'.pkl'), 'wb') as f:
+                        dill.dump(np.array(draws), f)
+                # Save all single-event draws together
+                posteriors = np.array(posteriors)
+                with open(Path(output_pkl, 'posteriors_single_event.pkl'), 'wb') as f:
+                    dill.dump(posteriors, f)
+            else:
+                # Load pre-computed posteriors
+                try:
+                    with open(Path(output_pkl, 'posteriors_single_event.pkl'), 'rb') as f:
+                        posteriors = dill.load(f)
+                except FileNotFoundError:
+                    raise FileNotFoundError("No posteriors_single_event.pkl file found. Please provide it or re-run the single-event inference")
         # Actual analysis
-        mix     = DPGMM(options.bounds, prior_pars = get_priors(options.bounds, samples = samples, std = options.sigma_prior))
+        if not hier_flag:
+            mix = DPGMM(options.bounds, prior_pars = get_priors(options.bounds, samples = samples, std = options.sigma_prior))
+        else:
+            mix = HDPGMM(options.bounds, prior_pars = get_priors(options.bounds, samples = all_samples, std = options.sigma_prior))
+            samples = posteriors
         draws   = []
         entropy = []
         # This reproduces what it is done inside mix.density_from_samples while computing entropy for each new sample
@@ -133,7 +214,7 @@ def main():
     if options.plot_dist:
         # Plot distribution
         if dim == 1:
-            plot_median_cr(draws, injected = inj_density, samples = samples, out_folder = options.output, name = name, label = options.symbol, unit = options.unit)
+            plot_median_cr(draws, injected = inj_density, samples = true_vals, out_folder = options.output, name = name, label = options.symbol, unit = options.unit, hierarchical = hier_flag)
         else:
             if options.symbol is not None:
                 symbols = options.symbol.split(',')
@@ -143,7 +224,7 @@ def main():
                 units = options.unit.split(',')
             else:
                 units = options.unit
-            plot_multidim(draws, samples = samples, out_folder = options.output, name = name, labels = symbols, units = units)
+            plot_multidim(draws, samples = true_vals, out_folder = options.output, name = name, labels = symbols, units = units, hierarchical = hier_flag)
 
     n_samps_S = entropy[0]
     entropy   = entropy[1:]
