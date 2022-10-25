@@ -36,6 +36,7 @@ GW_par = {'m1'                 : 'mass_1_source',
           's1'                 : 'spin_1',
           's2'                 : 'spin_2',
           'snr'                : 'snr',
+          'far'                : 'far',
           }
 
 def _find_redshift(omega, dl):
@@ -59,7 +60,7 @@ def available_gw_pars():
     """
     print([p for p in GW_par.keys() if not p == 'snr'])
 
-def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.315, ol = 0.685, volume = False, waveform = 'combined', snr_threshold = None):
+def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.315, ol = 0.685, volume = False, waveform = 'combined', snr_threshold = None, far_threshold = None):
     '''
     Loads the data from .txt/.dat files (for simulations) or .h5/.hdf5 files (posteriors from GWTC) for a single event.
     Default cosmological parameters from Planck Collaboration (2021) in a flat Universe (https://www.aanda.org/articles/aa/pdf/2020/09/aa33910-18.pdf)
@@ -75,7 +76,9 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674
         :double ol:        cosmological constant density parameter
         :bool volume:      if True, loads RA, dec and Luminosity distance (for skymaps)
         :str waveform:     waveform family to be used ('combined', 'seob', 'imr')
-    
+        :double snr_threhsold: SNR threshold for event filtering. For injection analysis only.
+        :double far_threshold: FAR threshold for event filtering. For injection analysis only.
+        
     Returns:
         :np.ndarray: samples
         :np.ndarray: name
@@ -112,7 +115,7 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674
             raise FIGAROException("LAL is not installed. GW posterior samples cannot be loaded.")
         # If everything is ok, load the samples
         else:
-            out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate, waveform = waveform, snr_threshold = snr_threshold)
+            out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate, waveform = waveform, snr_threshold = snr_threshold, far_threshold = far_threshold)
     
     if out is None:
         return out, name
@@ -121,7 +124,7 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674
         out = np.atleast_2d(out).T
     return out, name
 
-def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.315, ol = 0.685, volume = False, waveform = 'combined', snr_threshold = None):
+def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.315, ol = 0.685, volume = False, waveform = 'combined', snr_threshold = None, far_threshold = None):
     '''
     Loads the data from .txt files (for simulations) or .h5/.hdf5/.dat files (posteriors from GWTC-x).
     Default cosmological parameters from Planck Collaboration (2021) in a flat Universe (https://www.aanda.org/articles/aa/pdf/2020/09/aa33910-18.pdf)
@@ -136,7 +139,9 @@ def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.
         :double om:        matter density parameter
         :double ol:        cosmological constant density parameter
         :str waveform:     waveform family to be used ('combined', 'seob', 'imr')
-        
+        :double snr_threhsold: SNR threshold for event filtering. For injection analysis only.
+        :double far_threshold: FAR threshold for event filtering. For injection analysis only.
+
     Returns:
         :np.ndarray: samples
         :np.ndarray: names
@@ -188,7 +193,7 @@ def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.
                 raise FIGAROException("LAL is not installed. GW posterior samples cannot be loaded.")
             # If everything is ok, load the samples
             else:
-                out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate, waveform = waveform, snr_threshold = snr_threshold)
+                out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate, waveform = waveform, snr_threshold = snr_threshold, far_threshold = far_threshold)
                 if out is not None:
                     events.append(out)
                 else:
@@ -196,7 +201,7 @@ def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.
                 
     return (events, np.array(names))
 
-def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, waveform = 'combined', snr_threshold = None):
+def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, waveform = 'combined', snr_threshold = None, far_threshold = None):
     '''
     Reads data from .h5/.hdf5 GW posterior files.
     For GWTC-3 data release, it uses by default the Mixed posterior samples.
@@ -212,11 +217,13 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
         * IMRPhenomPv3HM
     
     Arguments:
-        :str event:       file to read
-        :str par:         parameter to extract
-        :tuple cosmology: cosmological parameters (h, om, ol)
-        :int n_samples:   number of samples for (random) downsampling. Default -1: all samples
-        :str waveform:    waveform family to be used ('combined', 'imr', 'seob')
+        :str event:            file to read
+        :str par:              parameter to extract
+        :tuple cosmology:      cosmological parameters (h, om, ol)
+        :int n_samples:        number of samples for (random) downsampling. Default -1: all samples
+        :str waveform:         waveform family to be used ('combined', 'imr', 'seob')
+        :double snr_threhsold: SNR threshold for event filtering. For injection analysis only.
+        :double far_threshold: FAR threshold for event filtering. For injection analysis only.
     
     Returns:
         :np.ndarray:    samples
@@ -226,7 +233,14 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
     if not waveform in supported_waveforms:
         raise FIGAROException("Unknown waveform: please use 'combined' (default), 'imr' or 'seob'")
     
-    if snr_threshold is not None:
+    if far_threshold is not None and snr_threshold is not None:
+        warnings.warn("Both FAR and SNR threshold provided. FAR will be used.")
+        snr_threshold = None
+    
+    if far_threshold is not None:
+        if not 'far' in par:
+            par = np.append(par, 'far')
+    elif snr_threshold is not None:
         if not 'snr' in par:
             par = np.append(par, 'snr')
     
@@ -299,11 +313,18 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                 if name in par:
                     if name == 'snr' and snr_threshold is not None:
                         try:
-                            flag_snr = True
+                            flag_filter = True
                             snr = np.array(data[lab])
                         except:
-                            flag_snr = False
+                            flag_filter = False
                             warnings.warn("SNR filter is not available with this dataset.")
+                    if name == 'far' and far_threshold is not None:
+                        try:
+                            flag_filter = True
+                            far = np.array(data[lab])
+                        except:
+                            flag_filter = False
+                            warnings.warn("FAR filter is not available with this dataset.")
                     if name == 's1':
                         try:
                             samples.append(data[lab])
@@ -331,11 +352,14 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                 samples_loaded = np.array(samples)
                 samples = []
                 for pi in par:
-                    if not pi == 'snr':
+                    if not (pi == 'snr' or pi == 'far'):
                         samples.append(samples_loaded[np.where(loaded_pars == pi)[0]].flatten())
                 samples = np.array(samples)
-                if snr_threshold is not None and flag_snr:
-                    samples = samples[:, np.where(snr > snr_threshold)[0]]
+                if flag_filter:
+                    if far_threshold is not None:
+                        samples = samples[:, np.where((far < far_threshold) & (far > 0))[0]]
+                    if snr_threshold is not None:
+                        samples = samples[:, np.where(snr > snr_threshold)[0]]
                 samples = samples.T
             if n_samples > -1:
                 s = int(min([n_samples, len(samples)]))
