@@ -98,6 +98,8 @@ def main():
     parser.add_option("--n_parallel", dest = "n_parallel", type = "int", help = "Number of parallel threads", default = 4)
     parser.add_option("--MC_draws", dest = "MC_draws", type = "int", help = "Number of draws for assignment MC integral", default = 2000)
     parser.add_option("--snr_threshold", dest = "snr_threshold", type = "float", help = "SNR threshold for simulated GW datasets", default = None)
+    parser.add_option("--far_threshold", dest = "far_threshold", type = "float", help = "FAR threshold for simulated GW datasets", default = None)
+    
     (options, args) = parser.parse_args()
 
     # Paths
@@ -157,7 +159,7 @@ def main():
     save_options(options, options.output)
     
     # Load samples
-    events, names = load_data(options.samples_folder, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol, waveform = options.wf, snr_threshold = options.snr_threshold)
+    events, names = load_data(options.samples_folder, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol, waveform = options.wf, snr_threshold = options.snr_threshold, far_threshold = options.far_threshold)
     try:
         dim = np.shape(events[0][0])[-1]
     except IndexError:
