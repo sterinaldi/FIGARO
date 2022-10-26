@@ -49,12 +49,12 @@ class worker:
         ev.setflags(write = True)
         self.mixture.initialise(prior_pars = get_priors(self.bounds, samples = ev))
         draws = [self.mixture.density_from_samples(ev) for _ in range(n_draws)]
-        
+        plt_bounds = np.atleast_2d([ev.min(axis = 0), ev.max(axis = 0)]).T
         if self.save_se:
             if self.dim == 1:
-                plot_median_cr(draws, samples = ev, out_folder = self.out_folder_plots, name = name, label = self.label, unit = self.unit, subfolder = True)
+                plot_median_cr(draws, samples = ev, bounds = plt_bounds[0], out_folder = self.out_folder_plots, name = name, label = self.label, unit = self.unit, subfolder = True)
             else:
-                plot_multidim(draws, samples = ev, out_folder = self.out_folder_plots, name = name, labels = self.label, units = self.unit, subfolder = True)
+                plot_multidim(draws, samples = ev, bounds = plt_bounds, out_folder = self.out_folder_plots, name = name, labels = self.label, units = self.unit, subfolder = True)
         
         with open(Path(self.out_folder_pkl, 'draws_'+name+'.pkl'), 'wb') as f:
             dill.dump(np.array(draws), f)

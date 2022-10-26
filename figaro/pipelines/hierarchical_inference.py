@@ -144,10 +144,11 @@ def main():
                 posteriors.append(draws)
                 # Make plots
                 if options.save_single_event:
+                    plt_bounds = np.atleast_2d([ev.min(axis = 0), ev.max(axis = 0)]).T
                     if dim == 1:
-                        plot_median_cr(draws, samples = ev, out_folder = output_plots, name = name, label = options.symbol, unit = options.unit, subfolder = True)
+                        plot_median_cr(draws, samples = ev, bounds = plt_bounds[0], out_folder = output_plots, name = name, label = options.symbol, unit = options.unit, subfolder = True)
                     else:
-                        plot_multidim(draws, samples = ev, out_folder = output_plots, name = name, labels = symbols, units = units)
+                        plot_multidim(draws, samples = ev, bounds = plt_bounds, out_folder = output_plots, name = name, labels = symbols, units = units)
                 # Save single-event draws
                 with open(Path(output_pkl, 'draws_'+name+'.pkl'), 'wb') as f:
                     dill.dump(np.array(draws), f)
