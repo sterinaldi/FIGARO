@@ -346,12 +346,9 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
             if not (bounds[:,0] >= x_min).all():
                 warnings.warn("The provided lower bound is invalid for at least one draw. Default values will be used instead.")
             x_min[np.where(bounds[:,0] >= x_min)] = bounds[:,0][np.where(bounds[:,0] >= x_min)]
-            print(x_min, bounds[:,0], np.where(bounds[:,0] >= x_min))
             if not (bounds[:,1] <= x_max).all():
                 warnings.warn("The provided upper bound is invalid for at least one draw. Default values will be used instead.")
-            print(x_max, bounds[:,1], np.where(bounds[:,1] <= x_max))
             x_max[np.where(bounds[:,1] <= x_max)] = bounds[:,1][np.where(bounds[:,1] <= x_max)]
-            print(x_max, bounds[:,1], np.where(bounds[:,1] <= x_max))
     bounds = np.array([x_min, x_max]).T
     
     K = dim
