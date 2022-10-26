@@ -287,9 +287,15 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                                         data = f['IMRPhenomPv3HM']['posterior_samples']
                                 except:
                                     try:
-                                        data = f['C01:IMRPhenomXPHM:LowSpin']['posterior_samples']
+                                        try:
+                                            data = f['C01:IMRPhenomXPHM:LowSpin']['posterior_samples']
+                                        except:
+                                            data = f['IMRPhenomXPHM:LowSpin']['posterior_samples']
                                     except:
-                                        data = f['IMRPhenomXPHM:LowSpin']['posterior_samples']
+                                        try:
+                                            data = f['C01:IMRPhenomPv2_NRTidal-LS']['posterior_samples']
+                                        except:
+                                            data = f['IMRPhenomPv2_NRTidal-LS']['posterior_samples']
                     if waveform == 'seob':
                         try:
                             try:
@@ -304,10 +310,15 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                                     data = f['SEOBNRv4P']['posterior_samples']
                             except:
                                 try:
-                                    data = f['C01:SEOBNRv4']['posterior_samples']
+                                    try:
+                                        data = f['C01:SEOBNRv4']['posterior_samples']
+                                    except:
+                                        data = f['SEOBNRv4']['posterior_samples']
                                 except:
-                                    data = f['SEOBNRv4']['posterior_samples']
-                
+                                    try:
+                                        data = f['C01:SEOBNRv4T_surrogate_LS']['posterior_samples']
+                                    except:
+                                        data = f['SEOBNRv4T_surrogate_LS']['posterior_samples']
                 
             for name, lab in zip(GW_par.keys(), GW_par.values()):
                 flag_filter = False
