@@ -191,7 +191,7 @@ def main():
     
     # Reconstruction
     if not options.postprocess:
-        ray.init(num_cpus = options.n_parallel, object_store_memory=10**9)
+        ray.init(num_cpus = options.n_parallel)
         pool = ActorPool([worker.remote(bounds           = options.bounds,
                                         out_folder_plots = output_plots,
                                         out_folder_pkl   = output_pkl,

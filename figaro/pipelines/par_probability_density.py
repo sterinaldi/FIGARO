@@ -103,7 +103,7 @@ def main():
     # Reconstruction
     if not options.postprocess:
         # Actual analysis
-        ray.init(num_cpus = options.n_parallel, object_store_memory=10**9)
+        ray.init(num_cpus = options.n_parallel)
         pool = ActorPool([worker.remote(bounds  = options.bounds,
                                         sigma   = options.sigma_prior,
                                         samples = samples,
