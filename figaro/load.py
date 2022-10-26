@@ -58,7 +58,7 @@ def available_gw_pars():
     """
     Print a list of available GW parameters
     """
-    print([p for p in GW_par.keys() if not p == 'snr'])
+    print([p for p in GW_par.keys() if not p in ['snr', 'far']])
 
 def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.315, ol = 0.685, volume = False, waveform = 'combined', snr_threshold = None, far_threshold = None):
     '''
@@ -310,20 +310,19 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                 
                 
             for name, lab in zip(GW_par.keys(), GW_par.values()):
+                flag_filter = False
                 if name in par:
                     if name == 'snr' and snr_threshold is not None:
                         try:
                             flag_filter = True
                             snr = np.array(data[lab])
                         except:
-                            flag_filter = False
                             warnings.warn("SNR filter is not available with this dataset.")
                     if name == 'far' and far_threshold is not None:
                         try:
                             flag_filter = True
                             far = np.array(data[lab])
                         except:
-                            flag_filter = False
                             warnings.warn("FAR filter is not available with this dataset.")
                     if name == 's1':
                         try:
