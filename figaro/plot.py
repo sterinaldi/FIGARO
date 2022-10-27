@@ -350,6 +350,7 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
                 warnings.warn("The provided upper bound is invalid for at least one draw. Default values will be used instead.")
             x_max[np.where(bounds[:,1] <= x_max)] = bounds[:,1][np.where(bounds[:,1] <= x_max)]
     bounds = np.array([x_min, x_max]).T
+    print(bounds)
     
     K = dim
     factor = 2.0          # size of one side of one panel
