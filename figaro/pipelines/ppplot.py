@@ -54,7 +54,7 @@ def main():
         output_pkl.mkdir()
     # Read bounds
     if options.bounds is not None:
-        options.bounds = np.atleast_2d(eval(options.bounds))
+        options.bounds = np.array(np.atleast_2d(eval(options.bounds)), dtype = np.float64)
     elif options.bounds is None and not options.postprocess:
         raise Exception("Please provide bounds for the inference (use -b '[[xmin,xmax],[ymin,ymax],...]')")
     # Load true values
