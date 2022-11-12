@@ -178,6 +178,12 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
     # CR
     ax.fill_between(x, p[95], p[5], color = 'mediumturquoise', alpha = 0.25)
     ax.fill_between(x, p[84], p[16], color = 'darkturquoise', alpha = 0.25)
+    # Selection function (if available)
+    if selfunc is not None:
+        if callable(selfunc):
+            f_x = selfunc(x)
+        else:
+            f_x = selfunc
     # Injection (if available)
     if injected is not None:
         if callable(injected):
@@ -188,10 +194,6 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
             injected_label = '$'+injected_label+'$'
         ax.plot(x, p_x, lw = 0.5, color = 'red', label = injected_label)
         if selfunc is not None:
-            if callable(selfunc):
-                f_x = selfunc(x)
-            else:
-                f_x = selfunc
             filtered_p_x = p_x*f_x
             ax.plot(x, filtered_p_x/np.sum(filtered_p_x*dx), lw = 0.5, color = 'k', label = '$\mathrm{Selection\ effects}$')
         
@@ -254,7 +256,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
     plt.close()
     
     # If selection function is available, plot reweighted distribution
-    if injected is not None and selfunc is not None:
+    if selfunc is not None:
         for perc in percentiles:
             p[perc] = np.percentile((probs/f_x).T, perc, axis = 1)
         norm = p[50].sum()*dx
@@ -266,8 +268,9 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         # CR
         ax.fill_between(x, p[95], p[5], color = 'mediumturquoise', alpha = 0.25)
         ax.fill_between(x, p[84], p[16], color = 'darkturquoise', alpha = 0.25)
-        # Injection
-        ax.plot(x, p_x, lw = 0.5, color = 'red', label = '$\mathrm{Simulated}$')
+        if injected is not None:
+            # Injection
+            ax.plot(x, p_x, lw = 0.5, color = 'red', label = injected_label)
         # Median
         ax.plot(x, p[50], lw = 0.7, color = 'steelblue', label = '${0}$'.format(rec_label))
         if label is None:
@@ -282,11 +285,11 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         ax.grid(True,dashes=(1,3))
         ax.legend(loc = 0, frameon = False)
         if save:
-            fig.savefig(Path(log_folder, 'log_inj_{0}.pdf'.format(name)), bbox_inches = 'tight')
+            fig.savefig(Path(log_folder, 'log_true_{0}.pdf'.format(name)), bbox_inches = 'tight')
             ax.set_yscale('linear')
             ax.autoscale(True)
-            fig.savefig(Path(plot_folder, 'inj_{0}.pdf'.format(name)), bbox_inches = 'tight')
-            np.savetxt(Path(txt_folder, 'prob_inj_{0}.txt'.format(name)), np.array([x, p[50], p[5], p[16], p[84], p[95]]).T, header = 'x 50 5 16 84 95')
+            fig.savefig(Path(plot_folder, 'true_{0}.pdf'.format(name)), bbox_inches = 'tight')
+            np.savetxt(Path(txt_folder, 'prob_true_{0}.txt'.format(name)), np.array([x, p[50], p[5], p[16], p[84], p[95]]).T, header = 'x 50 5 16 84 95')
         if show:
             ax.set_yscale('linear')
             ax.autoscale(True)
