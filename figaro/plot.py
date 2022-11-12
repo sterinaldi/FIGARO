@@ -345,13 +345,15 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
         bounds = np.atleast_2d(bounds)
         if bounds.shape == (1, 2):
             bounds = np.array([bounds[0] for _ in range(dim)])
-        if bounds.shape == (dim, 2):
+        elif bounds.shape == (dim, 2):
             if not (bounds[:,0] >= x_min).all():
                 warnings.warn("The provided lower bound is invalid for at least one draw. Default values will be used instead.")
             x_min[np.where(bounds[:,0] >= x_min)] = bounds[:,0][np.where(bounds[:,0] >= x_min)]
             if not (bounds[:,1] <= x_max).all():
                 warnings.warn("The provided upper bound is invalid for at least one draw. Default values will be used instead.")
             x_max[np.where(bounds[:,1] <= x_max)] = bounds[:,1][np.where(bounds[:,1] <= x_max)]
+        else:
+            warnings.warn("The provided bounds have an invalid shape {0}. Shape must be (1,2) or (dim, 2).\nDefault bounds will be used instead.".format(bounds.shape))
     bounds = np.array([x_min, x_max]).T
     
     K = dim
