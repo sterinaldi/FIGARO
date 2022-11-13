@@ -503,7 +503,7 @@ def load_density(file):
             return _load_json(file)
         except FileNotFoundError:
             try:
-                return _load_json(file.with_suffix('.pkl'))
+                return _load_pkl(file.with_suffix('.pkl'))
             except FileNotFoundError:
                 raise FIGAROException("{0} not found. Please provide it or re-run the inference.".format(file.name))
     else:
