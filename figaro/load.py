@@ -444,49 +444,62 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
             else:
                 return samples
 
-def save_density(density, folder = '.', name = 'density'):
+def save_density(draws, folder='.', name='density'):
     """
-    Exports a figaro.mixture instance into a json file
+    Exports a list of figaro.mixture instances into a json file
 
     Arguments:
-        :figaro.mixture density: mixture to be saved for later analysis.
-        :string or Path folder:  The folder in which the output json file will be saved.
-        :string name:            Name to be given to output file.
+        :list draws:          list of mixtures to be saved
+        :str or Path folder:  folder in which the output json file will be saved
+        :string name:         name to be given to output file
     """
-    dict_ = density.__dict__.copy()
-
-    for key in dict_.keys():
-        value = dict_[key]
-        if isinstance(value, np.ndarray):
-            value = value.tolist()
-        dict_[key] = value
+    if len(np.shape(draws)) == 1:
+        draws = np.atleast_2d(draws)
+    ll = []
+    for draws_i in draws:
+        list_of_dicts = [dr.__dict__.copy() for dr in draws_i]
         
-    s = json.dumps(dict_, indent=4)
-
+        for density in list_of_dicts:
+            for key in density.keys():
+                value = density[key]
+                if isinstance(value, np.ndarray):
+                    value = value.tolist()
+                density[key] = value
+                
+        ll.append(list_of_dicts)
+        
+    s = json.dumps(ll)
+    
     with open(Path(folder, name + '.json'), 'w') as f:
         json.dump(s, f)
 
 def load_density(file):
     """
-    Reads a json file containing the parameters for a saved figaro.mixture object and returns an instance of such object.
+    Reads a json file containing the parameters for a saved list
+    of figaro.mixture objects and returns an instance of such list.
 
     Arguments:
-        :string or Path file:  The path to the json file of the mixture.
-        
+        :str or Path file: file with draws
+
     Returns
-        :figaro.mixture: An instance of the class containing the data stored in the json file.
+        :list: list of figaro.mixture object instances from the given json file.
     """
-
     with open(Path(file), 'r') as fjson:
-        dictjson = json.load(fjson)
+        dictjson = json.loads(json.load(fjson))
+    
+    ll = []
+    for list_of_dict in dictjson:
+        draws = []
+        for dict_ in list_of_dict:
+            dict_.pop('log_w')
+            for key in dict_.keys():
+                value = dict_[key]
+                if isinstance(value, list):
+                    dict_[key] = np.array(value)
+            draws.append(mixture(**dict_))
+        ll.append(draws)
+    
+    if len(ll) == 1:
+        return ll[0]
+    return ll
 
-    dict_ = json.loads(dictjson)
-    dict_.pop('log_w')
-
-    for key in dict_.keys():
-        value = dict_[key]
-        if isinstance(value, list):
-            dict_[key] = np.array(value)
-    density = mixture(**dict_)
-
-    return density
