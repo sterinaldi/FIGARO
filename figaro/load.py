@@ -475,8 +475,7 @@ def save_density(draws, folder='.', name='density'):
 
 def load_density(file):
     """
-    Reads a json file containing the parameters for a saved list
-    of figaro.mixture objects and returns an instance of such list.
+    Reads a json file containing the parameters for a saved list of figaro.mixture objects and returns an instance of such list.
 
     Arguments:
         :str or Path file: file with draws
