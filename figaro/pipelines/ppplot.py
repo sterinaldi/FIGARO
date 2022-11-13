@@ -13,7 +13,7 @@ from figaro.transform import transform_to_probit
 from figaro.utils import save_options, recursive_grid, get_priors
 from figaro.plot import plot_median_cr, plot_multidim, pp_plot_levels
 from figaro.credible_regions import FindLevelForHeight, FindNearest_Grid
-from figaro.load import load_data
+from figaro.load import load_data, save_density, load_density
 
 def main():
 
@@ -23,6 +23,7 @@ def main():
     parser.add_option("-b", "--bounds", type = "string", dest = "bounds", help = "Density bounds. Must be a string formatted as '[[xmin, xmax], [ymin, ymax],...]'. For 1D distributions use '[xmin, xmax]'. Quotation marks are required and scientific notation is accepted", default = None)
     parser.add_option("--true_vals", type = "string", dest = "true_vals", help = "JSON file storing a dictionary with the injected values. Dictionary keys must match single-event samples files names", default = None)
     parser.add_option("-o", "--output", type = "string", dest = "output", help = "Output folder. Default: same directory as samples folder", default = None)
+    parser.add_option("-j", dest = "json", action = 'store_true', help = "Save mixtures in json file", default = False)
     # Plot
     parser.add_option("--name", type = "string", dest = "name", help = "Name to be given to pp-plot files. Default: MDC", default = 'MDC')
     parser.add_option("-p", "--postprocess", dest = "postprocess", action = 'store_true', help = "Postprocessing", default = False)
@@ -49,9 +50,9 @@ def main():
     output_plots = Path(options.output, 'plots')
     if not output_plots.exists():
         output_plots.mkdir()
-    output_pkl = Path(options.output, 'draws')
-    if not output_pkl.exists():
-        output_pkl.mkdir()
+    output_draws = Path(options.output, 'draws')
+    if not output_draws.exists():
+        output_draws.mkdir()
     # Read bounds
     if options.bounds is not None:
         options.bounds = np.array(np.atleast_2d(eval(options.bounds)), dtype = np.float64)
@@ -64,7 +65,11 @@ def main():
             true_vals = json.load(f)
     else:
         raise Exception("Please provide JSON file with true values")
-    
+    # File extension
+    if options.json:
+        options.ext = 'json'
+    else:
+        options.ext = 'pkl'
     # Check that all files are .txt
     if not (np.array([f.suffix for f in options.samples_folder.glob('*')]) == '.txt').all():
         raise Exception("Only .txt files are currently supported for PP-plot analysis")
@@ -142,11 +147,9 @@ def main():
                     else:
                         plot_multidim(draws, samples = ev, out_folder = output_plots, name = name, labels = symbols, units = units, true_value = t)
                 # Save single-event draws
-                with open(Path(output_pkl, 'draws_'+name+'.pkl'), 'wb') as f:
-                    dill.dump(np.array(draws), f)
+                save_density(draws, folder = output_draws, name = 'draws_'+name, ext = options.ext)
             else:
-                with open(Path(output_pkl, 'draws_'+name+'.pkl'), 'rb') as f:
-                    draws = dill.load(f)
+                draws = load_density(Path(output_draws, 'draws_'+name+'.'+options.ext))
             # Evaluate mixtures
             logP      = np.array([d.logpdf(grid) for d in draws])
             # Find true_value
@@ -159,7 +162,7 @@ def main():
             
         # Save all single-event draws together (might be useful for future hierarchical analysis)
         posteriors = np.array(posteriors)
-        with open(Path(output_pkl, 'posteriors_single_event.pkl'), 'wb') as f:
+        with open(Path(output_draws, 'posteriors_single_event.pkl'), 'wb') as f:
             dill.dump(posteriors, f)
         # Save credible levels
         CR_levels  = np.array(CR_levels)

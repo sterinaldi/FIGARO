@@ -79,7 +79,7 @@ def main():
     
     #Save true values as JSON file
     with open(Path(options.output, 'true_vals.json'), 'w', encoding='utf-8') as f:
-        json.dump(true_vals_dict, f, ensure_ascii=False, indent = 4)
+        json.dump(true_vals_dict, f, ensure_ascii=False)
     # Save true values as txt file as well
     np.savetxt(Path(options.output, 'truths.txt'), true_vals)
     

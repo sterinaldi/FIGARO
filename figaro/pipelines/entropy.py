@@ -11,7 +11,7 @@ from tqdm import tqdm
 from figaro.mixture import DPGMM, HDPGMM
 from figaro.utils import save_options, get_priors
 from figaro.plot import plot_median_cr, plot_multidim, plot_1d_dist
-from figaro.load import load_single_event, load_data
+from figaro.load import load_single_event, load_data, save_density, load_density
 from figaro.diagnostic import compute_entropy_single_draw, compute_angular_coefficients
 from figaro.exceptions import FIGAROException
 
@@ -22,6 +22,7 @@ def main():
     parser.add_option("-i", "--input", type = "string", dest = "samples_file", help = "File with samples")
     parser.add_option("-b", "--bounds", type = "string", dest = "bounds", help = "Density bounds. Must be a string formatted as '[[xmin, xmax], [ymin, ymax],...]'. For 1D distributions use '[xmin, xmax]'. Quotation marks are required and scientific notation is accepted", default = None)
     parser.add_option("-o", "--output", type = "string", dest = "output", help = "Output folder. Default: same directory as samples", default = None)
+    parser.add_option("-j", dest = "json", action = 'store_true', help = "Save mixtures in json file", default = False)
     parser.add_option("--inj_density", type = "string", dest = "inj_density_file", help = "Python module with injected density - please name the method 'density'", default = None)
     parser.add_option("--parameter", type = "string", dest = "par", help = "GW parameter(s) to be read from file", default = None)
     parser.add_option("--waveform", type = "string", dest = "wf", help = "Waveform to load from samples file. To be used in combination with --parameter. Accepted values: 'combined', 'imr', 'seob'", default = 'combined')
@@ -78,7 +79,12 @@ def main():
         options.par = options.par.split(',')
     # Read number of samples
     options.entropy_draws = int(eval(options.entropy_draws))
-
+    # File extension
+    if options.json:
+        options.ext = 'json'
+    else:
+        options.ext = 'pkl'
+        
     save_options(options, options.output)
     
     if options.samples_file.is_file():
@@ -124,9 +130,9 @@ def main():
         output_plots = Path(options.output, 'plots')
         if not output_plots.exists():
             output_plots.mkdir()
-        output_pkl = Path(options.output, 'draws')
-        if not output_pkl.exists():
-            output_pkl.mkdir()
+        output_draws = Path(options.output, 'draws')
+        if not output_draws.exists():
+            output_draws.mkdir()
     # If provided, load true values
     true_vals = None
     if not hier_flag:
@@ -164,19 +170,13 @@ def main():
                         else:
                             plot_multidim(draws, samples = ev, out_folder = output_plots, name = name_ev, labels = symbols, units = units)
                     # Save single-event draws
-                    with open(Path(output_pkl, 'draws_'+name_ev+'.pkl'), 'wb') as f:
-                        dill.dump(np.array(draws), f)
+                    save_density(draws, folder = output_draws, name = 'draws_'+name_ev, ext = options.ext)
                 # Save all single-event draws together
                 posteriors = np.array(posteriors)
-                with open(Path(output_pkl, 'posteriors_single_event.pkl'), 'wb') as f:
-                    dill.dump(posteriors, f)
+                save_density(posteriors, folder = output_draws, name = 'posteriors_single_event', ext = options.ext)
             else:
                 # Load pre-computed posteriors
-                try:
-                    with open(Path(output_pkl, 'posteriors_single_event.pkl'), 'rb') as f:
-                        posteriors = dill.load(f)
-                except FileNotFoundError:
-                    raise FileNotFoundError("No posteriors_single_event.pkl file found. Please provide it or re-run the single-event inference")
+                posteriors = load_density(Path(output_draws, 'posteriors_single_event.'+options.ext))
         # Actual analysis
         if not hier_flag:
             mix = DPGMM(options.bounds, prior_pars = get_priors(options.bounds, samples = samples, std = options.sigma_prior))
@@ -201,17 +201,15 @@ def main():
         draws     = np.array(draws)
         entropy   = np.concatenate(([n_eval_S], np.atleast_2d(entropy)))
         # Save reconstruction
-        with open(Path(options.output, 'draws_'+name+'.pkl'), 'wb') as f:
-            dill.dump(draws, f)
+        save_density(draws, options.output, name = 'draws_'+name, ext = options.ext)
         np.savetxt(Path(options.output, 'entropy_'+name+'.txt'), entropy)
 
     else:
+        draws = load_density(Path(options.output, 'draws_'+name+'.'+options.ext))
         try:
-            with open(Path(options.output, 'draws_'+name+'.pkl'), 'rb') as f:
-                draws = dill.load(f)
-            entropy   = np.atleast_2d(np.loadtxt(Path(options.output, 'entropy_'+name+'.txt')))
+            entropy = np.atleast_2d(np.loadtxt(Path(options.output, 'entropy_'+name+'.txt')))
         except FileNotFoundError:
-            raise FileNotFoundError("No draws_{0}.pkl, entropy_{0}.txt or ang_coeff_{0}.txt file(s) found. Please provide them or re-run the inference".format(name))
+            raise FileNotFoundError("No entropy_{0}.txt found. Please provide it or re-run the inference".format(name))
 
     if options.plot_dist:
         # Plot distribution

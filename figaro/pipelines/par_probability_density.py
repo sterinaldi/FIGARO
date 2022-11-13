@@ -10,7 +10,7 @@ from tqdm import tqdm
 from figaro.mixture import DPGMM
 from figaro.utils import save_options, get_priors
 from figaro.plot import plot_median_cr, plot_multidim
-from figaro.load import load_single_event
+from figaro.load import load_single_event, save_density, load_density
 
 import ray
 from ray.util import ActorPool
@@ -36,6 +36,7 @@ def main():
     parser.add_option("-i", "--input", type = "string", dest = "samples_file", help = "File with samples")
     parser.add_option("-b", "--bounds", type = "string", dest = "bounds", help = "Density bounds. Must be a string formatted as '[[xmin, xmax], [ymin, ymax],...]'. For 1D distributions use '[xmin, xmax]'. Quotation marks are required and scientific notation is accepted", default = None)
     parser.add_option("-o", "--output", type = "string", dest = "output", help = "Output folder. Default: same directory as samples", default = None)
+    parser.add_option("-j", dest = "json", action = 'store_true', help = "Save mixtures in json file", default = False)
     parser.add_option("--inj_density", type = "string", dest = "inj_density_file", help = "Python module with injected density - please name the method 'density'", default = None)
     parser.add_option("--parameter", type = "string", dest = "par", help = "GW parameter(s) to be read from file", default = None)
     parser.add_option("--waveform", type = "string", dest = "wf", help = "Waveform to load from samples file. To be used in combination with --parameter. Accepted values: 'combined', 'imr', 'seob'", default = 'combined')
@@ -81,7 +82,12 @@ def main():
     # Read parameter(s)
     if options.par is not None:
         options.par = options.par.split(',')
-
+    # File extension
+    if options.json:
+        options.ext = 'json'
+    else:
+        options.ext = 'pkl'
+        
     save_options(options, options.output)
     
     # Load samples
@@ -114,14 +120,9 @@ def main():
             draws.append(s)
         draws = np.array(draws)
         # Save reconstruction
-        with open(Path(options.output, 'draws_'+name+'.pkl'), 'wb') as f:
-            dill.dump(draws, f)
+        save_density(draws, folder = options.output, name = 'draws_'+name, ext = options.ext)
     else:
-        try:
-            with open(Path(options.output, 'draws_'+name+'.pkl'), 'rb') as f:
-                draws = dill.load(f)
-        except FileNotFoundError:
-            raise FileNotFoundError("No draws_{0}.pkl file found. Please provide it or re-run the inference".format(name))
+        draws = load_density(Path(options.output, 'draws_'+name+'.'+options.ext))
 
     # Plot
     if dim == 1:

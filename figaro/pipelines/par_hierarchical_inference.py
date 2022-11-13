@@ -11,7 +11,7 @@ from figaro.mixture import DPGMM, HDPGMM
 from figaro.transform import transform_to_probit
 from figaro.utils import save_options, get_priors
 from figaro.plot import plot_median_cr, plot_multidim
-from figaro.load import load_data
+from figaro.load import load_data, save_density, load_density
 
 import ray
 from ray.util import ActorPool
@@ -20,7 +20,8 @@ from ray.util import ActorPool
 class worker:
     def __init__(self, bounds,
                        out_folder_plots,
-                       out_folder_pkl,
+                       out_folder_draws,
+                       ext = 'pkl',
                        sigma = None,
                        all_samples = None,
                        label = None,
@@ -55,9 +56,7 @@ class worker:
                 plot_median_cr(draws, samples = ev, bounds = plt_bounds[0], out_folder = self.out_folder_plots, name = name, label = self.label, unit = self.unit, subfolder = True)
             else:
                 plot_multidim(draws, samples = ev, bounds = plt_bounds, out_folder = self.out_folder_plots, name = name, labels = self.label, units = self.unit, subfolder = True)
-        
-        with open(Path(self.out_folder_pkl, 'draws_'+name+'.pkl'), 'wb') as f:
-            dill.dump(np.array(draws), f)
+        save_density(draws, folder = self.out_folder_draws, name = 'draws_'+name, ext = self.ext)
         return draws
 
     def draw_hierarchical(self):
@@ -76,6 +75,7 @@ def main():
     parser.add_option("-i", "--input", type = "string", dest = "samples_folder", help = "Folder with single-event samples files")
     parser.add_option("-b", "--bounds", type = "string", dest = "bounds", help = "Density bounds. Must be a string formatted as '[[xmin, xmax], [ymin, ymax],...]'. For 1D distributions use '[xmin, xmax]'. Quotation marks are required and scientific notation is accepted", default = None)
     parser.add_option("-o", "--output", type = "string", dest = "output", help = "Output folder. Default: same directory as samples folder", default = None)
+    parser.add_option("-j", dest = "json", action = 'store_true', help = "Save mixtures in json file", default = False)
     parser.add_option("--inj_density", type = "string", dest = "inj_density_file", help = "Python module with injected density - please name the method 'density'", default = None)
     parser.add_option("--selfunc", type = "string", dest = "selfunc_file", help = "Python module with selection function - please name the method 'selection_function'", default = None)
     parser.add_option("--parameter", type = "string", dest = "par", help = "GW parameter(s) to be read from files", default = None)
@@ -113,9 +113,9 @@ def main():
     output_plots = Path(options.output, 'plots')
     if not output_plots.exists():
         output_plots.mkdir()
-    output_pkl = Path(options.output, 'draws')
-    if not output_pkl.exists():
-        output_pkl.mkdir()
+    output_draws = Path(options.output, 'draws')
+    if not output_draws.exists():
+        output_draws.mkdir()
     # Read hierarchical name
     if options.h_name is None:
         options.h_name = options.samples_folder.parent.parts[-1]
@@ -155,7 +155,12 @@ def main():
         options.n_se_draws = options.n_draws
     if options.sigma_prior is not None:
         options.sigma_prior = np.array([float(s) for s in options.sigma_prior.split(',')])
-    
+    # File extension
+    if options.json:
+        options.ext = 'json'
+    else:
+        options.ext = 'pkl'
+        
     save_options(options, options.output)
     
     # Load samples
@@ -194,7 +199,8 @@ def main():
         ray.init(num_cpus = options.n_parallel)
         pool = ActorPool([worker.remote(bounds           = options.bounds,
                                         out_folder_plots = output_plots,
-                                        out_folder_pkl   = output_pkl,
+                                        out_folder_draws = output_draws,
+                                        ext              = options.ext,
                                         sigma            = options.sigma_prior,
                                         all_samples      = all_samples,
                                         label            = symbols,
@@ -213,15 +219,9 @@ def main():
                 posteriors.append(s)
             # Save all single-event draws together
             posteriors = np.array(posteriors)
-            with open(Path(output_pkl, 'posteriors_single_event.pkl'), 'wb') as f:
-                dill.dump(posteriors, f)
+            save_density(posteriors, folder = output_draws, name = 'posteriors_single_event', ext = options.ext)
         else:
-            # Load pre-computed posteriors
-            try:
-                with open(Path(output_pkl, 'posteriors_single_event.pkl'), 'rb') as f:
-                    posteriors = dill.load(f)
-            except FileNotFoundError:
-                raise FileNotFoundError("No posteriors_single_event.pkl file found. Please provide it or re-run the single-event inference")
+            posteriors = load_density(Path(output_draws, 'posteriors_single_event.'+options.ext))
         # Load posteriors
         for s in pool.map(lambda a, v: a.load_posteriors.remote(v), [posteriors for _ in range(options.n_parallel)]):
             pass
@@ -231,14 +231,9 @@ def main():
             draws.append(s)
         draws = np.array(draws)
         # Save draws
-        with open(Path(output_pkl, 'draws_'+options.h_name+'.pkl'), 'wb') as f:
-            dill.dump(draws, f)
+        save_density(draws, folder = output_draws, name = 'draws_'+options.h_name, ext = options.ext)
     else:
-        try:
-            with open(Path(output_pkl, 'draws_'+options.h_name+'.pkl'), 'rb') as f:
-                draws = dill.load(f)
-        except FileNotFoundError:
-            raise FileNotFoundError("No draws_{0}.pkl file found. Please provide it or re-run the inference".format(options.h_name))
+        draws = load_density(Path(output_draws, 'draws_'+options.h_name+'.'+options.ext))
     # Plot
     if dim == 1:
         plot_median_cr(draws, injected = inj_density, selfunc = selfunc, samples = true_vals, out_folder = output_plots, name = options.h_name, label = options.symbol, unit = options.unit, hierarchical = True)
