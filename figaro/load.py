@@ -2,6 +2,7 @@ import numpy as np
 import h5py
 import warnings
 import json
+import dill
 from figaro.exceptions import FIGAROException
 from figaro.mixture import mixture
 try:
@@ -444,48 +445,96 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
             else:
                 return samples
 
-def save_density(draws, folder='.', name='density'):
+def save_density(draws, folder = '.', name = 'density', ext = 'pkl'):
     """
-    Exports a list of figaro.mixture instances into a json file
+    Exports a list of figaro.mixture instances to file
 
     Arguments:
-        :list draws:          list of mixtures to be saved
-        :str or Path folder:  folder in which the output json file will be saved
-        :string name:         name to be given to output file
+        :list draws:         list of mixtures to be saved
+        :str or Path folder: folder in which the output file will be saved
+        :str name:           name to be given to output file
+        :str ext:            file extension (pkl or json)
     """
-    if len(np.shape(draws)) == 1:
-        draws = np.atleast_2d(draws)
-    ll = []
-    for draws_i in draws:
-        list_of_dicts = [dr.__dict__.copy() for dr in draws_i]
-        
-        for density in list_of_dicts:
-            for key in density.keys():
-                value = density[key]
-                if isinstance(value, np.ndarray):
-                    value = value.tolist()
-                density[key] = value
-                
-        ll.append(list_of_dicts)
-        
-    s = json.dumps(ll)
-    
-    with open(Path(folder, name + '.json'), 'w') as f:
-        json.dump(s, f)
+    if ext == 'pkl':
+        with open(Path(folder, name+'.pkl'), 'wb') as f:
+            dill.dump(draws, f)
+    elif ext == 'json':
+        if len(np.shape(draws)) == 1:
+            draws = np.atleast_2d(draws)
+        ll = []
+        for draws_i in draws:
+            list_of_dicts = [dr.__dict__.copy() for dr in draws_i]
+            for density in list_of_dicts:
+                for key in density.keys():
+                    value = density[key]
+                    if isinstance(value, np.ndarray):
+                        value = value.tolist()
+                    density[key] = value
+            ll.append(list_of_dicts)
+        s = json.dumps(ll)
+        with open(Path(folder, name + '.json'), 'w') as f:
+            json.dump(s, f)
+    else:
+        raise FIGAROException("Extension {0} is not supported. Valid extensions are pkl or json.")
 
 def load_density(file):
     """
-    Reads a json file containing the parameters for a saved list of figaro.mixture objects and returns an instance of such list.
+    Loads a list of figaro.mixture instances from file.
+    If the requested file extension (pkl or json) is not available, it tries loading the other.
 
     Arguments:
         :str or Path file: file with draws
 
     Returns
-        :list: list of figaro.mixture object instances from the given json file.
+        :list: figaro.mixture object instances
+    """
+    file = Path(file)
+    ext  = file.suffix
+    if ext == '.pkl':
+        try:
+            return _load_pkl(file)
+        except FileNotFoundError:
+            try:
+                return _load_json(file.with_suffix('.json'))
+            except FileNotFoundError:
+                raise FIGAROException("{0} not found. Please provide it or re-run the inference.".format(file.name))
+    elif ext == '.json':
+        try:
+            return _load_json(file)
+        except FileNotFoundError:
+            try:
+                return _load_json(file.with_suffix('.pkl'))
+            except FileNotFoundError:
+                raise FIGAROException("{0} not found. Please provide it or re-run the inference.".format(file.name))
+    else:
+        raise FIGAROException("Extension {0} is not supported. Please provide .pkl or .json file.".format(file.suffix))
+
+def _load_pkl(file):
+    """
+    Loads a list of figaro.mixture instances from pkl file
+
+    Arguments:
+        :str or Path file: file with draws
+
+    Returns
+        :list: figaro.mixture object instances
+    """
+    with open(file, 'rb') as f:
+        draws = dill.load(f)
+    return draws
+
+def _load_json(file):
+    """
+    Loads a list of figaro.mixture instances from json file
+
+    Arguments:
+        :str or Path file: file with draws
+
+    Returns
+        :list: figaro.mixture object instances
     """
     with open(Path(file), 'r') as fjson:
         dictjson = json.loads(json.load(fjson))
-    
     ll = []
     for list_of_dict in dictjson:
         draws = []
@@ -497,7 +546,6 @@ def load_density(file):
                     dict_[key] = np.array(value)
             draws.append(mixture(**dict_))
         ll.append(draws)
-    
     if len(ll) == 1:
         return ll[0]
     return ll
