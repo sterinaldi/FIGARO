@@ -40,7 +40,7 @@ def recursive_grid(bounds, n_pts, get_1d = False):
         if get_1d:
             grid_nm1, diff, l_1d = recursive_grid(np.array(bounds)[1:], n_pts[1:], get_1d)
         else:
-            grid_nm1, diff, l_1d = recursive_grid(np.array(bounds)[1:], n_pts[1:], get_1d)
+            grid_nm1, diff = recursive_grid(np.array(bounds)[1:], n_pts[1:], get_1d)
         d = np.linspace(bounds[0,0], bounds[0,1], n_pts[0]+2)[1:-1]
         diff.insert(0, d[1]-d[0])
         grid     = []
