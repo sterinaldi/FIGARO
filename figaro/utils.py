@@ -40,7 +40,7 @@ def recursive_grid(bounds, n_pts):
         for di in d:
             for gi in grid_nm1:
                 grid.append([di,*gi])
-        return np.array(grid), diff
+        return np.array(grid), np.array(diff)[::-1]
 
 def rejection_sampler(n_draws, f, bounds, selfunc = None):
     """
