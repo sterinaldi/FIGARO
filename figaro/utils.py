@@ -35,12 +35,12 @@ def recursive_grid(bounds, n_pts):
         grid_nm1, diff = recursive_grid(np.array(bounds)[1:], n_pts[1:])
         
         d = np.linspace(bounds[0,0], bounds[0,1], n_pts[0]+2)[1:-1]
-        diff.append(d[1]-d[0])
+        diff.insert(0, d[1]-d[0])
         grid     = []
         for di in d:
             for gi in grid_nm1:
                 grid.append([di,*gi])
-        return np.array(grid), np.array(diff)[::-1]
+        return np.array(grid), diff
 
 def rejection_sampler(n_draws, f, bounds, selfunc = None):
     """
