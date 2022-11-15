@@ -14,32 +14,42 @@ from figaro.mixture import mixture
 # Utilities #
 #-----------#
 
-def recursive_grid(bounds, n_pts):
+def recursive_grid(bounds, n_pts, get_1d = False):
     """
     Recursively generates the n-dimensional grid points (extremes are excluded).
     
     Arguments:
         :list-of-lists bounds: extremes for each dimension (excluded)
         :int n_pts:            number of points for each dimension
+        :bool get_1d:          return list of 1d-arrays (one per dimension)
         
     Returns:
         :np.ndarray: grid
+        :np.ndarray: differential for each grid
+        :np.ndarray: list of 1d-arrays (one per dimension)
     """
     bounds = np.atleast_2d(bounds)
     n_pts  = np.atleast_1d(n_pts)
     if len(bounds) == 1:
         d  = np.linspace(bounds[0,0], bounds[0,1], n_pts[0]+2)[1:-1]
         dD = d[1]-d[0]
+        if get_1d:
+            return np.atleast_2d(d).T, [dD], [d]
         return np.atleast_2d(d).T, [dD]
     else:
-        grid_nm1, diff = recursive_grid(np.array(bounds)[1:], n_pts[1:])
-        
+        if get_1d:
+            grid_nm1, diff, l_1d = recursive_grid(np.array(bounds)[1:], n_pts[1:], get_1d)
+        else:
+            grid_nm1, diff, l_1d = recursive_grid(np.array(bounds)[1:], n_pts[1:], get_1d)
         d = np.linspace(bounds[0,0], bounds[0,1], n_pts[0]+2)[1:-1]
         diff.insert(0, d[1]-d[0])
         grid     = []
         for di in d:
             for gi in grid_nm1:
                 grid.append([di,*gi])
+        if get_1d:
+            l_1d.insert(0, d)
+            return np.array(grid), diff, l_1d
         return np.array(grid), diff
 
 def rejection_sampler(n_draws, f, bounds, selfunc = None):
