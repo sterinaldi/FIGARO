@@ -549,10 +549,9 @@ class DPGMM:
     Class to infer a distribution given a set of samples.
     
     Arguments:
-        :iterable bounds:        boundaries of the rectangle over which the distribution is defined. It should be in the format [[xmin, xmax],[ymin, ymax],...]
-        :iterable prior_pars:    NIW prior parameters (k, L, nu, mu)
-        :double alpha0:          initial guess for concentration parameter
-        :str or Path out_folder: folder for outputs
+        :iterable bounds:     boundaries of the rectangle over which the distribution is defined. It should be in the format [[xmin, xmax],[ymin, ymax],...]
+        :iterable prior_pars: NIW prior parameters (k, L, nu, mu)
+        :double alpha0:       initial guess for concentration parameter
     
     Returns:
         :DPGMM: instance of DPGMM class
@@ -560,7 +559,6 @@ class DPGMM:
     def __init__(self, bounds,
                        prior_pars = None,
                        alpha0     = 1.,
-                       out_folder = '.',
                        ):
         self.bounds   = np.atleast_2d(bounds)
         self.dim      = len(self.bounds)
@@ -1032,17 +1030,15 @@ class HDPGMM(DPGMM):
     Child of DPGMM class
     
     Arguments:
-        :iterable bounds:        boundaries of the rectangle over which the distribution is defined. It should be in the format [[xmin, xmax],[ymin, ymax],...]
-        :iterable prior_pars:    NIW prior parameters (k, L, nu, mu)
-        :double alpha0:          initial guess for concentration parameter
-        :str or Path out_folder: folder for outputs
+        :iterable bounds:     boundaries of the rectangle over which the distribution is defined. It should be in the format [[xmin, xmax],[ymin, ymax],...]
+        :iterable prior_pars: NIW prior parameters (k, L, nu, mu)
+        :double alpha0:       initial guess for concentration parameter
     
     Returns:
         :HDPGMM: instance of HDPGMM class
     """
     def __init__(self, bounds,
                        alpha0     = 1.,
-                       out_folder = '.',
                        prior_pars = None,
                        MC_draws   = 2e3,
                        ):
@@ -1050,7 +1046,7 @@ class HDPGMM(DPGMM):
         self.dim = len(bounds)
         if prior_pars == None:
             prior_pars = (1e-2, np.identity(self.dim)*0.2**2, self.dim+2, np.zeros(self.dim))
-        super().__init__(bounds = bounds, prior_pars = prior_pars, alpha0 = alpha0, out_folder = out_folder)
+        super().__init__(bounds = bounds, prior_pars = prior_pars, alpha0 = alpha0)
         self.MC_draws = int(MC_draws)
         
         df = np.max([self.prior.nu, self.dim + 2])
