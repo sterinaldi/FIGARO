@@ -297,7 +297,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         plt.close()
     
 
-def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False, n_pts = 200, true_value = None, figsize = 7, levels = [0.5, 0.68, 0.9]):
+def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False, n_pts = 200, true_value = None, figsize = 7, levels = [0.5, 0.68, 0.9], scatter_points = False):
     """
     Plot the recovered multidimensional distribution along with samples from the true distribution (if available) as corner plot.
     
@@ -318,6 +318,7 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
         :iterable true_value:    true value to plot
         :double figsize:         figure size (matplotlib)
         :iterable levels:        credible levels to plot
+        :bool scatter_points:    scatter samples on 2d plot
     """
     
     dim = draws[0].dim
@@ -464,6 +465,9 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
                 ax.clabel(c1, fmt = {l:'{0:.0f}\%'.format(100*s) for l,s in zip(c1.levels, np.sort(levels)[::-1])}, fontsize = 3)
             ax.set_xticks([])
             ax.set_yticks([])
+            # Samples (if available)
+            if samples is not None and scatter_points:
+                ax.scatter(samples[:,column], samples[:,row], facecolors='none', edgecolors='orangered')
             
             if column == 0:
                 ax.set_ylabel(labels[row])
