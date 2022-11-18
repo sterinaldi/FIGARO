@@ -467,7 +467,7 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
             ax.set_yticks([])
             # Samples (if available)
             if samples is not None and scatter_points:
-                ax.scatter(samples[:,column], samples[:,row], marker = '+', c='orangered')
+                ax.scatter(samples[:,column], samples[:,row], marker = '+', c = 'orangered', linewidths = 1)
             
             if column == 0:
                 ax.set_ylabel(labels[row])
