@@ -212,7 +212,7 @@ def make_single_gaussian_mixture(mu, cov, bounds, out_folder = '.', save = False
         # Probit samples
         p_ss = transform_to_probit(ss, bounds)
         mm = np.mean(p_ss, axis = 0)
-        cc = np.atleast_2d(np.cov(ss.T))
+        cc = np.atleast_2d(np.cov(p_ss.T))
         
         mix = mixture(np.atleast_2d([mm]), np.atleast_3d([cc]), np.ones(1), bounds, len(bounds), 1, None)
         mixtures.append([mix])
