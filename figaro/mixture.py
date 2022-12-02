@@ -516,29 +516,6 @@ class mixture:
             for i, n in zip(ctr.keys(), ctr.values()):
                 samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i]).rvs(size = n)).T))
         return np.array(samples[1:])
-    
-    def gradient_pdf(self, x):
-        if len(np.shape(x)) < 2:
-            x = np.atleast_2d(x).T
-        return self._gradient_pdf(x)
-    
-    @probit
-    def _gradient_pdf(self, x):
-        J = np.exp(probit_logJ(x, self.bounds))[:, None]
-        dJ = np.exp(-probit_log_jacobian(x, self.bounds))
-        dF = self._gradient_pdf_probit(x)
-        F  = self._pdf(x)[:,None]
-#        print(J.shape, dJ.shape, dF.shape, F.shape, x.shape)
-        
-        return (dF - x*F)*J*dJ
-    
-    def _gradient_pdf_probit(self, x):
-        return np.sum(np.array([-w*mn(mean, cov).pdf(x)[:,None]*np.array([np.dot(inv_jit(cov),(xi-mean)) for xi in x]) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
-
-    def gradient_logpdf(self, x):
-        if len(np.shape(x)) < 2:
-            x = np.atleast_2d(x).T
-        return self._gradient_pdf(x)/self._pdf(x)[:,None]
 
 #-------------------#
 # Inference classes #
@@ -841,89 +818,6 @@ class DPGMM:
             :np.ndarray: mixture.logpdf(x)
         """
         return self._logpdf_probit(x) - probit_logJ(x, self.bounds)
-
-    def gradient_pdf(self, x):
-        """
-        Evaluate mixture gradient at point(s) x
-        
-        Arguments:
-            :np.ndarray x: point(s) to evaluate the mixture at
-        
-        Returns:
-            :np.ndarray: mixture.gradient_pdf(x)
-        """
-        if self.n_cl == 0:
-            raise FIGAROException("You are trying to evaluate an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, you may want to evaluate the output of that method.")
-        if len(np.shape(x)) < 2:
-            x = np.atleast_2d(x).T
-        return self._gradient_pdf(x)
-    
-    @probit
-    def _gradient_pdf(self, x):
-        """
-        Evaluate mixture gradient at point(s) x
-        
-        Arguments:
-            :np.ndarray x: point(s) to evaluate the mixture at
-        
-        Returns:
-            :np.ndarray: mixture.gradient_pdf(x)
-        """
-        J = np.exp(-probit_logJ(x, self.bounds))
-        return self._gradient_pdf_probit(x)*J + self._pdf(x)*J*(-x)
-    
-    def _gradient_pdf_probit(self, x):
-        """
-        Evaluate mixture gradient at point(s) x in probit space
-        
-        Arguments:
-            :np.ndarray x: point(s) to evaluate the mixture at
-        
-        Returns:
-            :np.ndarray: mixture.gradient_pdf(x)
-        """
-        return np.sum(np.array([-w*mn(comp.mean, comp.cov).pdf(x).reshape(-1,self.dim)*np.einsum("ij,ij->i",inv_jit(comp.cov),(x-comp.mean)).reshape(-1,len(x)) for comp, w in zip(self.mixture, self.w)]), axis = 0)
-
-    def gradient_logpdf(self, x):
-        """
-        Evaluate log mixture gradient at point(s) x
-        
-        Arguments:
-            :np.ndarray x: point(s) to evaluate the mixture at
-        
-        Returns:
-            :np.ndarray: mixture.gradient_logpdf(x)
-        """
-        if self.n_cl == 0:
-            raise FIGAROException("You are trying to evaluate an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, you may want to evaluate the output of that method.")
-        if len(np.shape(x)) < 2:
-            x = np.atleast_2d(x).T
-        return self._gradient_logpdf(x)
-    
-    @probit
-    def _gradient_logpdf(self, x):
-        """
-        Evaluate log mixture gradient at point(s) x
-        
-        Arguments:
-            :np.ndarray x: point(s) to evaluate the mixture at
-        
-        Returns:
-            :np.ndarray: mixture.gradient_logpdf(x)
-        """
-        return self._gradient_logpdf_probit(x) - x
-    
-    def _gradient_logpdf_probit(self, x):
-        """
-        Evaluate log mixture gradient at point(s) x in probit space
-        
-        Arguments:
-            :np.ndarray x: point(s) to evaluate the mixture at
-        
-        Returns:
-            :np.ndarray: mixture.gradient_logpdf(x)
-        """
-        return np.sum(np.array([-w*np.einsum("ij,ij->i",inv_jit(comp.cov),(x-comp.mean)).reshape(-1,self.dim) for comp, w in zip(self.mixture, self.w)]), axis = 0)
 
     def fast_pdf(self, x):
         """
