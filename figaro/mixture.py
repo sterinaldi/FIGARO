@@ -270,12 +270,11 @@ class mixture:
         :np.ndarray bounds: bounds of probit transformation
         :int dim:           number of dimensions
         :int n_cl:          number of clusters in the mixture
-        :bool hier_flag:    flag for hierarchical mixture (needed to fix an issue with means)
     
     Returns:
         :mixture: instance of mixture class
     """
-    def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, hier_flag = False):
+    def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, probit = True):
         self.means  = means
         self.covs   = covs
         self.w      = w
@@ -284,6 +283,7 @@ class mixture:
         self.dim    = dim
         self.n_cl   = n_cl
         self.n_pts  = n_pts
+        self.probit = probit
 
     def __call__(self, x):
         return self.pdf(x)
@@ -315,7 +315,7 @@ class mixture:
         Returns:
             :np.ndarray: mixture.pdf(x)
         """
-        return self._pdf_probit(x) * np.exp(-probit_logJ(x, self.bounds))
+        return self._pdf_probit(x) * np.exp(-probit_logJ(x, self.bounds, self.probit))
 
     @probit
     def _logpdf(self, x):
@@ -328,7 +328,7 @@ class mixture:
         Returns:
             :np.ndarray: mixture.logpdf(x)
         """
-        return self._logpdf_probit(x) - probit_logJ(x, self.bounds)
+        return self._logpdf_probit(x) - probit_logJ(x, self.bounds, self.probit)
 
     def fast_pdf(self, x):
         """
@@ -379,7 +379,7 @@ class mixture:
         Returns:
             :np.ndarray: mixture.pdf(x)
         """
-        return self._fast_pdf_probit(x) * np.exp(-probit_logJ(x, self.bounds))
+        return self._fast_pdf_probit(x) * np.exp(-probit_logJ(x, self.bounds, self.probit))
 
     @probit
     def _fast_logpdf(self, x):
@@ -392,7 +392,7 @@ class mixture:
         Returns:
             :np.ndarray: mixture.logpdf(x)
         """
-        return self._fast_logpdf_probit(x) - probit_logJ(x, self.bounds)
+        return self._fast_logpdf_probit(x) - probit_logJ(x, self.bounds, self.probit, self.probit)
 
     def _fast_pdf_probit(self, x):
         """
@@ -536,13 +536,18 @@ class DPGMM:
     def __init__(self, bounds,
                        prior_pars = None,
                        alpha0     = 1.,
+                       probit     = True,
                        ):
-        self.bounds   = np.atleast_2d(bounds)
-        self.dim      = len(self.bounds)
+        self.probit = probit
+        self.bounds = np.atleast_2d(bounds)
+        self.dim    = len(self.bounds)
         if prior_pars is not None:
             self.prior = prior(*prior_pars)
         else:
-            self.prior = prior(1e-2, np.identity(self.dim)*0.2**2, self.dim+2, np.zeros(self.dim))
+            if self.probit:
+                self.prior = prior(1e-2, np.identity(self.dim)*0.2**2, self.dim+2, np.zeros(self.dim))
+            else:
+                self.prior = prior(1, np.identity(self.dim)*(np.diff(self.bounds, axis = 1).flatten()/5), self.dim+2, np.mean(self.bounds, axis = 1))
         self.alpha      = alpha0
         self.alpha_0    = alpha0
         self.mixture    = []
@@ -769,7 +774,7 @@ class DPGMM:
         Returns:
             :np.ndarray: mixture.pdf(x)
         """
-        return self._pdf_probit(x) * np.exp(-probit_logJ(x, self.bounds))
+        return self._pdf_probit(x) * np.exp(-probit_logJ(x, self.bounds, self.probit))
 
     def _logpdf_probit(self, x):
         """
@@ -817,7 +822,7 @@ class DPGMM:
         Returns:
             :np.ndarray: mixture.logpdf(x)
         """
-        return self._logpdf_probit(x) - probit_logJ(x, self.bounds)
+        return self._logpdf_probit(x) - probit_logJ(x, self.bounds, self.probit)
 
     def fast_pdf(self, x):
         """
@@ -868,7 +873,7 @@ class DPGMM:
         Returns:
             :np.ndarray: mixture.pdf(x)
         """
-        return self._fast_pdf_probit(x) * np.exp(-probit_logJ(x, self.bounds))
+        return self._fast_pdf_probit(x) * np.exp(-probit_logJ(x, self.bounds, self.probit))
 
     @probit
     def _fast_logpdf(self, x):
@@ -881,7 +886,7 @@ class DPGMM:
         Returns:
             :np.ndarray: mixture.logpdf(x)
         """
-        return self._fast_logpdf_probit(x) - probit_logJ(x, self.bounds)
+        return self._fast_logpdf_probit(x) - probit_logJ(x, self.bounds, self.probit)
 
     def _fast_pdf_probit(self, x):
         """
@@ -916,7 +921,7 @@ class DPGMM:
         """
         if self.n_cl == 0:
             raise FIGAROException("You are trying to build an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, the inferred mixture is returned from that method as an instance of mixture class.")
-        return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, self.n_pts)
+        return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, self.n_pts, self.probit)
 
 class HDPGMM(DPGMM):
     """
