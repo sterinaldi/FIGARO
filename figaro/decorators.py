@@ -16,7 +16,7 @@ def antiprobit(func):
         return func(ref, y, *args)
     return f_transf
 
-def probit(func, flag = True):
+def probit(func):
     """
     Transform a point x from natural space to probit space and returns the function evaluated at the probit point y
     """
@@ -27,7 +27,7 @@ def probit(func, flag = True):
         return func(ref, y, *args)
     return f_transf
 
-def from_probit(func, flag = True):
+def from_probit(func):
     """
     Evaluate a function that samples points in probit space and return these points after transforming them to natural space
     """
@@ -38,7 +38,7 @@ def from_probit(func, flag = True):
         return transform_from_probit(y, ref.bounds)
     return f_transf
 
-def cartesian(func, flag = True):
+def cartesian(func):
     """
     Transform a point x from celestial coordinates to cartesian coordinates and returns the function evaluated at the probit point y
     """
@@ -47,7 +47,7 @@ def cartesian(func, flag = True):
         return func(ref, y, *args)
     return f_transf
 
-def celestial(func, flag = True):
+def celestial(func):
     """
     Transform a point x from cartesian coordinates to celestial coordinates and returns the function evaluated at the probit point y
     """
