@@ -153,7 +153,7 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
             # 1/3 (arbitrary) std of samples
             L_out = np.atleast_2d(np.cov(probit_samples.T))/9
         else:
-            L_out = np.atleast_2d(np.cov(samples.T))/9
+            L_out = np.atleast_2d(np.cov(samples.T))/25
         diag  = np.sqrt(np.diag(L_out))
         stds  = np.minimum(diag, 0.2)
         L_out = L_out*np.outer(stds, stds)/np.outer(diag, diag)
@@ -166,7 +166,10 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
     if k is not None:
         k_out = k
     else:
-        k_out = 1e-2
+        if probit:
+            k_out = 1e-2
+        else:
+            k_out = 1e-1
     
     if draw_flag:
         ss = mn(np.mean(bounds, axis = -1), L_out).rvs(10000)
