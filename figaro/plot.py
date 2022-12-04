@@ -142,12 +142,14 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
     x_min = np.max(all_bounds[:,0])
     x_max = np.min(all_bounds[:,1])
     
+    probit = np.array([d.probit for d in draws]).any()
+    
     if bounds is not None:
-        if not bounds[0] >= x_min:
+        if not bounds[0] >= x_min and probit:
             warnings.warn("The provided lower bound is invalid for at least one draw. {0} will be used instead.".format(x_min))
         else:
             x_min = bounds[0]
-        if not bounds[1] <= x_max:
+        if not bounds[1] <= x_max and probit:
             warnings.warn("The provided upper bound is invalid for at least one draw. {0} will be used instead.".format(x_max))
         else:
             x_max = bounds[1]
@@ -342,15 +344,17 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
     x_min = np.min(all_bounds, axis = -1).max(axis = 0)
     x_max = np.max(all_bounds, axis = -1).min(axis = 0)
     
+    probit = np.array([d.probit for d in draws]).any()
+    
     if bounds is not None:
         bounds = np.atleast_2d(bounds)
         if bounds.shape == (1, 2):
             bounds = np.array([bounds[0] for _ in range(dim)])
         elif bounds.shape == (dim, 2):
-            if not (bounds[:,0] >= x_min).all():
+            if not (bounds[:,0] >= x_min).all() and probit:
                 warnings.warn("The provided lower bound is invalid for at least one draw. Default values will be used instead.")
             x_min[np.where(bounds[:,0] >= x_min)] = bounds[:,0][np.where(bounds[:,0] >= x_min)]
-            if not (bounds[:,1] <= x_max).all():
+            if not (bounds[:,1] <= x_max).all() and probit:
                 warnings.warn("The provided upper bound is invalid for at least one draw. Default values will be used instead.")
             x_max[np.where(bounds[:,1] <= x_max)] = bounds[:,1][np.where(bounds[:,1] <= x_max)]
         else:
