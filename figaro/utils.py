@@ -78,7 +78,7 @@ def rejection_sampler(n_draws, f, bounds, selfunc = None):
         samples.extend(pts[np.where(h < probs)])
     return np.array(samples).flatten()[:n_draws]
 
-def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df = None, k = None):
+def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df = None, k = None, probit = True):
     """
     This method takes the prior parameters for the Normal-Inverse-Wishart distribution in the natural space and returns them as parameters in the probit space, ordered as required by FIGARO. In the following, D will denote the dimensionality of the inferred distribution.
 
@@ -101,6 +101,7 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
         :np.ndarray cov:            covariance matrix
         :int df:                    degrees of freedom for Inverse Wishart distribution
         :double k:                  scale parameter for Normal distribution
+        :bool probit:               whether the probit transformation will be applied or not
         
     Returns:
         :tuple: prior parameters ordered as in H/DPGMM
@@ -110,7 +111,8 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
     if samples is not None:
         if len(np.shape(samples)) < 2:
             samples = np.atleast_2d(samples).T
-        probit_samples = transform_to_probit(samples, bounds)
+        if probit:
+            probit_samples = transform_to_probit(samples, bounds)
     # DF
     if df is not None and df > dim+2:
         df_out = df
@@ -123,26 +125,43 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
         mean = np.atleast_1d(mean)
         if not np.prod(bounds[:,0] < mean) & np.prod(mean < bounds[:,1]):
             raise ValueError("Mean is outside of the given bounds")
-        mu_out = transform_to_probit(mean, bounds)
+        if probit:
+            mu_out = transform_to_probit(mean, bounds)
+        else:
+            mu_out = mean
     elif samples is not None:
-        mu_out = np.atleast_1d(np.mean(probit_samples, axis = 0))
+        if probit:
+            mu_out = np.atleast_1d(np.mean(probit_samples, axis = 0))
+        else:
+            mu_out = np.atleast_1d(np.mean(samples, axis = 0))
     else:
-        mu_out = np.zeros(dim)
+        if probit:
+            mu_out = np.zeros(dim)
+        else:
+            mu_out = np.atleast_1d(np.mean(bounds, axis = 1))
     # L
     if cov is not None:
         L_out = cov
-        draw_flag = True
+        if probit:
+            draw_flag = True
     elif std is not None:
         L_out = np.identity(dim)*std**2
-        draw_flag = True
+        if probit:
+            draw_flag = True
     elif samples is not None:
-        # 1/3 (arbitrary) std of samples
-        L_out = np.atleast_2d(np.cov(probit_samples.T))/9
+        if probit:
+            # 1/3 (arbitrary) std of samples
+            L_out = np.atleast_2d(np.cov(probit_samples.T))/9
+        else:
+            L_out = np.atleast_2d(np.cov(samples.T))/9
         diag  = np.sqrt(np.diag(L_out))
         stds  = np.minimum(diag, 0.2)
         L_out = L_out*np.outer(stds, stds)/np.outer(diag, diag)
     else:
-        L_out = np.identity(dim)*0.2**2
+        if probit:
+            L_out = np.identity(dim)*0.2**2
+        else:
+            L_out = np.identity(dim)*(np.diff(bounds, axis = 1)/10)**2
     # k
     if k is not None:
         k_out = k
