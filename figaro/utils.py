@@ -156,7 +156,10 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
             # 1/5 (arbitrary) std of samples
             L_out = np.atleast_2d(np.cov(samples.T))/25
         diag  = np.sqrt(np.diag(L_out))
-        stds  = np.minimum(diag, 0.2)
+        if probit:
+            stds = np.minimum(diag, 0.2)
+        else:
+            stds = diag
         L_out = L_out*np.outer(stds, stds)/np.outer(diag, diag)
     else:
         if probit:
