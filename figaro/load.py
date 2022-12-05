@@ -14,7 +14,7 @@ from pathlib import Path
 from scipy.optimize import newton
 from tqdm import tqdm
 
-supported_extensions = ['h5', 'hdf5', 'txt', 'dat']
+supported_extensions = ['h5', 'hdf5', 'txt', 'dat', 'csv']
 supported_waveforms  = ['combined', 'imr', 'seob']
 
 GW_par = {'m1'                 : 'mass_1_source',
