@@ -259,36 +259,19 @@ class component_h:
             self.mu = np.atleast_2d(self.mu).T
             self.sigma = np.atleast_2d(self.sigma).T
             
-class mixture:
+class _density:
     """
-    Class to store a single draw from DPGMM/(H)DPGMM.
-    
-    Arguments:
-        :iterable means:    component means
-        :iterable covs:     component covariances
-        :np.ndarray w:      component weights
-        :np.ndarray bounds: bounds of probit transformation
-        :int dim:           number of dimensions
-        :int n_cl:          number of clusters in the mixture
-    
-    Returns:
-        :mixture: instance of mixture class
+    Class to initialise a common set of methods for mixture models. Not to be use
     """
-    def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, probit = True):
-        self.means  = means
-        self.covs   = covs
-        self.w      = w
-        self.log_w  = np.log(w)
-        self.bounds = bounds
-        self.dim    = dim
-        self.n_cl   = n_cl
-        self.n_pts  = n_pts
-        self.probit = probit
-
+    def __init__(self):
+        pass
+        
     def __call__(self, x):
         return self.pdf(x)
 
     def pdf(self, x):
+        if self.n_cl == 0:
+            raise FIGAROException("You are trying to evaluate an empty mixture.\n If you are using the density_from_samples() method, you may want to evaluate the output of that method.")
         if len(np.shape(x)) < 2:
             if self.dim == 1:
                 x = np.atleast_2d(x).T
@@ -297,6 +280,8 @@ class mixture:
         return self._pdf(x)
 
     def logpdf(self, x):
+        if self.n_cl == 0:
+            raise FIGAROException("You are trying to evaluate an empty mixture.\n If you are using the density_from_samples() method, you may want to evaluate the output of that method.")
         if len(np.shape(x)) < 2:
             if self.dim == 1:
                 x = np.atleast_2d(x).T
@@ -392,7 +377,7 @@ class mixture:
         Returns:
             :np.ndarray: mixture.logpdf(x)
         """
-        return self._fast_logpdf_probit(x) - probit_logJ(x, self.bounds, self.probit, self.probit)
+        return self._fast_logpdf_probit(x) - probit_logJ(x, self.bounds, self.probit)
 
     def _fast_pdf_probit(self, x):
         """
@@ -418,6 +403,19 @@ class mixture:
         """
         return logsumexp(np.array([w + log_norm(x[0], mean, cov) for mean, cov, w in zip(self.means, self.covs, self.log_w)]), axis = 0)
 
+    @probit
+    def _pdf_no_jacobian(self, x):
+        """
+        Evaluate mixture at point(s) x without jacobian
+        
+        Arguments:
+            :np.ndarray x: point(s) to evaluate the mixture at
+        
+        Returns:
+            :np.ndarray: mixture.pdf(x)
+        """
+        return self._pdf_probit(x)
+
     def _pdf_probit(self, x):
         """
         Evaluate mixture at point(s) x in probit space
@@ -429,6 +427,19 @@ class mixture:
             :np.ndarray: mixture.pdf(x)
         """
         return np.sum(np.array([w*mn(mean, cov).pdf(x) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
+
+    @probit
+    def _logpdf_no_jacobian(self, x):
+        """
+        Evaluate log mixture at point(s) x without jacobian
+        
+        Arguments:
+            :np.ndarray x: point(s) to evaluate the mixture at
+        
+        Returns:
+            :np.ndarray: mixture.logpdf(x)
+        """
+        return self._logpdf_probit(x)
 
     def _logpdf_probit(self, x):
         """
@@ -493,6 +504,8 @@ class mixture:
         Returns:
             :np.ndarray: samples
         """
+        if self.n_cl == 0:
+            raise FIGAROException("You are trying to draw samples from an empty mixture.\n If you are using the density_from_samples() method, you may want to draw samples from the output of that method.")
         return self._rvs_probit(n_samps)
         
     def _rvs_probit(self, n_samps):
@@ -517,11 +530,39 @@ class mixture:
                 samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i]).rvs(size = n)).T))
         return np.array(samples[1:])
 
+class mixture(_density):
+    """
+    Class to store a single draw from DPGMM/(H)DPGMM.
+    Methods inherited from _density class.
+    
+    Arguments:
+        :iterable means:    component means
+        :iterable covs:     component covariances
+        :np.ndarray w:      component weights
+        :np.ndarray bounds: bounds of probit transformation
+        :int dim:           number of dimensions
+        :int n_cl:          number of clusters in the mixture
+        :bool probit:       whether to use the probit transformation or not
+    
+    Returns:
+        :mixture: instance of mixture class
+    """
+    def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, probit = True):
+        self.means  = means
+        self.covs   = covs
+        self.w      = w
+        self.log_w  = np.log(w)
+        self.bounds = bounds
+        self.dim    = dim
+        self.n_cl   = n_cl
+        self.n_pts  = n_pts
+        self.probit = probit
+
 #-------------------#
 # Inference classes #
 #-------------------#
 
-class DPGMM:
+class DPGMM(_density):
     """
     Class to infer a distribution given a set of samples.
     
@@ -529,6 +570,7 @@ class DPGMM:
         :iterable bounds:     boundaries of the rectangle over which the distribution is defined. It should be in the format [[xmin, xmax],[ymin, ymax],...]
         :iterable prior_pars: NIW prior parameters (k, L, nu, mu)
         :double alpha0:       initial guess for concentration parameter
+        :bool probit:         whether to use the probit transformation or not
     
     Returns:
         :DPGMM: instance of DPGMM class
@@ -690,22 +732,19 @@ class DPGMM:
         self.n_pts += 1
         self._assign_to_cluster(np.atleast_2d(x))
         self.alpha = update_alpha(self.alpha, self.n_pts, self.n_cl)
-    
-    @from_probit
-    def rvs(self, n_samps):
+
+    def build_mixture(self):
         """
-        Draw samples from mixture
-        
-        Arguments:
-            :int n_samps: number of samples to draw
+        Instances a mixture class representing the inferred distribution
         
         Returns:
-            :np.ndarray: samples
+            :mixture: the inferred distribution
         """
         if self.n_cl == 0:
-            raise FIGAROException("You are trying to draw samples from an empty mixture - perhaps you called the initialise() method.\n If you are using the density_from_samples() method, you may want to draw samples from the output of that method.")
-        return self._rvs_probit(n_samps)
+            raise FIGAROException("You are trying to build an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, the inferred mixture is returned from that method as an instance of mixture class.")
+        return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, self.n_pts, self.probit)
 
+    # Methods to overwrite _density methods
     def _rvs_probit(self, n_samps):
         """
         Draw samples from mixture in probit space
@@ -740,42 +779,6 @@ class DPGMM:
         """
         return np.sum(np.array([w*mn(comp.mu, comp.sigma).pdf(x) for comp, w in zip(self.mixture, self.w)]), axis = 0)
 
-    @probit
-    def _pdf_no_jacobian(self, x):
-        """
-        Evaluate mixture at point(s) x without jacobian
-        
-        Arguments:
-            :np.ndarray x: point(s) to evaluate the mixture at
-        
-        Returns:
-            :np.ndarray: mixture.pdf(x)
-        """
-        return self._pdf_probit(x)
-
-    def pdf(self, x):
-        if self.n_cl == 0:
-            raise FIGAROException("You are trying to evaluate an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, you may want to evaluate the output of that method.")
-        if len(np.shape(x)) < 2:
-            if self.dim == 1:
-                x = np.atleast_2d(x).T
-            else:
-                x = np.atleast_2d(x)
-        return self._pdf(x)
-
-    @probit
-    def _pdf(self, x):
-        """
-        Evaluate mixture at point(s) x
-        
-        Arguments:
-            :np.ndarray x: point(s) to evaluate the mixture at
-        
-        Returns:
-            :np.ndarray: mixture.pdf(x)
-        """
-        return self._pdf_probit(x) * np.exp(-probit_logJ(x, self.bounds, self.probit))
-
     def _logpdf_probit(self, x):
         """
         Evaluate log mixture at point(s) x in probit space
@@ -787,106 +790,6 @@ class DPGMM:
             :np.ndarray: mixture.logpdf(x)
         """
         return logsumexp(np.array([w + mn(comp.mu, comp.sigma).logpdf(x) for comp, w in zip(self.mixture, self.log_w)]), axis = 0)
-
-    @probit
-    def _logpdf_no_jacobian(self, x):
-        """
-        Evaluate log mixture at point(s) x without jacobian
-        
-        Arguments:
-            :np.ndarray x: point(s) to evaluate the mixture at
-        
-        Returns:
-            :np.ndarray: mixture.logpdf(x)
-        """
-        return self._logpdf_probit(x)
-
-    def logpdf(self, x):
-        if self.n_cl == 0:
-            raise FIGAROException("You are trying to evaluate an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, you may want to evaluate the output of that method.")
-        if len(np.shape(x)) < 2:
-            if self.dim == 1:
-                x = np.atleast_2d(x).T
-            else:
-                x = np.atleast_2d(x)
-        return self._logpdf(x)
-        
-    @probit
-    def _logpdf(self, x):
-        """
-        Evaluate mixture at point(s) x
-        
-        Arguments:
-            :np.ndarray x: point(s) to evaluate the mixture at
-        
-        Returns:
-            :np.ndarray: mixture.logpdf(x)
-        """
-        return self._logpdf_probit(x) - probit_logJ(x, self.bounds, self.probit)
-
-    def fast_pdf(self, x):
-        """
-        Fast pdf evaluation using FIGARO implementation of log_norm (JIT) rather than Numpy's.
-        WARNING: it is meant to be used with MCMC samplers, therefore accepts only one point at a time.
-        
-        Arguments:
-            :np.ndarray x: point to evaluate the mixture at
-        
-        Returns:
-            :np.ndarray: mixture.pdf(x)
-        """
-        x = np.atleast_1d(x)
-        if x.shape == (1,self.dim):
-            return self._fast_pdf(x[0])
-        elif x.shape == (self.dim,):
-            return self._fast_pdf(x)
-        else:
-            raise FIGAROException("Please provide one point at a time.")
-
-    def fast_logpdf(self, x):
-        """
-        Fast logpdf evaluation using FIGARO implementation of log_norm (JIT) rather than Numpy's.
-        WARNING: it is meant to be used with MCMC samplers, therefore accepts only one point at a time.
-        
-        Arguments:
-            :np.ndarray x: point to evaluate the mixture at
-        
-        Returns:
-            :np.ndarray: mixture.pdf(x)
-        """
-        x = np.atleast_1d(x)
-        if x.shape == (1,self.dim):
-            return self._fast_logpdf(x[0])
-        elif x.shape == (self.dim,):
-            return self._fast_logpdf(x)
-        else:
-            raise FIGAROException("Please provide one point at a time.")
-
-    @probit
-    def _fast_pdf(self, x):
-        """
-        Evaluate mixture at point x
-        
-        Arguments:
-            :np.ndarray x: point to evaluate the mixture at
-        
-        Returns:
-            :np.ndarray: mixture.pdf(x)
-        """
-        return self._fast_pdf_probit(x) * np.exp(-probit_logJ(x, self.bounds, self.probit))
-
-    @probit
-    def _fast_logpdf(self, x):
-        """
-        Evaluate log mixture at point x
-        
-        Arguments:
-            :np.ndarray x: point to evaluate the mixture at
-        
-        Returns:
-            :np.ndarray: mixture.logpdf(x)
-        """
-        return self._fast_logpdf_probit(x) - probit_logJ(x, self.bounds, self.probit)
 
     def _fast_pdf_probit(self, x):
         """
@@ -911,17 +814,6 @@ class DPGMM:
             :np.ndarray: mixture.logpdf(x)
         """
         return logsumexp(np.array([w + log_norm(x[0], comp.mean, comp.cov) for comp, w in zip(self.mixture, self.log_w)]), axis = 0)
-
-    def build_mixture(self):
-        """
-        Instances a mixture class representing the inferred distribution
-        
-        Returns:
-            :mixture: the inferred distribution
-        """
-        if self.n_cl == 0:
-            raise FIGAROException("You are trying to build an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, the inferred mixture is returned from that method as an instance of mixture class.")
-        return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, self.n_pts, self.probit)
 
 class HDPGMM(DPGMM):
     """
