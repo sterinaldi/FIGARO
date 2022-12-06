@@ -503,7 +503,7 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
             fig.savefig(Path(out_folder, 'density', '{0}.pdf'.format(name)), bbox_inches = 'tight')
     plt.close()
     
-def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', name = 'density', label = None, unit = None, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}', median_label = '\mathrm{Median}'):
+def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', name = 'density', label = None, unit = None, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}', median_label = '\mathrm{Median}', logx = False, logy = False):
     """
     Plot a 1D distribution along with samples from the true distribution (if available).
     Differently from plot_median_cr, this method requires the distribution to be already evaluated.
@@ -525,6 +525,8 @@ def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', na
         :str true_value_label:            label to assign to the true value marker
         :str injected_label:              label to assign to the injected distribution
         :str median_label:                label to assign to the median distribution
+        :bool logx:                       x log scale
+        :bool logy:                       y log scale
     """
     
     if not np.shape(x)[0] == np.shape(draws)[-1]:
@@ -576,6 +578,10 @@ def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', na
     ax.set_ylim(bottom = 1e-5, top = np.max(p[95])*1.1)
     ax.grid(True,dashes=(1,3))
     ax.legend(loc = 0, frameon = False)
+    if logy:
+        ax.set_yscale('log')
+    if logx:
+        ax.set_xscale('log')
     if save:
         if subfolder:
             plot_folder = Path(out_folder, 'density')
