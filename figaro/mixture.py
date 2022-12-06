@@ -835,7 +835,7 @@ class HDPGMM(DPGMM):
                        ):
         bounds   = np.atleast_2d(bounds)
         self.dim = len(bounds)
-        if prior_pars == None:
+        if prior_pars is None:
             prior_pars = (1e-2, np.identity(self.dim)*0.2**2, self.dim+2, np.zeros(self.dim))
         super().__init__(bounds = bounds, prior_pars = prior_pars, alpha0 = alpha0)
         self.MC_draws = int(MC_draws)
