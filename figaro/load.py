@@ -477,7 +477,14 @@ def save_density(draws, folder = '.', name = 'density', ext = 'pkl'):
     else:
         raise FIGAROException("Extension {0} is not supported. Valid extensions are pkl or json.")
 
-def load_density(file):
+def load_density(path):
+    path = Path(path)
+    if path.is_file():
+        return _load_density_file(path)
+    else:
+        return [_load_density_file(file) for file in path.glob('*.[jp][sk][ol]*') if not file.stem == 'posteriors_single_event']
+
+def _load_density_file(file):
     """
     Loads a list of figaro.mixture instances from file.
     If the requested file extension (pkl or json) is not available, it tries loading the other.
