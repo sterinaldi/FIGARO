@@ -11,7 +11,7 @@ from scipy.stats import invgamma, invwishart, norm
 
 from figaro.decorators import *
 from figaro.transform import *
-from figaro.likelihood import evaluate_mixture_MC_draws, evaluate_mixture_MC_draws_1d, logsumexp_jit, inv_jit, log_norm
+from figaro.likelihood import evaluate_mixture_MC_draws, evaluate_mixture_MC_draws_1d, logsumexp_jit, log_norm
 from figaro.exceptions import except_hook, FIGAROException
 
 from numba import jit, njit, prange
@@ -824,6 +824,8 @@ class HDPGMM(DPGMM):
         :iterable bounds:     boundaries of the rectangle over which the distribution is defined. It should be in the format [[xmin, xmax],[ymin, ymax],...]
         :iterable prior_pars: NIW prior parameters (k, L, nu, mu)
         :double alpha0:       initial guess for concentration parameter
+        :double MC_draws:     number of MC draws for integral
+        :bool probit:         whether to use the probit transformation or not
     
     Returns:
         :HDPGMM: instance of HDPGMM class
@@ -832,6 +834,7 @@ class HDPGMM(DPGMM):
                        alpha0     = 1.,
                        prior_pars = None,
                        MC_draws   = 2e3,
+                       probit     = True
                        ):
         bounds   = np.atleast_2d(bounds)
         self.dim = len(bounds)
