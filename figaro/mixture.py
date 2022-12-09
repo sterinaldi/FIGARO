@@ -676,9 +676,8 @@ class DPGMM(_density):
                 scores[i] += np.log(self.alpha)
             else:
                 scores[i] += np.log(ss.N)
-        scores = {cid: (np.exp(score) if score < np.inf else 0) for cid, score in scores.items()} # score < inf checks also for NaNs
-        normalization = 1/sum(scores.values())
-        scores = {cid: score*normalization for cid, score in scores.items()}
+        norm   = logsumexp(np.array([score for score in scores.values()]), b = np.ones(self.n_cl+1))
+        scores = {cid: (np.exp(score - norm) if score < np.inf else 0) for cid, score in scores.items()} # score < inf checks also for NaNs
         return scores
 
     def _assign_to_cluster(self, x):
@@ -851,7 +850,7 @@ class HDPGMM(DPGMM):
             self.mu_MC    = np.array([mn(self.prior.mu, s/self.prior.k).rvs() for s in self.sigma_MC])
         # For logsumexp_jit
         self.b_ones = np.ones(self.MC_draws)
-        
+    
     def initialise(self, prior_pars = None):
         super().initialise(prior_pars = prior_pars)
         df = np.max([self.prior.nu, self.dim + 2])
@@ -903,9 +902,8 @@ class HDPGMM(DPGMM):
                 scores[i] += np.log(self.alpha)
             else:
                 scores[i] += np.log(ss.N)
-        scores = {cid: (np.exp(score) if score < np.inf else 0)  for cid, score in scores.items()} # score < inf checks also for NaNs
-        normalization = 1/sum(scores.values())
-        scores = {cid: score*normalization for cid, score in scores.items()}
+        norm   = logsumexp(np.array([score for score in scores.values()]), b = np.ones(self.n_cl+1))
+        scores = {cid: (np.exp(score - norm) if score < np.inf else 0)  for cid, score in scores.items()} # score < inf checks also for NaNs
         return scores, logL_N
 
     def _assign_to_cluster(self, x):
