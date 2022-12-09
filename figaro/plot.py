@@ -320,7 +320,7 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
         :iterable true_value:    true value to plot
         :double figsize:         figure size (matplotlib)
         :iterable levels:        credible levels to plot
-        :bool scatter_points:    scatter samples on 2d plot
+        :bool scatter_points:    scatter samples on 2d plots
     """
     
     dim = draws[0].dim
@@ -511,7 +511,7 @@ def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', na
 
     Arguments:
         :iterable x:                      values at which realisations are evaluated
-        :list-of-iterables draws:         container for realisations
+        :iterable draws:                  container for realisations
         :callable or np.ndarray injected: injected distribution (if available)
         :np.ndarray samples:              samples from the true distribution (if available)
         :str or Path out_folder:          output folder

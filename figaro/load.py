@@ -96,7 +96,7 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674
         raise TypeError("File {0}.{1} is not supported".format(name, ext))
     if ext == 'txt' or ext == 'dat':
         if par is not None:
-            warnings.warn("Par names (or volume keyword) are ignored for .txt/.dat files")
+            warnings.warn("Par names (or volume keyword) are ignored for .txt/.dat/.csv files")
         if n_samples > -1:
             samples = np.atleast_1d(np.genfromtxt(event))
             s = int(min([n_samples, len(samples)]))
@@ -478,6 +478,16 @@ def save_density(draws, folder = '.', name = 'density', ext = 'pkl'):
         raise FIGAROException("Extension {0} is not supported. Valid extensions are pkl or json.")
 
 def load_density(path):
+    """
+    Loads a list of figaro.mixture instances from path.
+    If the requested file extension (pkl or json) is not available, it tries loading the other.
+
+    Arguments:
+        :str or Path path: path with draws (file or folder)
+
+    Returns
+        :list: figaro.mixture object instances
+    """
     path = Path(path)
     if path.is_file():
         return _load_density_file(path)
