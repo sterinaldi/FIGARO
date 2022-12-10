@@ -28,27 +28,31 @@ class worker:
                        unit = None,
                        save_se = True,
                        MC_draws = 2000,
+                       probit = True
                        ):
         self.dim                  = bounds.shape[-1]
         self.bounds               = bounds
-        self.mixture              = DPGMM(self.bounds)
+        self.mixture              = DPGMM(self.bounds, probit = probit)
         self.hierarchical_mixture = HDPGMM(self.bounds,
                                            MC_draws = MC_draws,
+                                           probit = probit,
                                            prior_pars = get_priors(self.bounds,
                                                                    samples = all_samples,
-                                                                   std = sigma))
+                                                                   std = sigma,
+                                                                   probit = probit))
         self.out_folder_plots = out_folder_plots
         self.out_folder_pkl   = out_folder_pkl
         self.save_se = save_se
         self.label = label
         self.unit = unit
         self.posteriors = None
+        self.probit = probit
 
     def run_event(self, pars):
         samples, name, n_draws = pars
         ev = np.copy(samples)
         ev.setflags(write = True)
-        self.mixture.initialise(prior_pars = get_priors(self.bounds, samples = ev))
+        self.mixture.initialise(prior_pars = get_priors(self.bounds, samples = ev, probit = self.probit))
         draws = [self.mixture.density_from_samples(ev) for _ in range(n_draws)]
         plt_bounds = np.atleast_2d([ev.min(axis = 0), ev.max(axis = 0)]).T
         if self.save_se:
@@ -99,6 +103,7 @@ def main():
     parser.add_option("--MC_draws", dest = "MC_draws", type = "int", help = "Number of draws for assignment MC integral", default = 2000)
     parser.add_option("--snr_threshold", dest = "snr_threshold", type = "float", help = "SNR threshold for simulated GW datasets", default = None)
     parser.add_option("--far_threshold", dest = "far_threshold", type = "float", help = "FAR threshold for simulated GW datasets", default = None)
+    parser.add_option("--no_probit", dest = "probit", action = 'store_false', help = "Disable probit transformation", default = True)
     
     (options, args) = parser.parse_args()
 
@@ -177,8 +182,9 @@ def main():
     else:
         # Check if all samples are within bounds
         all_samples = np.atleast_2d(np.concatenate(events))
-        if not np.alltrue([(all_samples[:,i] > options.bounds[i,0]).all() and (all_samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
-            raise ValueError("One or more samples are outside the given bounds.")
+        if options.probit:
+            if not np.alltrue([(all_samples[:,i] > options.bounds[i,0]).all() and (all_samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
+                raise ValueError("One or more samples are outside the given bounds.")
 
     # Plot labels
     if dim > 1:
@@ -207,12 +213,11 @@ def main():
                                         unit             = units,
                                         save_se          = options.save_single_event,
                                         MC_draws         = options.MC_draws,
+                                        probit           = options.probit,
                                         )
                           for _ in range(options.n_parallel)])
         
         if options.run_events:
-            mix = DPGMM(options.bounds)
-            posteriors = []
             # Run each single-event analysis
             posteriors = []
             for s in tqdm(pool.map_unordered(lambda a, v: a.run_event.remote(v), [[ev, name, options.n_se_draws] for ev, name in zip(events, names)]), total = len(events), desc = 'Events'):

@@ -36,6 +36,7 @@ def main():
     parser.add_option("--exclude_points", dest = "exclude_points", action = 'store_true', help = "Exclude points outside bounds from analysis", default = False)
     parser.add_option("--grid_points", dest = "grid_points", type = "string", help = "Number of grid points for each dimension. Single integer or one int per dimension", default = None)
     parser.add_option("-e", "--events", dest = "run_events", action = 'store_false', help = "Skip single-event analysis", default = True)
+    parser.add_option("--no_probit", dest = "probit", action = 'store_false', help = "Disable probit transformation", default = True)
 
     (options, args) = parser.parse_args()
 
@@ -94,8 +95,9 @@ def main():
     else:
         # Check if all samples are within bounds
         all_samples = np.atleast_2d(np.concatenate(events))
-        if not np.alltrue([(all_samples[:,i] > options.bounds[i,0]).all() and (all_samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
-            raise ValueError("One or more samples are outside the given bounds.")
+        if options.probit:
+            if not np.alltrue([(all_samples[:,i] > options.bounds[i,0]).all() and (all_samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
+                raise ValueError("One or more samples are outside the given bounds.")
     # Plot labels
     if dim > 1:
         if options.symbol is not None:
@@ -123,7 +125,7 @@ def main():
 
     # Reconstruction
     if not options.postprocess:
-        mix = DPGMM(options.bounds)
+        mix = DPGMM(options.bounds, probit = options.probit)
         grid, diff = recursive_grid(options.bounds, options.grid_points)
         logdiff = np.sum(np.log(diff))
         posteriors = []
@@ -137,7 +139,7 @@ def main():
             t = true_vals[name]
             if options.run_events:
                 # Estimate prior pars from samples
-                mix.initialise(prior_pars = get_priors(mix.bounds, samples = ev))
+                mix.initialise(prior_pars = get_priors(mix.bounds, samples = ev, probit = options.probit))
                 # Draw samples
                 draws = [mix.density_from_samples(ev) for _ in range(options.n_draws)]
                 posteriors.append(draws)

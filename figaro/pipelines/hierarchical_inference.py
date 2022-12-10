@@ -43,6 +43,7 @@ def main():
     parser.add_option("--MC_draws", dest = "MC_draws", type = "int", help = "Number of draws for assignment MC integral", default = 2000)
     parser.add_option("--snr_threshold", dest = "snr_threshold", type = "float", help = "SNR threshold for simulated GW datasets", default = None)
     parser.add_option("--far_threshold", dest = "far_threshold", type = "float", help = "FAR threshold for simulated GW datasets", default = None)
+    parser.add_option("--no_probit", dest = "probit", action = 'store_false', help = "Disable probit transformation", default = True)
     
     (options, args) = parser.parse_args()
 
@@ -121,8 +122,9 @@ def main():
     else:
         # Check if all samples are within bounds
         all_samples = np.atleast_2d(np.concatenate(events))
-        if not np.alltrue([(all_samples[:,i] > options.bounds[i,0]).all() and (all_samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
-            raise ValueError("One or more samples are outside the given bounds.")
+        if options.probit:
+            if not np.alltrue([(all_samples[:,i] > options.bounds[i,0]).all() and (all_samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
+                raise ValueError("One or more samples are outside the given bounds.")
 
     # Plot labels
     if dim > 1:
@@ -138,13 +140,13 @@ def main():
     # Reconstruction
     if not options.postprocess:
         if options.run_events:
-            mix = DPGMM(options.bounds)
+            mix = DPGMM(options.bounds, probit = options.probit)
             posteriors = []
             # Run each single-event analysis
             for i in tqdm(range(len(events)), desc = 'Events'):
                 ev   = events[i]
                 name = names[i]
-                mix.initialise(prior_pars = get_priors(mix.bounds, samples = ev))
+                mix.initialise(prior_pars = get_priors(mix.bounds, samples = ev, probit = options.probit))
                 # Draw samples
                 draws = [mix.density_from_samples(ev) for _ in range(options.n_se_draws)]
                 posteriors.append(draws)
@@ -164,7 +166,7 @@ def main():
             # Load pre-computed posteriors
             posteriors = load_density(Path(output_draws, 'posteriors_single_event.'+options.ext))
         # Run hierarchical analysis
-        mix   = HDPGMM(options.bounds, prior_pars = get_priors(options.bounds, samples = all_samples, std = options.sigma_prior), MC_draws = options.MC_draws)
+        mix   = HDPGMM(options.bounds, prior_pars = get_priors(options.bounds, samples = all_samples, std = options.sigma_prior, probit = options.probit), MC_draws = options.MC_draws, probit = options.probit)
         draws = np.array([mix.density_from_samples(posteriors) for _ in tqdm(range(options.n_draws), desc = 'Hierarchical')])
         # Save draws
         save_density(draws, folder = output_draws, name = 'draws_'+options.h_name, ext = options.ext)

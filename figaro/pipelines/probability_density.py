@@ -35,6 +35,7 @@ def main():
     parser.add_option("--sigma_prior", dest = "sigma_prior", type = "string", help = "Expected standard deviation (prior) - single value or n-dim values. If None, it is estimated from samples", default = None)
     parser.add_option("--snr_threshold", dest = "snr_threshold", type = "float", help = "SNR threshold for simulated GW datasets", default = None)
     parser.add_option("--far_threshold", dest = "far_threshold", type = "float", help = "FAR threshold for simulated GW datasets", default = None)
+    parser.add_option("--no_probit", dest = "probit", action = 'store_false', help = "Disable probit transformation", default = True)
     
     (options, args) = parser.parse_args()
 
@@ -83,15 +84,16 @@ def main():
         samples = samples[np.where((np.prod(options.bounds[:,0] < samples, axis = 1) & np.prod(samples < options.bounds[:,1], axis = 1)))]
     else:
         # Check if all samples are within bounds
-        if not np.alltrue([(samples[:,i] > options.bounds[i,0]).all() and (samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
-            raise ValueError("One or more samples are outside the given bounds.")
+        if options.probit:
+            if not np.alltrue([(samples[:,i] > options.bounds[i,0]).all() and (samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
+                raise ValueError("One or more samples are outside the given bounds.")
     if options.sigma_prior is not None:
         options.sigma_prior = np.array([float(s) for s in options.sigma_prior.split(',')])
 
     # Reconstruction
     if not options.postprocess:
         # Actual analysis
-        mix = DPGMM(options.bounds, prior_pars = get_priors(options.bounds, samples = samples, std = options.sigma_prior))
+        mix = DPGMM(options.bounds, prior_pars = get_priors(options.bounds, samples = samples, std = options.sigma_prior, probit = options.probit), probit = options.probit)
         draws = np.array([mix.density_from_samples(samples) for _ in tqdm(range(options.n_draws), desc = name)])
         # Save reconstruction
         save_density(draws, folder = options.output, name = 'draws_'+name, ext = options.ext)

@@ -48,6 +48,7 @@ def main():
     parser.add_option("--window", dest = "window", type = "int", help = "Number of points to use to approximate the entropy derivative", default = 200)
     parser.add_option("--entropy_interval", dest = "entropy_interval", type = "int", help = "Number of samples between two entropy evaluations", default = 100)
     parser.add_option("--entropy_draws", dest = "entropy_draws", type = "string", help = "Number of monte carlo samples for entropy evaluation", default = '1e3')
+    parser.add_option("--no_probit", dest = "probit", action = 'store_false', help = "Disable probit transformation", default = True)
     
     (options, args) = parser.parse_args()
 

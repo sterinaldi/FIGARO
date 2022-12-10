@@ -20,9 +20,10 @@ class worker:
     def __init__(self, bounds,
                        sigma = None,
                        samples = None,
+                       probit = True,
                        ):
         self.dim     = bounds.shape[-1]
-        self.mixture = DPGMM(bounds, prior_pars = get_priors(bounds, samples = samples, std = sigma))
+        self.mixture = DPGMM(bounds, prior_pars = get_priors(bounds, samples = samples, std = sigma, probit = probit), probit = probit)
         self.samples = np.copy(samples)
         self.samples.setflags(write = True)
 
@@ -53,6 +54,7 @@ def main():
     parser.add_option("--n_parallel", dest = "n_parallel", type = "int", help = "Number of parallel threads", default = 4)
     parser.add_option("--snr_threshold", dest = "snr_threshold", type = "float", help = "SNR threshold for simulated GW datasets", default = None)
     parser.add_option("--far_threshold", dest = "far_threshold", type = "float", help = "FAR threshold for simulated GW datasets", default = None)
+    parser.add_option("--no_probit", dest = "probit", action = 'store_false', help = "Disable probit transformation", default = True)
     
     (options, args) = parser.parse_args()
 
@@ -101,8 +103,9 @@ def main():
         samples = samples[np.where((np.prod(options.bounds[:,0] < samples, axis = 1) & np.prod(samples < options.bounds[:,1], axis = 1)))]
     else:
         # Check if all samples are within bounds
-        if not np.alltrue([(samples[:,i] > options.bounds[i,0]).all() and (samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
-            raise ValueError("One or more samples are outside the given bounds.")
+        if options.probit:
+            if not np.alltrue([(samples[:,i] > options.bounds[i,0]).all() and (samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
+                raise ValueError("One or more samples are outside the given bounds.")
     if options.sigma_prior is not None:
         options.sigma_prior = np.array([float(s) for s in options.sigma_prior.split(',')])
 
@@ -113,6 +116,7 @@ def main():
         pool = ActorPool([worker.remote(bounds  = options.bounds,
                                         sigma   = options.sigma_prior,
                                         samples = samples,
+                                        probit  = options.probit,
                                         )
                           for _ in range(options.n_parallel)])
         draws = []
