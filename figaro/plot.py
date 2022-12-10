@@ -691,6 +691,7 @@ def pp_plot_levels(CR_levels, median_CR = None, out_folder = '.', name = 'MDC', 
         :bool save:              whether to save the plot or not
         :bool show:              whether to show the plot during the run or not
     """
+    CR_levels = np.atleast_1d(CR_levels)
     if len(CR_levels.shape) > 1:
         CR_levels = CR_levels.T
     n_evs     = CR_levels.shape[-1]
