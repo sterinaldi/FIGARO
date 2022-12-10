@@ -9,6 +9,7 @@ from scipy.stats import multivariate_normal as mn
 
 from figaro.transform import transform_to_probit
 from figaro.mixture import mixture
+from figaro.exceptions import FIGAROException
 
 #-–––––––––-#
 # Utilities #
@@ -194,7 +195,7 @@ def rvs_median(draws, n_draws):
         samples = np.concatenate((samples, draws[i].rvs(n)))
     return samples[1:]
     
-def make_single_gaussian_mixture(mu, cov, bounds, out_folder = '.', save = False, n_samps = 10000):
+def make_single_gaussian_mixture(mu, cov, bounds, out_folder = '.', save = False, n_samps = 10000, probit = True):
     """
     Builds mixtures composed of a single Gaussian distribution.
     WARNING: due to the probit coordinate change, a Gaussian distribution in the natural space does not correspond to a Gaussian distribution in the probit space.
@@ -227,20 +228,23 @@ def make_single_gaussian_mixture(mu, cov, bounds, out_folder = '.', save = False
     
     mixtures = []
     for i, (m, c) in enumerate(zip(mu, cov)):
-        ss = np.atleast_2d(mn(m, c).rvs(n_samps))
-        # 1D issue
-        if c.shape == (1,1):
-            ss = ss.T
-        # Keeping only samples within bounds
-        ss = ss[np.where((np.prod(bounds[:,0] < ss, axis = 1) & np.prod(ss < bounds[:,1], axis = 1)))]
-        if save:
-            np.savetxt(Path(events_folder, 'event_{0}.txt'.format(i+1)), ss)
-        # Probit samples
-        p_ss = transform_to_probit(ss, bounds)
-        mm = np.mean(p_ss, axis = 0)
-        cc = np.atleast_2d(np.cov(p_ss.T))
-        
-        mix = mixture(np.atleast_2d([mm]), np.atleast_3d([cc]), np.ones(1), bounds, len(bounds), 1, None)
+        if probit:
+            ss = np.atleast_2d(mn(m, c).rvs(n_samps))
+            # 1D issue
+            if c.shape == (1,1):
+                ss = ss.T
+            # Keeping only samples within bounds
+            ss = ss[np.where((np.prod(bounds[:,0] < ss, axis = 1) & np.prod(ss < bounds[:,1], axis = 1)))]
+            if save:
+                np.savetxt(Path(events_folder, 'event_{0}.txt'.format(i+1)), ss)
+            # Probit samples
+            p_ss = transform_to_probit(ss, bounds)
+            mm = np.mean(p_ss, axis = 0)
+            cc = np.atleast_2d(np.cov(p_ss.T))
+        else:
+            mm = m
+            cc = c
+        mix = mixture(np.atleast_2d([mm]), np.atleast_3d([cc]), np.ones(1), bounds, len(bounds), 1, None, probit = probit)
         mixtures.append([mix])
     
     mixtures = np.array(mixtures)
