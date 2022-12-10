@@ -681,7 +681,7 @@ def pp_plot_cdf(draws, injection, n_points = 1000, out_folder = '.', name = 'eve
 
 def pp_plot_levels(CR_levels, median_CR = None, out_folder = '.', name = 'MDC', show = False, save = True):
     """
-    Make pp-plot comparing draws cdfs and injection cdf
+    Make pp-plot.
     
     Arguments:
         :iterable CR:            2D array with credible levels for each event
@@ -694,7 +694,7 @@ def pp_plot_levels(CR_levels, median_CR = None, out_folder = '.', name = 'MDC', 
     if len(CR_levels.shape) > 1:
         CR_levels = CR_levels.T
     n_evs     = CR_levels.shape[-1]
-    L         = np.linspace(0,1,n_evs)
+    L         = np.linspace(0,1,n_evs+2)
     
     fig = plt.figure()
     ax  = fig.add_subplot(111, projection = 'pp_plot')
@@ -709,16 +709,19 @@ def pp_plot_levels(CR_levels, median_CR = None, out_folder = '.', name = 'MDC', 
             else:
                 lw = 0.6
                 c  = 'steelblue'
-            ax.plot(np.sort(cr), L, lw = lw, alpha = 0.5, color = c)
+            x = np.append(0, np.append(cr, 1))
+            ax.plot(np.sort(x), L, lw = lw, alpha = 0.5, color = c)
         if median_CR is not None:
-            ax.plot(np.sort(median_CR), L, lw = 0.8, color = 'steelblue', label = '$\mathrm{Median}$', zorder = n_evs+2)
+            x = np.append(0, np.append(median_CR, 1))
+            ax.plot(np.sort(x), L, lw = 0.8, color = 'steelblue', label = '$\mathrm{Median}$', zorder = n_evs+2)
         # Add label for draws
         handles, labels = ax.get_legend_handles_labels()
         line = Line2D([0], [0], label='$\mathrm{Draws}$', lw = lw, color = c)
         handles.extend([line])
         ax.legend(handles=handles, loc = 0, frameon = False)
     else:
-        ax.plot(np.sort(CR_levels), L, lw = 0.8, color = 'steelblue', zorder = n_evs+2)
+        x = np.append(0, np.append(CR_levels, 1))
+        ax.plot(np.sort(x), L, lw = 0.8, color = 'steelblue', zorder = n_evs+2)
     # Maquillage
     ax.set_xlabel('$P$')
     ax.set_ylabel('$\mathrm{Fraction\ of\ events\ within\ }CR_P$')
