@@ -741,7 +741,7 @@ class DPGMM(_density):
         """
         if self.n_cl == 0:
             raise FIGAROException("You are trying to build an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, the inferred mixture is returned from that method as an instance of mixture class.")
-        return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, self.n_pts, self.probit)
+        return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, self.n_pts, probit = self.probit)
 
     # Methods to overwrite _density methods
     def _rvs_probit(self, n_samps):
@@ -839,7 +839,7 @@ class HDPGMM(DPGMM):
         self.dim = len(bounds)
         if prior_pars is None:
             prior_pars = (1e-2, np.identity(self.dim)*0.2**2, self.dim+2, np.zeros(self.dim))
-        super().__init__(bounds = bounds, prior_pars = prior_pars, alpha0 = alpha0)
+        super().__init__(bounds = bounds, prior_pars = prior_pars, alpha0 = alpha0, probit = probit)
         self.MC_draws = int(MC_draws)
         
         df = np.max([self.prior.nu, self.dim + 2])
