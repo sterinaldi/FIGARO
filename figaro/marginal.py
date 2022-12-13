@@ -21,7 +21,7 @@ def _marginalise(mix, axis = -1):
     covs   = np.delete(np.delete(mix.covs, ax, axis = -1), ax, axis = -2)
     bounds = np.delete(mix.bounds, ax, axis = 0)
     
-    return mixture(means, covs, mix.w, bounds, dim, mix.n_cl, mix.n_pts)
+    return mixture(means, covs, mix.w, bounds, dim, mix.n_cl, mix.n_pts, probit = mix.probit)
 
 def marginalise(draws, axis = -1):
     """
