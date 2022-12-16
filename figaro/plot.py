@@ -217,6 +217,9 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
     ax.set_ylim(bottom = 1e-5, top = np.max(p[95])*1.1)
     ax.grid(True,dashes=(1,3))
     ax.legend(loc = 0, frameon = False)
+    
+    fig.align_labels()
+    
     if save:
         if subfolder:
             plot_folder = Path(out_folder, 'density')
@@ -488,7 +491,9 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
                 ax.set_xticks([])
             elif column == 0:
                 ax.set_ylabel(labels[row])
-                
+    
+    fig.align_labels()
+    
     if show:
         plt.show()
     if save:
@@ -582,6 +587,9 @@ def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', na
         ax.set_yscale('log')
     if logx:
         ax.set_xscale('log')
+    
+    fig.align_labels()
+    
     if save:
         if subfolder:
             plot_folder = Path(out_folder, 'density')
