@@ -188,7 +188,17 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
     return (k_out, L_out, df_out, mu_out)
 
 def rvs_median(draws, n_draws):
-    idx = np.random.choice(np.arange(len(draws)), size = n_draws)
+    """
+    Generates samples from median distribution of a set of draws.
+    
+    Arguments:
+        :iterable draws: container for mixture instances
+        :int n_draws:    number of samples
+    
+    Returns:
+        :np.ndarray: samples
+    """
+    idx = np.random.choice(np.arange(len(draws)), size = int(n_draws))
     ctr = Counter(idx)
     samples = np.empty(shape = (1, draws[0].dim))
     for i, n in zip(ctr.keys(), ctr.values()):
@@ -244,6 +254,11 @@ def make_single_gaussian_mixture(mu, cov, bounds, out_folder = '.', save = False
         else:
             mm = m
             cc = c
+            if save:
+                ss = np.atleast_2d(mn(m, c).rvs(n_samps))
+                if c.shape == (1,1):
+                    ss = ss.T
+                np.savetxt(Path(events_folder, 'event_{0}.txt'.format(i+1)), ss)
         mix = mixture(np.atleast_2d([mm]), np.atleast_3d([cc]), np.ones(1), bounds, len(bounds), 1, None, probit = probit)
         mixtures.append([mix])
     
@@ -276,6 +291,9 @@ def save_options(options, out_folder):
 #--------------------#
 
 def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True, subfolder = False, true_value = None):
+    """
+    For backward compatibily only. See figaro.plot.plot_multidim
+    """
     from figaro.plot import plot_median_cr as pcr
     warnings.warn('Please use figaro.plot.plot_median_cr - the method figaro.utils.plot_median_cr will be removed in a future version')
     pcr(draws, injected, samples, selfunc, bounds, out_folder, name, n_pts, label, unit, hierarchical, show, save, subfolder, true_value)
