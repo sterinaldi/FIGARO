@@ -34,7 +34,7 @@ def main():
 
     parser = op.OptionParser()
     # Input/output
-    parser.add_option("-i", "--input", type = "string", dest = "samples_file", help = "File with samples")
+    parser.add_option("-i", "--input", type = "string", dest = "samples_path", help = "File with samples")
     parser.add_option("-b", "--bounds", type = "string", dest = "bounds", help = "Density bounds. Must be a string formatted as '[[xmin, xmax], [ymin, ymax],...]'. For 1D distributions use '[xmin, xmax]'. Quotation marks are required and scientific notation is accepted", default = None)
     parser.add_option("-o", "--output", type = "string", dest = "output", help = "Output folder. Default: same directory as samples", default = None)
     parser.add_option("-j", dest = "json", action = 'store_true', help = "Save mixtures in json file", default = False)
@@ -59,13 +59,13 @@ def main():
     (options, args) = parser.parse_args()
 
     # Paths
-    options.samples_file = Path(options.samples_file).resolve()
+    options.samples_path = Path(options.samples_path).resolve()
     if options.output is not None:
         options.output = Path(options.output).resolve()
         if not options.output.exists():
             options.output.mkdir(parents=True)
     else:
-        options.output = options.samples_file.parent
+        options.output = options.samples_path.parent
     # Read bounds
     if options.bounds is not None:
         options.bounds = np.array(np.atleast_2d(eval(options.bounds)), dtype = np.float64)
@@ -89,58 +89,73 @@ def main():
         options.ext = 'json'
     else:
         options.ext = 'pkl'
-        
-    save_options(options, options.output)
     
-    # Load samples
-    samples, name = load_single_event(options.samples_file, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol, waveform = options.wf, snr_threshold = options.snr_threshold, far_threshold = options.far_threshold)
-    try:
-        dim = np.shape(samples)[-1]
-    except IndexError:
-        dim = 1
-    if options.exclude_points:
-        print("Ignoring points outside bounds.")
-        samples = samples[np.where((np.prod(options.bounds[:,0] < samples, axis = 1) & np.prod(samples < options.bounds[:,1], axis = 1)))]
-    else:
-        # Check if all samples are within bounds
-        if options.probit:
-            if not np.alltrue([(samples[:,i] > options.bounds[i,0]).all() and (samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
-                raise ValueError("One or more samples are outside the given bounds.")
+    save_options(options, options.output)
+
     if options.sigma_prior is not None:
         options.sigma_prior = np.array([float(s) for s in options.sigma_prior.split(',')])
-
-    # Reconstruction
-    if not options.postprocess:
-        # Actual analysis
-        ray.init(num_cpus = options.n_parallel)
-        pool = ActorPool([worker.remote(bounds  = options.bounds,
-                                        sigma   = options.sigma_prior,
-                                        samples = samples,
-                                        probit  = options.probit,
-                                        )
-                          for _ in range(options.n_parallel)])
-        draws = []
-        for s in tqdm(pool.map_unordered(lambda a, v: a.draw_sample.remote(), [_ for _ in range(options.n_draws)]), total = options.n_draws, desc = name):
-            draws.append(s)
-        draws = np.array(draws)
-        # Save reconstruction
-        save_density(draws, folder = options.output, name = 'draws_'+name, ext = options.ext)
+    if options.samples_path.is_file():
+        files = [options.samples_path]
+        output_draws = options.out_folder
+        output_plots = options.out_folder
     else:
-        draws = load_density(Path(options.output, 'draws_'+name+'.'+options.ext))
+        files = sum([list(options.samples_path.glob('*.'+ext)) for ext in supported_extensions], [])
+        output_draws = Path(options.out_folder, 'draws')
+        if not output_draws.exists():
+            output_draws.mkdir()
+        output_plots = Path(options.out_folder, 'plots')
+        if not output_plots.exists():
+            output_plots.mkdir()
+    
+    for i, file in enumerate(files)
+        # Load samples
+        samples, name = load_single_event(file, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol, waveform = options.wf, snr_threshold = options.snr_threshold, far_threshold = options.far_threshold)
+        try:
+            dim = np.shape(samples)[-1]
+        except IndexError:
+            dim = 1
+        if options.exclude_points:
+            print("Ignoring points outside bounds.")
+            samples = samples[np.where((np.prod(options.bounds[:,0] < samples, axis = 1) & np.prod(samples < options.bounds[:,1], axis = 1)))]
+        else:
+            # Check if all samples are within bounds
+            if options.probit:
+                if not np.alltrue([(samples[:,i] > options.bounds[i,0]).all() and (samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
+                    raise ValueError("One or more samples are outside the given bounds.")
 
-    # Plot
-    if dim == 1:
-        plot_median_cr(draws, injected = inj_density, samples = samples, out_folder = options.output, name = name, label = options.symbol, unit = options.unit)
-    else:
-        if options.symbol is not None:
-            symbols = options.symbol.split(',')
+        # Reconstruction
+        if not options.postprocess:
+            # Actual analysis
+            desc = name + ' ({0}/{1})'.format(i+1, len(files))
+            ray.init(num_cpus = options.n_parallel)
+            pool = ActorPool([worker.remote(bounds  = options.bounds,
+                                            sigma   = options.sigma_prior,
+                                            samples = samples,
+                                            probit  = options.probit,
+                                            )
+                              for _ in range(options.n_parallel)])
+            draws = []
+            for s in tqdm(pool.map_unordered(lambda a, v: a.draw_sample.remote(), [_ for _ in range(options.n_draws)]), total = options.n_draws, desc = desc):
+                draws.append(s)
+            draws = np.array(draws)
+            # Save reconstruction
+            save_density(draws, folder = output_draws, name = 'draws_'+name, ext = options.ext)
         else:
-            symbols = options.symbol
-        if options.unit is not None:
-            units = options.unit.split(',')
+            draws = load_density(Path(output_draws, 'draws_'+name+'.'+options.ext))
+
+        # Plot
+        if dim == 1:
+            plot_median_cr(draws, injected = inj_density, samples = samples, out_folder = output_plots, name = name, label = options.symbol, unit = options.unit)
         else:
-            units = options.unit
-        plot_multidim(draws, samples = samples, out_folder = options.output, name = name, labels = symbols, units = units)
+            if options.symbol is not None:
+                symbols = options.symbol.split(',')
+            else:
+                symbols = options.symbol
+            if options.unit is not None:
+                units = options.unit.split(',')
+            else:
+                units = options.unit
+            plot_multidim(draws, samples = samples, out_folder = output_plots, name = name, labels = symbols, units = units)
 
 if __name__ == '__main__':
     main()
