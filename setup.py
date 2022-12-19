@@ -115,7 +115,7 @@ setup(
     ext_modules=ext_modules,
     entry_points = {
         'console_scripts': scripts,
-        }
+        },
     version='1.0.0',
     long_description=long_description,
     long_description_content_type='text/markdown',
