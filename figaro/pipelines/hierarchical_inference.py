@@ -156,7 +156,7 @@ def main():
                     if dim == 1:
                         plot_median_cr(draws, samples = ev, bounds = plt_bounds[0], out_folder = output_plots, name = name, label = options.symbol, unit = options.unit, subfolder = True)
                     else:
-                        plot_multidim(draws, samples = ev, bounds = plt_bounds, out_folder = output_plots, name = name, labels = symbols, units = units)
+                        plot_multidim(draws, samples = ev, bounds = plt_bounds, out_folder = output_plots, name = name, labels = symbols, units = units, subfolder = True)
                 # Save single-event draws
                 save_density(draws, folder = output_draws, name = 'draws_'+name, ext = options.ext)
             # Save all single-event draws together
