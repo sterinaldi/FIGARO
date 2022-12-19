@@ -10,7 +10,7 @@ from tqdm import tqdm
 from figaro.mixture import DPGMM
 from figaro.utils import save_options, get_priors
 from figaro.plot import plot_median_cr, plot_multidim
-from figaro.load import load_single_event, save_density, load_density
+from figaro.load import load_single_event, save_density, load_density, supported_extensions
 
 import ray
 from ray.util import ActorPool
@@ -96,18 +96,19 @@ def main():
         options.sigma_prior = np.array([float(s) for s in options.sigma_prior.split(',')])
     if options.samples_path.is_file():
         files = [options.samples_path]
-        output_draws = options.out_folder
-        output_plots = options.out_folder
+        output_draws = options.output
+        subfolder = False
     else:
         files = sum([list(options.samples_path.glob('*.'+ext)) for ext in supported_extensions], [])
-        output_draws = Path(options.out_folder, 'draws')
+        output_draws = Path(options.output, 'draws')
         if not output_draws.exists():
             output_draws.mkdir()
-        output_plots = Path(options.out_folder, 'plots')
-        if not output_plots.exists():
-            output_plots.mkdir()
+        subfolder = True
     
-    for i, file in enumerate(files)
+    if not options.postprocess:
+        ray.init(num_cpus = options.n_parallel)
+    
+    for i, file in enumerate(files):
         # Load samples
         samples, name = load_single_event(file, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol, waveform = options.wf, snr_threshold = options.snr_threshold, far_threshold = options.far_threshold)
         try:
@@ -127,7 +128,6 @@ def main():
         if not options.postprocess:
             # Actual analysis
             desc = name + ' ({0}/{1})'.format(i+1, len(files))
-            ray.init(num_cpus = options.n_parallel)
             pool = ActorPool([worker.remote(bounds  = options.bounds,
                                             sigma   = options.sigma_prior,
                                             samples = samples,
@@ -145,7 +145,7 @@ def main():
 
         # Plot
         if dim == 1:
-            plot_median_cr(draws, injected = inj_density, samples = samples, out_folder = output_plots, name = name, label = options.symbol, unit = options.unit)
+            plot_median_cr(draws, injected = inj_density, samples = samples, out_folder = options.output, name = name, label = options.symbol, unit = options.unit, subfolder = subfolder)
         else:
             if options.symbol is not None:
                 symbols = options.symbol.split(',')
@@ -155,7 +155,7 @@ def main():
                 units = options.unit.split(',')
             else:
                 units = options.unit
-            plot_multidim(draws, samples = samples, out_folder = output_plots, name = name, labels = symbols, units = units)
+            plot_multidim(draws, samples = samples, out_folder = options.output, name = name, labels = symbols, units = units, subfolder = subfolder)
 
 if __name__ == '__main__':
     main()

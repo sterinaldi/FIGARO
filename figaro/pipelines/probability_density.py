@@ -76,16 +76,14 @@ def main():
         options.sigma_prior = np.array([float(s) for s in options.sigma_prior.split(',')])
     if options.samples_path.is_file():
         files = [options.samples_path]
-        output_draws = options.out_folder
-        output_plots = options.out_folder
+        output_draws = options.output
+        subfolder = False
     else:
         files = sum([list(options.samples_path.glob('*.'+ext)) for ext in supported_extensions], [])
-        output_draws = Path(options.out_folder, 'draws')
+        output_draws = Path(options.output, 'draws')
         if not output_draws.exists():
             output_draws.mkdir()
-        output_plots = Path(options.out_folder, 'plots')
-        if not output_plots.exists():
-            output_plots.mkdir()
+        subfolder = True
     
     for i, file in enumerate(files):
         # Load samples
@@ -116,7 +114,7 @@ def main():
 
         # Plot
         if dim == 1:
-            plot_median_cr(draws, injected = inj_density, samples = samples, out_folder = output_plots, name = name, label = options.symbol, unit = options.unit)
+            plot_median_cr(draws, injected = inj_density, samples = samples, out_folder = options.output, name = name, label = options.symbol, unit = options.unit, subfolder = subfolder)
         else:
             if options.symbol is not None:
                 symbols = options.symbol.split(',')
@@ -126,7 +124,7 @@ def main():
                 units = options.unit.split(',')
             else:
                 units = options.unit
-            plot_multidim(draws, samples = samples, out_folder = output_plots, name = name, labels = symbols, units = units)
+            plot_multidim(draws, samples = samples, out_folder = options.output, name = name, labels = symbols, units = units, subfolder = subfolder)
 
 if __name__ == '__main__':
     main()
