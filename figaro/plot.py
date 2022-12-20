@@ -110,7 +110,7 @@ class PPPlot(axes.Axes):
         
 projection_registry.register(PPPlot)
 
-def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}'):
+def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}', median_label = None):
     """
     Plot the recovered 1D distribution along with the injected distribution and samples from the true distribution (both if available).
     
@@ -132,11 +132,13 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         :float true_value:                true value to infer
         :str true_value_label:            label to assign to the true value marker
         :str injected_label:              label to assign to the injected distribution
+        :str median_label:                label to assign to the reconstruction
     """
-    if hierarchical:
-        rec_label = '\mathrm{(H)DPGMM}'
-    else:
-        rec_label = '\mathrm{DPGMM}'
+    if median_label is None:
+        if hierarchical:
+            median_label = '\mathrm{(H)DPGMM}'
+        else:
+            median_label = '\mathrm{DPGMM}'
     
     all_bounds = np.atleast_2d([d.bounds[0] for d in draws])
     x_min = np.max(all_bounds[:,0])
@@ -204,7 +206,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         if true_value_label is not None:
             true_value_label = '$'+true_value_label+'$'
         ax.axvline(true_value, ls = '--', color = 'r', lw = 0.5, label = true_value_label)
-    ax.plot(x, p[50], lw = 0.7, color = 'steelblue', label = '${0}$'.format(rec_label))
+    ax.plot(x, p[50], lw = 0.7, color = 'steelblue', label = '${0}$'.format(median_label))
     if label is None:
         label = 'x'
     if unit is None or unit == '':
@@ -277,7 +279,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
             # Injection
             ax.plot(x, p_x, lw = 0.5, color = 'red', label = injected_label)
         # Median
-        ax.plot(x, p[50], lw = 0.7, color = 'steelblue', label = '${0}$'.format(rec_label))
+        ax.plot(x, p[50], lw = 0.7, color = 'steelblue', label = '${0}$'.format(median_label))
         if label is None:
             label = 'x'
         if unit is None or unit == '':
@@ -327,11 +329,6 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
     """
     
     dim = draws[0].dim
-    
-    if hierarchical:
-        rec_label = '\mathrm{(H)DPGMM}'
-    else:
-        rec_label = '\mathrm{DPGMM}'
     
     if labels is None:
         labels = ['$x_{0}$'.format(i+1) for i in range(dim)]
