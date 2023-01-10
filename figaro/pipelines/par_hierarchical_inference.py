@@ -41,7 +41,7 @@ class worker:
                                                                    std = sigma,
                                                                    probit = probit))
         self.out_folder_plots = out_folder_plots
-        self.out_folder_pkl   = out_folder_pkl
+        self.out_folder_draws = out_folder_draws
         self.save_se = save_se
         self.label = label
         self.unit = unit
