@@ -205,7 +205,7 @@ def rvs_median(draws, n_draws):
         samples = np.concatenate((samples, draws[i].rvs(n)))
     return samples[1:]
     
-def make_single_gaussian_mixture(mu, cov, bounds, out_folder = '.', save = False, n_samps = 10000, probit = True):
+def make_single_gaussian_mixture(mu, cov, bounds, out_folder = '.', save = False, n_samps = 3000, probit = True):
     """
     Builds mixtures composed of a single Gaussian distribution.
     WARNING: due to the probit coordinate change, a Gaussian distribution in the natural space does not correspond to a Gaussian distribution in the probit space.
