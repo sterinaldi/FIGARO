@@ -1,9 +1,11 @@
 import numpy as np
 import warnings
 import dill
+import configparser
 
 from pathlib import Path
 from tqdm import tqdm
+from typing import cast
 from collections import Counter
 from scipy.stats import multivariate_normal as mn
 
@@ -213,12 +215,12 @@ def make_single_gaussian_mixture(mu, cov, bounds, out_folder = '.', save = False
     In general, a more robust (but slower) approach would be to draw samples from each original Gaussian distribution and to use them to make a hierarchical inference.
     
     Arguments:
-        :np.ndarray mu: mean for each Gaussian distribution
-        :np.ndarray cov: covariance matrix for each Gaussian distribution
+        :np.ndarray mu:     mean for each Gaussian distribution
+        :np.ndarray cov:    covariance matrix for each Gaussian distribution
         :np.ndarray bounds: boundaries for probit transformation
-        :str out_folder: output folder
-        :bool save: whether to save the draws or not
-        :int n_samps: number of samples to estimate mean and covariance in probit space
+        :str out_folder:    output folder
+        :bool save:         whether to save the draws or not
+        :int n_samps:       number of samples to estimate mean and covariance in probit space
     
     Returns:
         :np.ndarray: mixtures
@@ -279,13 +281,45 @@ def save_options(options, out_folder):
     Saves options for the run (reproducibility)
     
     Arguments:
-        :dict options: options
+        :obj options:            options
+        :str or Path out_folder: folder where to save the option file
     """
-    logfile = open(Path(out_folder, 'options_log.txt'), 'w')
-    for key, val in zip(vars(options).keys(), vars(options).values()):
-        logfile.write('{0}: {1}\n'.format(key,val))
-    logfile.close()
+    with open(Path(out_folder, 'options_log.ini'), 'w') as logfile:
+        logfile.write('[OPTIONS]\n')
+        for key, val in zip(vars(options).keys(), vars(options).values()):
+            logfile.write('{0} = {1}\n'.format(key,val))
 
+def load_options(opts, file):
+    """
+    Loads options for the run (reproducibility)
+    
+    Arguments:
+        :obj opts:         options object
+        :str or Path file: file with options
+    
+    Returns:
+        :obj: options
+    """
+    with open(file, 'r') as logfile:
+        config = configparser.RawConfigParser()
+        config.read(file)
+        opts_dict = dict(config.items('OPTIONS'))
+    print(opts_dict)
+    for key in opts_dict.keys():
+        if opts_dict[key] in ['True', 'False']:
+            if opts_dict[key] == 'True':
+                opts_dict[key] = True
+            if opts_dict[key] == 'False':
+                opts_dict[key] = False
+        if key == 'bounds':
+            opts.bounds = str(opts_dict['bounds'])
+        else:
+            try:
+                exec('opts.{0} = opts.{0}.__class__(opts_dict["{0}"])'.format(key))
+            except TypeError:
+                exec('opts.{0} = opts.{0}.__class__()'.format(key))
+    return opts
+    
 #--------------------#
 #    Compatibility   #
 #--------------------#

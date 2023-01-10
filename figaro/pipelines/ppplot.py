@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from figaro.mixture import DPGMM
 from figaro.transform import transform_to_probit
-from figaro.utils import save_options, recursive_grid, get_priors
+from figaro.utils import save_options, load_options, recursive_grid, get_priors
 from figaro.plot import plot_median_cr, plot_multidim, pp_plot_levels
 from figaro.credible_regions import FindLevelForHeight, FindNearest_Grid
 from figaro.load import load_data, save_density, load_density
@@ -19,7 +19,7 @@ def main():
 
     parser = op.OptionParser()
     # Input/output
-    parser.add_option("-i", "--input", type = "string", dest = "samples_folder", help = "Folder with single-event samples files. .txt files only")
+    parser.add_option("-i", "--input", type = "string", dest = "samples_folder", help = "Folder with single-event samples files. .txt files only", default = None)
     parser.add_option("-b", "--bounds", type = "string", dest = "bounds", help = "Density bounds. Must be a string formatted as '[[xmin, xmax], [ymin, ymax],...]'. For 1D distributions use '[xmin, xmax]'. Quotation marks are required and scientific notation is accepted", default = None)
     parser.add_option("--true_vals", type = "string", dest = "true_vals", help = "JSON file storing a dictionary with the injected values. Dictionary keys must match single-event samples files names", default = None)
     parser.add_option("-o", "--output", type = "string", dest = "output", help = "Output folder. Default: same directory as samples folder", default = None)
@@ -37,35 +37,32 @@ def main():
     parser.add_option("--grid_points", dest = "grid_points", type = "string", help = "Number of grid points for each dimension. Single integer or one int per dimension", default = None)
     parser.add_option("-e", "--events", dest = "run_events", action = 'store_false', help = "Skip single-event analysis", default = True)
     parser.add_option("--no_probit", dest = "probit", action = 'store_false', help = "Disable probit transformation", default = True)
+    parser.add_option("--config", dest = "config", type = "string", help = "Config file. Warning: command line options are ignored if provided", default = None)
 
     (options, args) = parser.parse_args()
 
     # Paths
-    options.samples_folder = Path(options.samples_folder).resolve()
+    if options.samples_folder is not None:
+        options.samples_folder = Path(options.samples_folder).resolve()
+    elif options.config is not None:
+        options.samples_folder = Path('.').resolve()
+    else:
+        raise Exception("Please provide path to samples.")
     if options.output is not None:
         options.output = Path(options.output).resolve()
         if not options.output.exists():
             options.output.mkdir(parents=True)
     else:
         options.output = options.samples_folder.parent
+    if options.config is not None:
+        options.config = Path(options.config).resolve()
     output_plots = Path(options.output, 'plots')
     if not output_plots.exists():
         output_plots.mkdir()
     output_draws = Path(options.output, 'draws')
     if not output_draws.exists():
         output_draws.mkdir()
-    # Read bounds
-    if options.bounds is not None:
-        options.bounds = np.array(np.atleast_2d(eval(options.bounds)), dtype = np.float64)
-    elif options.bounds is None and not options.postprocess:
-        raise Exception("Please provide bounds for the inference (use -b '[[xmin,xmax],[ymin,ymax],...]')")
-    # Load true values
-    if options.true_vals is not None:
-        options.true_vals = Path(options.true_vals).resolve()
-        with open(options.true_vals, 'r') as f:
-            true_vals = json.load(f)
-    else:
-        raise Exception("Please provide JSON file with true values")
+
     # File extension
     if options.json:
         options.ext = 'json'
@@ -74,7 +71,19 @@ def main():
     # Check that all files are .txt
     if not (np.array([f.suffix for f in options.samples_folder.glob('*')]) == '.txt').all():
         raise Exception("Only .txt files are currently supported for PP-plot analysis")
-        exit()
+
+    if options.config is not None:
+        load_options(options, options.config)
+    save_options(options, options.output)
+
+    # Read bounds
+    if options.bounds is not None:
+        options.bounds = np.array(np.atleast_2d(eval(options.bounds)), dtype = np.float64)
+    elif options.bounds is None and not options.postprocess:
+        raise Exception("Please provide bounds for the inference (use -b '[[xmin,xmax],[ymin,ymax],...]')")
+    else:
+        raise Exception("Please provide JSON file with true values")
+
     # Load samples
     events, names = load_data(options.samples_folder, n_samples = options.n_samples_dsp)
     try:
@@ -121,7 +130,11 @@ def main():
     else:
         options.grid_points = np.ones(dim, dtype = int)*int((1000/dim**2)**dim)
 
-    save_options(options, options.output)
+    # Load true values
+    if options.true_vals is not None:
+        options.true_vals = Path(options.true_vals).resolve()
+        with open(options.true_vals, 'r') as f:
+            true_vals = json.load(f)
 
     # Reconstruction
     if not options.postprocess:

@@ -8,7 +8,7 @@ from pathlib import Path
 from tqdm import tqdm
 
 from figaro.mixture import DPGMM
-from figaro.utils import save_options, get_priors
+from figaro.utils import save_options, load_options, get_priors
 from figaro.plot import plot_median_cr, plot_multidim
 from figaro.load import load_single_event, save_density, load_density, supported_extensions
 
@@ -16,7 +16,7 @@ def main():
 
     parser = op.OptionParser()
     # Input/output
-    parser.add_option("-i", "--input", type = "string", dest = "samples_path", help = "File with samples")
+    parser.add_option("-i", "--input", type = "string", dest = "samples_path", help = "File with samples", default = None)
     parser.add_option("-b", "--bounds", type = "string", dest = "bounds", help = "Density bounds. Must be a string formatted as '[[xmin, xmax], [ymin, ymax],...]'. For 1D distributions use '[xmin, xmax]'. Quotation marks are required and scientific notation is accepted", default = None)
     parser.add_option("-o", "--output", type = "string", dest = "output", help = "Output folder. Default: same directory as samples", default = None)
     parser.add_option("-j", dest = "json", action = 'store_true', help = "Save mixtures in json file", default = False)
@@ -36,22 +36,46 @@ def main():
     parser.add_option("--snr_threshold", dest = "snr_threshold", type = "float", help = "SNR threshold for simulated GW datasets", default = None)
     parser.add_option("--far_threshold", dest = "far_threshold", type = "float", help = "FAR threshold for simulated GW datasets", default = None)
     parser.add_option("--no_probit", dest = "probit", action = 'store_false', help = "Disable probit transformation", default = True)
+    parser.add_option("--config", dest = "config", type = "string", help = "Config file. Warning: command line options are ignored if provided", default = None)
     
     (options, args) = parser.parse_args()
 
     # Paths
-    options.samples_path = Path(options.samples_path).resolve()
+    if options.samples_path is not None:
+        options.samples_path = Path(options.samples_path).resolve()
+    elif options.config is not None:
+        options.samples_path = Path('.').resolve()
+    else:
+        raise Exception("Please provide path to samples.")
     if options.output is not None:
         options.output = Path(options.output).resolve()
         if not options.output.exists():
             options.output.mkdir(parents=True)
     else:
         options.output = options.samples_path.parent
+    if options.config is not None:
+        options.config = Path(options.config).resolve()
+    # File extension
+    if options.json:
+        options.ext = 'json'
+    else:
+        options.ext = 'pkl'
+    
+    if options.config is not None:
+        load_options(options, options.config)
+    save_options(options, options.output)
+
     # Read bounds
     if options.bounds is not None:
         options.bounds = np.array(np.atleast_2d(eval(options.bounds)), dtype = np.float64)
     elif options.bounds is None and not options.postprocess:
         raise Exception("Please provide bounds for the inference (use -b '[[xmin,xmax],[ymin,ymax],...]')")
+    # Read cosmology
+    options.h, options.om, options.ol = (float(x) for x in options.cosmology.split(','))
+    # Read parameter(s)
+    if options.par is not None:
+        options.par = options.par.split(',')
+
     # If provided, load injected density
     inj_density = None
     if options.inj_density_file is not None:
@@ -60,17 +84,6 @@ def main():
         inj_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(inj_module)
         inj_density = inj_module.density
-    # Read cosmology
-    options.h, options.om, options.ol = (float(x) for x in options.cosmology.split(','))
-    # Read parameter(s)
-    if options.par is not None:
-        options.par = options.par.split(',')
-    # File extension
-    if options.json:
-        options.ext = 'json'
-    else:
-        options.ext = 'pkl'
-    save_options(options, options.output)
 
     if options.sigma_prior is not None:
         options.sigma_prior = np.array([float(s) for s in options.sigma_prior.split(',')])

@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 from figaro.mixture import DPGMM, HDPGMM
 from figaro.transform import transform_to_probit
-from figaro.utils import save_options, get_priors
+from figaro.utils import save_options, load_options, get_priors
 from figaro.plot import plot_median_cr, plot_multidim
 from figaro.load import load_data, save_density, load_density
 
@@ -47,6 +47,7 @@ class worker:
         self.unit = unit
         self.posteriors = None
         self.probit = probit
+        self.ext = ext
 
     def run_event(self, pars):
         samples, name, n_draws = pars
@@ -76,7 +77,7 @@ def main():
 
     parser = op.OptionParser()
     # Input/output
-    parser.add_option("-i", "--input", type = "string", dest = "samples_folder", help = "Folder with single-event samples files")
+    parser.add_option("-i", "--input", type = "string", dest = "samples_folder", help = "Folder with single-event samples files", default = None)
     parser.add_option("-b", "--bounds", type = "string", dest = "bounds", help = "Density bounds. Must be a string formatted as '[[xmin, xmax], [ymin, ymax],...]'. For 1D distributions use '[xmin, xmax]'. Quotation marks are required and scientific notation is accepted", default = None)
     parser.add_option("-o", "--output", type = "string", dest = "output", help = "Output folder. Default: same directory as samples folder", default = None)
     parser.add_option("-j", dest = "json", action = 'store_true', help = "Save mixtures in json file", default = False)
@@ -100,21 +101,29 @@ def main():
     parser.add_option("-e", "--events", dest = "run_events", action = 'store_false', help = "Skip single-event analysis", default = True)
     parser.add_option("--sigma_prior", dest = "sigma_prior", type = "string", help = "Expected standard deviation (prior) for hierarchical inference - single value or n-dim values. If None, it is estimated from samples", default = None)
     parser.add_option("--n_parallel", dest = "n_parallel", type = "int", help = "Number of parallel threads", default = 4)
-    parser.add_option("--MC_draws", dest = "MC_draws", type = "int", help = "Number of draws for assignment MC integral", default = 2000)
+    parser.add_option("--mc_draws", dest = "mc_draws", type = "int", help = "Number of draws for assignment MC integral", default = 2000)
     parser.add_option("--snr_threshold", dest = "snr_threshold", type = "float", help = "SNR threshold for simulated GW datasets", default = None)
     parser.add_option("--far_threshold", dest = "far_threshold", type = "float", help = "FAR threshold for simulated GW datasets", default = None)
     parser.add_option("--no_probit", dest = "probit", action = 'store_false', help = "Disable probit transformation", default = True)
-    
+    parser.add_option("--config", dest = "config", type = "string", help = "Config file. Warning: command line options are ignored if provided", default = None)
+
     (options, args) = parser.parse_args()
 
     # Paths
-    options.samples_folder = Path(options.samples_folder).resolve()
+    if options.samples_folder is not None:
+        options.samples_folder = Path(options.samples_folder).resolve()
+    elif options.config is not None:
+        options.samples_folder = Path('.').resolve()
+    else:
+        raise Exception("Please provide path to samples.")
     if options.output is not None:
         options.output = Path(options.output).resolve()
         if not options.output.exists():
             options.output.mkdir(parents=True)
     else:
         options.output = options.samples_folder.parent
+    if options.config is not None:
+        options.config = Path(options.config).resolve()
     output_plots = Path(options.output, 'plots')
     if not output_plots.exists():
         output_plots.mkdir()
@@ -124,11 +133,33 @@ def main():
     # Read hierarchical name
     if options.h_name is None:
         options.h_name = options.samples_folder.parent.parts[-1]
+    # File extension
+    if options.json:
+        options.ext = 'json'
+    else:
+        options.ext = 'pkl'
+
+    if options.config is not None:
+        load_options(options, options.config)
+    save_options(options, options.output)
+
     # Read bounds
     if options.bounds is not None:
         options.bounds = np.array(np.atleast_2d(eval(options.bounds)), dtype = np.float64)
     elif options.bounds is None and not options.postprocess:
         raise Exception("Please provide bounds for the inference (use -b '[[xmin,xmax],[ymin,ymax],...]')")
+
+    # Read cosmology
+    options.h, options.om, options.ol = (float(x) for x in options.cosmology.split(','))
+    # Read parameter(s)
+    if options.par is not None:
+        options.par = options.par.split(',')
+    # Read number of single-event draws
+    if options.n_se_draws is None:
+        options.n_se_draws = options.n_draws
+    if options.sigma_prior is not None:
+        options.sigma_prior = np.array([float(s) for s in options.sigma_prior.split(',')])
+
     # If provided, load injected density
     inj_density = None
     if options.inj_density_file is not None:
@@ -150,23 +181,6 @@ def main():
     if options.true_vals is not None:
         options.true_vals = Path(options.true_vals).resolve()
         true_vals = np.loadtxt(options.true_vals)
-    # Read cosmology
-    options.h, options.om, options.ol = (float(x) for x in options.cosmology.split(','))
-    # Read parameter(s)
-    if options.par is not None:
-        options.par = options.par.split(',')
-    # Read number of single-event draws
-    if options.n_se_draws is None:
-        options.n_se_draws = options.n_draws
-    if options.sigma_prior is not None:
-        options.sigma_prior = np.array([float(s) for s in options.sigma_prior.split(',')])
-    # File extension
-    if options.json:
-        options.ext = 'json'
-    else:
-        options.ext = 'pkl'
-        
-    save_options(options, options.output)
     
     # Load samples
     events, names = load_data(options.samples_folder, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol, waveform = options.wf, snr_threshold = options.snr_threshold, far_threshold = options.far_threshold)
@@ -212,7 +226,7 @@ def main():
                                         label            = symbols,
                                         unit             = units,
                                         save_se          = options.save_single_event,
-                                        MC_draws         = options.MC_draws,
+                                        MC_draws         = options.mc_draws,
                                         probit           = options.probit,
                                         )
                           for _ in range(options.n_parallel)])
