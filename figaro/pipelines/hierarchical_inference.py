@@ -80,7 +80,7 @@ def main():
         
     if options.config is not None:
         options = load_options(options, options.config)
-    save_options(options, options.output)
+    save_options(options, options.output, name = options.h_name)
     
     # Read bounds
     if options.bounds is not None:
