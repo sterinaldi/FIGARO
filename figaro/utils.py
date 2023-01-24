@@ -276,7 +276,7 @@ def make_single_gaussian_mixture(mu, cov, bounds, out_folder = '.', save = False
 #   Options   #
 #-------------#
 
-def save_options(options, out_folder):
+def save_options(options, out_folder, name = None):
     """
     Saves options for the run (reproducibility)
     
@@ -284,7 +284,11 @@ def save_options(options, out_folder):
         :obj options:            options
         :str or Path out_folder: folder where to save the option file
     """
-    with open(Path(out_folder, 'options_log.ini'), 'w') as logfile:
+    if name is None:
+        filename = 'options_log.ini'
+    else:
+        filename = 'options_log_{0}.ini'.format(name)
+    with open(Path(out_folder, filename), 'w') as logfile:
         logfile.write('[OPTIONS]\n')
         for key, val in zip(vars(options).keys(), vars(options).values()):
             logfile.write('{0} = {1}\n'.format(key,val))
@@ -304,7 +308,6 @@ def load_options(opts, file):
         config = configparser.RawConfigParser()
         config.read(file)
         opts_dict = dict(config.items('OPTIONS'))
-    print(opts_dict)
     for key in opts_dict.keys():
         if opts_dict[key] in ['True', 'False']:
             if opts_dict[key] == 'True':
