@@ -28,6 +28,8 @@ from figaro.coordinates import celestial_to_cartesian, cartesian_to_celestial, i
 from figaro.credible_regions import ConfidenceArea, ConfidenceVolume, FindNearest_Volume, FindLevelForHeight
 from figaro.diagnostic import compute_entropy_single_draw, angular_coefficient
 from figaro.exceptions import FIGAROException
+import figaro.plot_settings
+
 try:
     from figaro.cosmology import CosmologicalParameters
     lal_flag = True
@@ -38,15 +40,6 @@ except ModuleNotFoundError:
 from pathlib import Path
 from distutils.spawn import find_executable
 from tqdm import tqdm
-
-rcParams["xtick.labelsize"]=14
-rcParams["ytick.labelsize"]=14
-rcParams["xtick.direction"]="in"
-rcParams["ytick.direction"]="in"
-rcParams["legend.fontsize"]=15
-rcParams["axes.labelsize"]=16
-rcParams["axes.grid"] = True
-rcParams["grid.alpha"] = 0.6
 
 @jit
 def log_add(x, y):
@@ -556,7 +549,7 @@ class VolumeReconstruction(DPGMM):
         handles.append(patch)
         ax.set_xlabel('$\\alpha$')
         ax.set_ylabel('$\\delta$')
-        ax.legend(handles = handles, loc = 0, frameon = False, fontsize = 10, handlelength=0, handletextpad=0, markerscale=0)
+        ax.legend(handles = handles, fontsize = 10, handlelength=0, handletextpad=0, markerscale=0)
         if final_map:
             fig.savefig(Path(self.skymap_folder, self.name+'_all.pdf'), bbox_inches = 'tight')
             if self.next_plot < np.inf:
@@ -676,7 +669,7 @@ class VolumeReconstruction(DPGMM):
         ax.set_ylabel('$\\delta$')
         ax.set_xlim(x_lim)
         ax.set_ylim(y_lim)
-        ax.legend(handles = handles, loc = 2, frameon = False, fontsize = 10, handlelength=0, labelcolor = leg_col)
+        ax.legend(handles = handles, loc = 2, fontsize = 10, handlelength=0, labelcolor = leg_col)
         if final_map:
             fig.savefig(Path(self.skymap_folder, 'galaxies_'+self.name+'_all.pdf'), bbox_inches = 'tight')
         else:
