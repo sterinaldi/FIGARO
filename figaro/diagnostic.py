@@ -9,17 +9,7 @@ from distutils.spawn import find_executable
 
 from figaro.cumulative import fast_cumulative
 from figaro.exceptions import FIGAROException
-
-if find_executable('latex'):
-    rcParams["text.usetex"] = True
-rcParams["xtick.labelsize"]=14
-rcParams["ytick.labelsize"]=14
-rcParams["xtick.direction"]="in"
-rcParams["ytick.direction"]="in"
-rcParams["legend.fontsize"]=12
-rcParams["axes.labelsize"]=16
-rcParams["axes.grid"] = True
-rcParams["grid.alpha"] = 0.6
+import figaro.plot_utils
 
 log2e = np.log2(np.e)
 
@@ -85,7 +75,6 @@ def plot_angular_coefficient(entropy, L = 500, ac_expected = None, out_folder = 
     ax.plot(np.arange(len(S))*step+L, S, ls = '--', marker = '', color = 'steelblue', lw = 0.7)
     ax.set_ylabel('$\\frac{dS(N)}{dN}$')
     ax.set_xlabel('$N$')
-    ax.grid(True,dashes=(1,3))
     if show:
         plt.show()
     if save:
@@ -163,7 +152,6 @@ def autocorrelation(draws, bounds = None, out_folder = '.', name = 'event', n_po
     ax.plot(np.arange(taumax), ac, ls = '--', marker = '', lw = 0.7)
     ax.set_xlabel('$\\tau$')
     ax.set_ylabel('$C(\\tau)$')
-    ax.grid(True,dashes=(1,3))
     if show:
         plt.show()
     if save:
@@ -237,7 +225,6 @@ def entropy(draws, out_folder = '.', exp_entropy = None, name = 'event', n_draws
         ax.axhline(exp_entropy, lw = 0.5, ls = '--', c = 'r')
     ax.set_xlabel('$N$')
     ax.set_ylabel('$S(N)\ [\mathrm{bits}]$')
-    ax.grid(True,dashes=(1,3))
     if show:
         plt.show()
     if save:
