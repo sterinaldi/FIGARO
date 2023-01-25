@@ -5,29 +5,15 @@ from pathlib import Path
 from scipy.stats import beta
 
 import matplotlib.pyplot as plt
-from matplotlib import rcParams
 from matplotlib import axes
 from matplotlib.projections import projection_registry
 import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
 
-from distutils.spawn import find_executable
-
+import figaro.plot_settings
 from figaro.marginal import marginalise
 from figaro.credible_regions import ConfidenceArea
 from figaro.utils import recursive_grid
-
-if find_executable('latex'):
-    rcParams["text.usetex"] = True
-rcParams["xtick.labelsize"]=14
-rcParams["ytick.labelsize"]=14
-rcParams["xtick.direction"]="in"
-rcParams["ytick.direction"]="in"
-rcParams["legend.fontsize"]=12
-rcParams["axes.labelsize"]=16
-rcParams["axes.grid"] = True
-rcParams["grid.alpha"] = 0.6
-rcParams["contour.negative_linestyle"] = 'solid'
 
 # Telling python to ignore empty legend warning from matplotlib
 warnings.filterwarnings("ignore", message = "No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.")
@@ -217,8 +203,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
     if samples is not None:
         ax.set_xlim(xlim)
     ax.set_ylim(bottom = 1e-5, top = np.max(p[95])*1.1)
-    ax.grid(True,dashes=(1,3))
-    ax.legend(loc = 0, frameon = False)
+    ax.legend()
     
     fig.align_labels()
     
@@ -289,8 +274,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         ax.set_ylabel('$p({0})$'.format(label))
         ax.autoscale(True)
         ax.set_ylim(bottom = 1e-5, top = np.max(p[95])*1.1)
-        ax.grid(True,dashes=(1,3))
-        ax.legend(loc = 0, frameon = False)
+        ax.legend()
         if save:
             fig.savefig(Path(log_folder, 'log_true_{0}.pdf'.format(name)), bbox_inches = 'tight')
             ax.set_yscale('linear')
@@ -578,8 +562,7 @@ def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', na
     if samples is not None:
         ax.set_xlim(xlim)
     ax.set_ylim(bottom = 1e-5, top = np.max(p[95])*1.1)
-    ax.grid(True,dashes=(1,3))
-    ax.legend(loc = 0, frameon = False)
+    ax.legend()
     if logy:
         ax.set_yscale('log')
     if logx:
@@ -637,7 +620,6 @@ def plot_n_clusters_alpha(n_cl, alpha, out_folder = '.', name = 'event', show = 
     ax.set_xlabel('$t$')
     ax.set_ylabel('$N_{\mathrm{cl}}(t)$', color = 'k')
     ax1.set_ylabel('$\alpha(t)$', color = 'r')
-    ax.grid(True,dashes=(1,3))
     if show:
         plt.show()
     if save:
@@ -677,7 +659,6 @@ def pp_plot_cdf(draws, injection, n_points = 1000, out_folder = '.', name = 'eve
     ax.plot(cdf_injection, cdf, color = 'steelblue', lw = 0.7)
     ax.set_xlabel('$\mathrm{Injected}$')
     ax.set_ylabel('$\mathrm{FIGARO}$')
-    ax.grid(True,dashes=(1,3))
     if show:
         plt.show()
     if save:
@@ -731,7 +712,6 @@ def pp_plot_levels(CR_levels, median_CR = None, out_folder = '.', name = 'MDC', 
     # Maquillage
     ax.set_xlabel('$P$')
     ax.set_ylabel('$\mathrm{Fraction\ of\ events\ within\ }CR_P$')
-    ax.grid(True,dashes=(1,3))
     if show:
         plt.show()
     if save:
