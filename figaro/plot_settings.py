@@ -1,8 +1,10 @@
 from matplotlib import rcParams
 from distutils.spawn import find_executable
 
+tex_flag = False
 if find_executable('latex'):
     rcParams["text.usetex"] = True
+    tex_flag = True
 rcParams["xtick.labelsize"] = 14
 rcParams["ytick.labelsize"] = 14
 rcParams["xtick.direction"] = "in"

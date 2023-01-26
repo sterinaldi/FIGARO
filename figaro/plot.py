@@ -10,7 +10,7 @@ from matplotlib.projections import projection_registry
 import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
 
-import figaro.plot_settings
+from figaro import plot_settings
 from figaro.marginal import marginalise
 from figaro.credible_regions import ConfidenceArea
 from figaro.utils import recursive_grid
@@ -447,7 +447,7 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
                 if true_value[column] is not None and true_value[row] is not None:
                     ax.plot(true_value[column], true_value[row], color = 'orangered', marker = 's', ms = 3)
             c1 = ax.contour(Y, X, logmedian, np.sort(levs), colors='k', linewidths=0.3)
-            if rcParams["text.usetex"] == True:
+            if plot_settings.tex_flag:
                 ax.clabel(c1, fmt = {l:'{0:.0f}\\%'.format(100*s) for l,s in zip(c1.levels, np.sort(levels)[::-1])}, fontsize = 3)
             else:
                 ax.clabel(c1, fmt = {l:'{0:.0f}\%'.format(100*s) for l,s in zip(c1.levels, np.sort(levels)[::-1])}, fontsize = 3)
