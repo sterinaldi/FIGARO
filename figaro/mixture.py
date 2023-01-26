@@ -7,7 +7,7 @@ from pathlib import Path
 
 from scipy.special import gammaln, logsumexp
 from scipy.stats import multivariate_normal as mn
-from scipy.stats import invgamma, invwishart, norm
+from scipy.stats import invwishart, norm
 
 from figaro.decorators import *
 from figaro.transform import *
