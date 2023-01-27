@@ -28,7 +28,7 @@ from figaro.coordinates import celestial_to_cartesian, cartesian_to_celestial, i
 from figaro.credible_regions import ConfidenceArea, ConfidenceVolume, FindNearest_Volume, FindLevelForHeight
 from figaro.diagnostic import compute_entropy_single_draw, angular_coefficient
 from figaro.exceptions import FIGAROException
-import figaro.plot_settings
+from figaro import plot_settings
 
 try:
     from figaro.cosmology import CosmologicalParameters
