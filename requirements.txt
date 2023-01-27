@@ -1,6 +1,6 @@
 numpy<1.22
 scipy
-matplotlib
+matplotlib==3.5.3
 cython
 dill
 corner
