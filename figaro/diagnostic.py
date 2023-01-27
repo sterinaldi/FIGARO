@@ -9,7 +9,7 @@ from distutils.spawn import find_executable
 
 from figaro.cumulative import fast_cumulative
 from figaro.exceptions import FIGAROException
-import figaro.plot_utils
+from figaro import plot_settings
 
 log2e = np.log2(np.e)
 
