@@ -11,7 +11,7 @@ from figaro.mixture import DPGMM, HDPGMM
 from figaro.transform import transform_to_probit
 from figaro.utils import save_options, load_options, get_priors
 from figaro.plot import plot_median_cr, plot_multidim
-from figaro.load import load_data, save_density, load_density
+from figaro.load import load_data, load_single_event, save_density, load_density
 
 import ray
 from ray.util import ActorPool
@@ -180,11 +180,9 @@ def main():
     true_vals = None
     if options.true_vals is not None:
         options.true_vals = Path(options.true_vals).resolve()
-        true_vals, true_name = load_data(options.true_vals, par = options.par, h = options.h, om = options.om, ol = options.ol, waveform = options.wf)
-        print(np.shape(true_vals))
+        true_vals, true_name = load_single_event(options.true_vals, par = options.par, h = options.h, om = options.om, ol = options.ol, waveform = options.wf)
         if np.shape(true_vals)[-1] == 1:
             true_vals = true_vals.flatten()
-            print(true_vals)
     # Load samples
     events, names = load_data(options.samples_folder, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol, waveform = options.wf, snr_threshold = options.snr_threshold, far_threshold = options.far_threshold)
     try:
