@@ -181,6 +181,7 @@ def main():
     if options.true_vals is not None:
         options.true_vals = Path(options.true_vals).resolve()
         true_vals, true_name = load_data(options.true_vals, par = options.par, h = options.h, om = options.om, ol = options.ol, waveform = options.wf)
+        print(np.shape(true_vals))
         if np.shape(true_vals)[-1] == 1:
             true_vals = true_vals.flatten()
             print(true_vals)
