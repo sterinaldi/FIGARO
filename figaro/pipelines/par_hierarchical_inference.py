@@ -180,7 +180,7 @@ def main():
     true_vals = None
     if options.true_vals is not None:
         options.true_vals = Path(options.true_vals).resolve()
-        true_vals = np.loadtxt(options.true_vals)
+        true_vals, true_name = load_data(options.true_vals, par = options.par, h = options.h, om = options.om, ol = options.ol, waveform = options.wf)
     
     # Load samples
     events, names = load_data(options.samples_folder, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol, waveform = options.wf, snr_threshold = options.snr_threshold, far_threshold = options.far_threshold)
