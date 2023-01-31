@@ -39,6 +39,7 @@ def main():
     parser.add_option("-o", "--output", type = "string", dest = "output", help = "Output folder. Default: same directory as samples", default = None)
     parser.add_option("-j", dest = "json", action = 'store_true', help = "Save mixtures in json file", default = False)
     parser.add_option("--inj_density", type = "string", dest = "inj_density_file", help = "Python module with injected density - please name the method 'density'", default = None)
+    parser.add_option("--selfunc", type = "string", dest = "selfunc_file", help = "Python module with selection function - please name the method 'selection_function'", default = None)
     parser.add_option("--parameter", type = "string", dest = "par", help = "GW parameter(s) to be read from file", default = None)
     parser.add_option("--waveform", type = "string", dest = "wf", help = "Waveform to load from samples file. To be used in combination with --parameter. Accepted values: 'combined', 'imr', 'seob'", default = 'combined')
     # Plot
@@ -105,7 +106,15 @@ def main():
         inj_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(inj_module)
         inj_density = inj_module.density
-
+    #If provided, load selecton function
+    selfunc = None
+    if options.selfunc_file is not None:
+        selfunc_file_name = Path(options.selfunc_file).parts[-1].split('.')[0]
+        spec = importlib.util.spec_from_file_location(selfunc_file_name, options.selfunc_file)
+        selfunc_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(selfunc_module)
+        selfunc = selfunc_module.selection_function
+        
     if options.sigma_prior is not None:
         options.sigma_prior = np.array([float(s) for s in options.sigma_prior.split(',')])
     if options.samples_path.is_file():
@@ -159,7 +168,7 @@ def main():
 
         # Plot
         if dim == 1:
-            plot_median_cr(draws, injected = inj_density, samples = samples, out_folder = options.output, name = name, label = options.symbol, unit = options.unit, subfolder = subfolder)
+            plot_median_cr(draws, injected = inj_density, selfunc = selfunc, samples = samples, out_folder = options.output, name = name, label = options.symbol, unit = options.unit, subfolder = subfolder)
         else:
             if options.symbol is not None:
                 symbols = options.symbol.split(',')
