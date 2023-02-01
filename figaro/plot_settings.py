@@ -16,4 +16,5 @@ rcParams["axes.labelsize"]  = 16
 rcParams["axes.grid"]       = True
 rcParams["grid.alpha"]      = 0.6
 rcParams["grid.linestyle"]  = "dotted"
+rcParams["lines.linewidth"] = 0.7
 rcParams["contour.negative_linestyle"] = "solid"
