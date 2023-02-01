@@ -367,7 +367,7 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
     fig.subplots_adjust(left=lb, bottom=lb, right=tr, top=tr, wspace=whspace, hspace=whspace)
     # Samples (if available)
     if samples is not None:
-        corner(samples, color = '#1f77b4', fig = fig, hist_kwargs = {'density': True, 'label':'$\mathrm{Samples}$', 'linewidth':0.7} , plot_density = False, contour_kwargs = {'linewidths':0.4}, levels = [0.5,0.68,0.9], no_fill_contours = True)
+        corner(samples, color = '#1f77b4', fig = fig, hist_kwargs = {'density': True, 'label':'$\mathrm{Samples}$', 'linewidth':0.7} , plot_density = False, contour_kwargs = {'linewidths':0.3}, levels = [0.5,0.68,0.9], no_fill_contours = True)
     # 1D plots (diagonal)
     for column in range(K):
         ax = axs[column, column]
@@ -397,18 +397,15 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
             if true_value[column] is not None:
                 ax.axvline(true_value[column], c = 'orangered', lw = 0.5)
         ax.plot(x, p[50], lw = 0.7, color = 'steelblue', label = '${0}$'.format(median_label))
-        if column < K - 1:
-            ax.set_xticks([])
-            ax.set_yticks([])
-        elif column == K - 1:
-            ax.set_yticks([])
+        ax.set_yticks([])
+        if column == K - 1:
             if labels is not None:
                 ax.set_xlabel(labels[-1])
-            ticks = np.linspace(lim[0], lim[1], 5)
-            ax.set_xticks(ticks)
-            [l.set_rotation(45) for l in ax.get_xticklabels()]
+        ticks = np.linspace(lim[0], lim[1], 5)
+        ax.set_xticks(ticks)
+        [l.set_rotation(45) for l in ax.get_xticklabels()]
         ax.set_xlim(lim[0], lim[1])
-    
+
     # 2D plots (off-diagonal)
     for row in range(K):
         for column in range(K):
@@ -451,32 +448,25 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
                     ax.axvline(true_value[column], c = 'orangered', lw = 0.5)
                 if true_value[column] is not None and true_value[row] is not None:
                     ax.plot(true_value[column], true_value[row], color = 'orangered', marker = 's', ms = 3)
-            c1 = ax.contour(Y, X, logmedian, np.sort(levs), colors='k', linewidths=0.3)
+            c1 = ax.contour(Y, X, logmedian, np.sort(levs), colors='steelblue', linewidths=0.3)
             if plot_settings.tex_flag:
                 ax.clabel(c1, fmt = {l:'{0:.0f}\\%'.format(100*s) for l,s in zip(c1.levels, np.sort(levels)[::-1])}, fontsize = 3)
             else:
                 ax.clabel(c1, fmt = {l:'{0:.0f}\%'.format(100*s) for l,s in zip(c1.levels, np.sort(levels)[::-1])}, fontsize = 3)
-            ax.set_xticks([])
-            ax.set_yticks([])
             # Samples (if available)
             if samples is not None and scatter_points:
                 ax.scatter(samples[:,column], samples[:,row], marker = '+', c = 'orangered', linewidths = 1)
-            
+            # Ticks
+            xticks = np.linspace(lim[1,0], lim[1,1], 5)
+            ax.set_xticks(xticks)
+            yticks = np.linspace(lim[0,0], lim[0,1], 5)
+            ax.set_yticks(yticks)
             if column == 0:
                 ax.set_ylabel(labels[row])
-                ticks = np.linspace(lim[0,0], lim[0,1], 5)
-                ax.set_yticks(ticks)
                 [l.set_rotation(45) for l in ax.get_yticklabels()]
             if row == K - 1:
-                ticks = np.linspace(lim[1,0], lim[1,1], 5)
-                ax.set_xticks(ticks)
                 [l.set_rotation(45) for l in ax.get_xticklabels()]
                 ax.set_xlabel(labels[column])
-                
-            elif row < K - 1:
-                ax.set_xticks([])
-            elif column == 0:
-                ax.set_ylabel(labels[row])
 
     fig.axes[K-1].legend(*fig.axes[0].get_legend_handles_labels(), loc = 'center')
     fig.align_labels()
