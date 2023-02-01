@@ -3,12 +3,14 @@ import warnings
 
 from pathlib import Path
 from scipy.stats import beta
+from corner import corner
 
 import matplotlib.pyplot as plt
 from matplotlib import axes
 from matplotlib.projections import projection_registry
 import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
+from matplotlib import rcParams
 
 from figaro import plot_settings
 from figaro.marginal import marginalise
@@ -288,7 +290,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         plt.close()
     
 
-def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False, n_pts = 200, true_value = None, figsize = 7, levels = [0.5, 0.68, 0.9], scatter_points = False):
+def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False, n_pts = 200, true_value = None, figsize = 7, levels = [0.5, 0.68, 0.9], scatter_points = False, median_label = None):
     """
     Plot the recovered multidimensional distribution along with samples from the true distribution (if available) as corner plot.
     
@@ -310,10 +312,15 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
         :double figsize:         figure size (matplotlib)
         :iterable levels:        credible levels to plot
         :bool scatter_points:    scatter samples on 2d plots
+        :str median_label:       label to assign to the reconstruction
     """
     
     dim = draws[0].dim
-    
+    if median_label is None:
+        if hierarchical:
+            median_label = '\mathrm{(H)DPGMM}'
+        else:
+            median_label = '\mathrm{DPGMM}'
     if labels is None:
         labels = ['$x_{0}$'.format(i+1) for i in range(dim)]
     else:
@@ -358,7 +365,9 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
     lb = lbdim / dim_plt
     tr = (lbdim + plotdim) / dim_plt
     fig.subplots_adjust(left=lb, bottom=lb, right=tr, top=tr, wspace=whspace, hspace=whspace)
-    
+    # Samples (if available)
+    if samples is not None:
+        corner(samples, color = '#1f77b4', fig = fig, hist_kwargs = {'density': True, 'label':'$\mathrm{Samples}$', 'linewidth':0.7} , plot_density = False, contour_kwargs = {'linewidths':0.4}, levels = [0.5,0.68,0.9], no_fill_contours = True)
     # 1D plots (diagonal)
     for column in range(K):
         ax = axs[column, column]
@@ -368,8 +377,8 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
         marg_draws = marginalise(draws, dims)
         # Credible regions
         lim = bounds[column]
-        x = np.linspace(lim[0], lim[1], n_pts+2)[1:-1]
-        dx   = x[1]-x[0]
+        x   = np.linspace(lim[0], lim[1], n_pts+2)[1:-1]
+        dx  = x[1]-x[0]
         
         probs = np.array([d.pdf(x) for d in marg_draws])
         
@@ -380,17 +389,14 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
         norm = p[50].sum()*dx
         for perc in percentiles:
             p[perc] = p[perc]/norm
-        
-        # Samples (if available)
-        if samples is not None:
-            ax.hist(samples[:,column], bins = int(np.sqrt(len(samples[:,column]))), histtype = 'step', density = True)
+            
         # CR
         ax.fill_between(x, p[95], p[5], color = 'mediumturquoise', alpha = 0.25)
         ax.fill_between(x, p[84], p[16], color = 'darkturquoise', alpha = 0.25)
         if true_value is not None:
             if true_value[column] is not None:
                 ax.axvline(true_value[column], c = 'orangered', lw = 0.5)
-        ax.plot(x, p[50], lw = 0.7, color = 'steelblue')
+        ax.plot(x, p[50], lw = 0.7, color = 'steelblue', label = '${0}$'.format(median_label))
         if column < K - 1:
             ax.set_xticks([])
             ax.set_yticks([])
@@ -407,7 +413,6 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
     for row in range(K):
         for column in range(K):
             ax = axs[row,column]
-            ax.grid(visible=False)
             if column > row:
                 ax.set_frame_on(False)
                 ax.set_xticks([])
@@ -472,7 +477,8 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
                 ax.set_xticks([])
             elif column == 0:
                 ax.set_ylabel(labels[row])
-    
+
+    fig.axes[K-1].legend(*fig.axes[0].get_legend_handles_labels(), loc = 'center')
     fig.align_labels()
     
     if show:
@@ -488,6 +494,7 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
                     pass
             fig.savefig(Path(out_folder, 'density', '{0}.pdf'.format(name)), bbox_inches = 'tight')
     plt.close()
+    return fig
     
 def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', name = 'density', label = None, unit = None, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}', median_label = '\mathrm{Median}', logx = False, logy = False):
     """
