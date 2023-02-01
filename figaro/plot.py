@@ -367,7 +367,7 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
     fig.subplots_adjust(left=lb, bottom=lb, right=tr, top=tr, wspace=whspace, hspace=whspace)
     # Samples (if available)
     if samples is not None:
-        corner(samples, color = '#1f77b4', fig = fig, hist_kwargs = {'density': True, 'label':'$\mathrm{Samples}$', 'linewidth':0.7} , plot_density = False, contour_kwargs = {'linewidths':0.3}, levels = [0.5,0.68,0.9], no_fill_contours = True)
+        corner(samples, color = '#1f77b4', fig = fig, hist_kwargs = {'density': True, 'label':'$\mathrm{Samples}$', 'linewidth':0.7} , plot_density = False, contour_kwargs = {'linewidths':0.3, 'linestyles':'dashed'}, levels = [0.5,0.68,0.9], no_fill_contours = True)
     # 1D plots (diagonal)
     for column in range(K):
         ax = axs[column, column]
