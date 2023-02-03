@@ -30,7 +30,7 @@ class worker:
                        MC_draws = 2000,
                        probit = True
                        ):
-        self.dim                  = bounds.shape[-1]
+        self.dim                  = bounds.shape[0]
         self.bounds               = bounds
         self.mixture              = DPGMM(self.bounds, probit = probit)
         self.hierarchical_mixture = HDPGMM(self.bounds,
@@ -57,7 +57,6 @@ class worker:
         draws = [self.mixture.density_from_samples(ev) for _ in range(n_draws)]
         plt_bounds = np.atleast_2d([ev.min(axis = 0), ev.max(axis = 0)]).T
         if self.save_se:
-            print(self.dim, self.bounds)
             if self.dim == 1:
                 plot_median_cr(draws, samples = ev, bounds = plt_bounds[0], out_folder = self.out_folder_plots, name = name, label = self.label, unit = self.unit, subfolder = True)
             else:
