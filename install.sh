@@ -10,9 +10,18 @@ if $env_flag; then
     fi
     conda activate figaro_env
 else
-    { pip install -r requirements.txt } || { pip install --user -r requirements.txt }
+    {
+    pip install -r requirements.txt
+    } || {
+    pip install --user -r requirements.txt
+    
+    }
 fi
 
 conda install -c conda-forge -y -S lalsuite
-{ python setup.py install } || { python setup.py install --user }
+{
+python setup.py install
+} || {
+python setup.py install --user
+}
 
