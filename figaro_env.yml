@@ -6,7 +6,6 @@ dependencies:
   - astropy=5.2.1
   - h5py=3.8.0
   - pip=22.3.1
-  - python=3.9.13
   - scipy=1.10.0
   - setuptools=65.6.3
   - tqdm=4.64.1
