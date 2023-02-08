@@ -4,7 +4,6 @@ channels:
   - defaults
 dependencies:
   - astropy=5.2.1
-  - h5py=3.8.0
   - pip=22.3.1
   - python=3.9.13
   - scipy=1.10.0
@@ -17,7 +16,7 @@ dependencies:
       - cython==0.29.33
       - dill==0.3.6
       - imageio==2.25.0
-      - matplotlib==3.5.3
+      - matplotlib!=3.6.3
       - numba==0.56.4
       - numpy==1.21.6
       - pyvo==1.4
