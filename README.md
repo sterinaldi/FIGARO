@@ -8,19 +8,6 @@ An introductive guide on how to use FIGARO can be found in the `introductive_gui
 We strongly encourage the interested user to go through the whole notebook, since it provides a (hopefully detailed) tutorial on how to properly set and use FIGARO.\
 To learn how to use FIGARO to reconstruct skymaps, have a look at the `skymaps.ipynb` notebook. In that notebook we show how to obtain the skymaps included in [Rinaldi & Del Pozzo (2022b)](https://ui.adsabs.harvard.edu/abs/2022arXiv220507252R/abstract) - please cite this paper if you use FIGARO in your research.
 
-FIGARO comes with several plug-and-play console scripts:
-* `figaro-density` reconstructs a probability density given a set of samples;
-* `figaro-hierarchical` reconstructs a probability density given a set of single-event samples, each of them drawn around a sample from the initial probability density;
-* `figaro-pp_plot` produces the so-called *pp-plots* for a set of single-event posterior samples to assess the validity of a simulated dataset;
-* `figaro-mockdata` generates a set of synthetic posterior samples from a given hierarchical distribution;
-* `figaro-entropy` reconstruct a probability density and provides an estimate of the entropy as a function of the number of samples.
-
-In addition to these, the parallelized version of the inference scripts are available:
-* `figaro-par-density`, parallelized sampling;
-* `figaro-par-hierarchical`, parallelized single-event analysis and parallelized sampling.
-
-In order to see the available options, run `console_script_name -h`.
-
 You can install FIGARO by running `source install.sh`: this script will go through all the necessary steps to install the code.
 We recommend using one of the following two conda environments:
 * `figaro_env` is a dedicated environment already containing all the required packages. It is created by the installer if the option `-e` is provided;
@@ -36,3 +23,16 @@ Without LALSuite, the following FIGARO functions won't be available:
 To install LALSuite, follow the instructions provided [here](https://wiki.ligo.org/Computing/LALSuiteInstall). In most cases, `conda install -c conda-forge lalsuite` will work.
 The parallelized scripts use [Ray](https://docs.ray.io/en/latest/) to parallelize. Ray is not included in `igwn-py39` nor is automatically installed with FIGARO.
 If you wish to use these scripts, please install Ray via `pip install ray` and then (re-)install FIGARO to include also the parallelized scripts.
+
+FIGARO comes with several plug-and-play console scripts:
+* `figaro-density` reconstructs a probability density given a set of samples;
+* `figaro-hierarchical` reconstructs a probability density given a set of single-event samples, each of them drawn around a sample from the initial probability density;
+* `figaro-pp_plot` produces the so-called *pp-plots* for a set of single-event posterior samples to assess the validity of a simulated dataset;
+* `figaro-mockdata` generates a set of synthetic posterior samples from a given hierarchical distribution;
+* `figaro-entropy` reconstruct a probability density and provides an estimate of the entropy as a function of the number of samples.
+
+In addition to these, the parallelized version of the inference scripts are available:
+* `figaro-par-density`, parallelized sampling;
+* `figaro-par-hierarchical`, parallelized single-event analysis and parallelized sampling.
+
+In order to see the available options, run `console_script_name -h`.
