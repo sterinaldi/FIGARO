@@ -4,8 +4,6 @@ FIGARO is an inference code designed to estimate multivariate probability densit
 It is also possible to perform hierarchical inferences: in this case, the model used is (H)DPGMM, described in [Rinaldi & Del Pozzo (2022a)](https://ui.adsabs.harvard.edu/abs/2022MNRAS.509.5454R/abstract).
 Differently from other DPGMM implementations relying on variational algorithms, FIGARO does not require the user to specify a priori the maximum allowed number of mixture components. The required number of Gaussian distributions to be included in the mixture is inferred from the data.
 
-To install FIGARO, run `python setup.py build_ext --inplace` and `python setup.py install`. In some cases (like on clusters), it may happen that you do not have the permission to write in the default installation directory. In this case, run `python setup.py install --user`.
-
 An introductive guide on how to use FIGARO can be found in the `introductive_guide.ipynb` notebook, where it is shown how to to reconstruct a probability density with FIGARO and how to use its products.
 We strongly encourage the interested user to go through the whole notebook, since it provides a (hopefully detailed) tutorial on how to properly set and use FIGARO.\
 To learn how to use FIGARO to reconstruct skymaps, have a look at the `skymaps.ipynb` notebook. In that notebook we show how to obtain the skymaps included in [Rinaldi & Del Pozzo (2022b)](https://ui.adsabs.harvard.edu/abs/2022arXiv220507252R/abstract) - please cite this paper if you use FIGARO in your research.
@@ -23,13 +21,18 @@ In addition to these, the parallelized version of the inference scripts are avai
 
 In order to see the available options, run `console_script_name -h`.
 
-We recommend using the `igwn-py39` conda environment, which includes all the required packages apart from ImageIO.
-This environment is available [here](https://computing.docs.ligo.org/conda/environments/igwn-py39).
-If you decide not to use `igwn-py39`, please remember that in order to have access to all the functions, LALSuite is required.
+You can install FIGARO by running `source install.sh`: this script will go through all the necessary steps to install the code.
+We recommend using one of the following two conda environments:
+* `figaro_env` is a dedicated environment already containing all the required packages. It is created by the installer if the option `-e` is provided;
+* `igwn-py39`, which includes all the required packages apart from ImageIO, is available [here](https://computing.docs.ligo.org/conda/environments/igwn-py39) .
+
+If you prefer install FIGARO by hand, run `python setup.py build_ext --inplace` and `python setup.py install`. In some cases (like on clusters), it may happen that you do not have the permission to write in the default installation directory. In this case, run `python setup.py install --user`.
+
+If you decide not to use one of the default environments, please remember that in order to have access to all the functions, LALSuite is required.
 Without LALSuite, the following FIGARO functions won't be available:
 * `figaro.load` module won't be able to load GW posterior samples and will raise an exception;
 * `figaro.threeDvolume.VolumeReconstruction` will ignore any provided galaxy catalog. The volume reconstruction will be available.
 
-To install LALSuite, follow the instructions provided [here](https://wiki.ligo.org/Computing/LALSuiteInstall).
+To install LALSuite, follow the instructions provided [here](https://wiki.ligo.org/Computing/LALSuiteInstall). In most cases, `conda install -c conda-forge lalsuite` will work.
 The parallelized scripts use [Ray](https://docs.ray.io/en/latest/) to parallelize. Ray is not included in `igwn-py39` nor is automatically installed with FIGARO.
 If you wish to use these scripts, please install Ray via `pip install ray` and then (re-)install FIGARO to include also the parallelized scripts.
