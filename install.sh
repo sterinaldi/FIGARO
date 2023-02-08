@@ -6,7 +6,7 @@ fi
 # If environment:
 if $env_flag; then
     if ! ( conda env list | grep ".*figaro_env.*" >/dev/null 2>&1); then
-        conda env create -f figaro_env.yml
+        conda env create -f figaro_env.yml python==3.9.13
     fi
     conda activate figaro_env
 else
@@ -14,7 +14,6 @@ else
     pip install -r requirements.txt
     } || {
     pip install --user -r requirements.txt
-    
     }
 fi
 
