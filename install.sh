@@ -8,7 +8,9 @@ if $env_flag; then
     if ! ( conda env list | grep ".*figaro_env.*" >/dev/null 2>&1); then
         conda env create -f figaro_env.yml
     fi
-    conda activate figaro_env
+    if [[ $CONDA_DEFAULT_ENV!='figaro_env' ]]; then
+        conda activate figaro_env
+    fi
 else
     {
     pip install -r requirements.txt
