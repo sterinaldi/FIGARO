@@ -174,7 +174,7 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
         k_out = k
     else:
         if dim == 1:
-            k_out = np.sqrt(L_out)
+            k_out = np.sqrt(L_out[0,0])
         else:
             if probit:
                 k_out = 1e-2
