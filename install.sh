@@ -18,6 +18,7 @@ else
 fi
 
 conda install -c conda-forge -y -S lalsuite
+pip install matplotlib!=3.6.3
 {
 python setup.py install
 } || {
