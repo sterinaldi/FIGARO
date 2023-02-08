@@ -173,10 +173,13 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
     if k is not None:
         k_out = k
     else:
-        if probit:
-            k_out = 1e-2
+        if dim == 1:
+            k_out = np.sqrt(L_out)
         else:
-            k_out = 1e-1
+            if probit:
+                k_out = 1e-2
+            else:
+                k_out = 1e-1
     
     if draw_flag:
         ss = mn(np.mean(bounds, axis = -1), L_out).rvs(10000)
