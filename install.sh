@@ -9,6 +9,6 @@ if $env_flag; then
     fi
     conda activate figaro_env
 fi
-
+conda install -c conda-forge -y -S lalsuite
 {python setup.py install} || {python setup.py install --user}
 
