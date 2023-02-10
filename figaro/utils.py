@@ -169,18 +169,6 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
             L_out = np.identity(dim)*0.2**2
         else:
             L_out = np.identity(dim)*(np.diff(bounds, axis = 1)/10)**2
-    # k
-    if k is not None:
-        k_out = k
-    else:
-        if dim == 1:
-            k_out = np.sqrt(L_out[0,0])
-        else:
-            if probit:
-                k_out = 1e-2
-            else:
-                k_out = 1e-1
-    
     if draw_flag:
         ss = mn(np.mean(bounds, axis = -1), L_out).rvs(10000)
         if dim == 1:
@@ -189,6 +177,11 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
         ss = ss[np.where((np.prod(bounds[:,0] < ss, axis = 1) & np.prod(ss < bounds[:,1], axis = 1)))]
         probit_samples = transform_to_probit(ss, bounds)
         L_out = np.atleast_2d(np.cov(probit_samples.T))
+    # k
+    if k is not None:
+        k_out = k
+    else:
+        k_out = np.linalg.det(L_out)
         
     return (k_out, L_out, df_out, mu_out)
 
