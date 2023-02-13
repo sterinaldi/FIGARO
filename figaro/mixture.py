@@ -595,10 +595,7 @@ class DPGMM(_density):
         if prior_pars is not None:
             self.prior = prior(*prior_pars)
         else:
-            if self.probit:
-                self.prior = prior(1e-2, np.identity(self.dim)*0.2**2, self.dim+2, np.zeros(self.dim))
-            else:
-                self.prior = prior(1e-2, np.identity(self.dim)*(np.diff(self.bounds, axis = 1).flatten()/10)**2, self.dim+2, np.mean(self.bounds, axis = 1))
+            self.prior = prior(*get_priors(bounds = self.bounds, probit = self.probit))
         self.alpha      = alpha0
         self.alpha_0    = alpha0
         self.mixture    = []
