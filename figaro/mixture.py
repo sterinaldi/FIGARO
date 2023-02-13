@@ -13,6 +13,7 @@ from figaro.decorators import *
 from figaro.transform import *
 from figaro.likelihood import evaluate_mixture_MC_draws, evaluate_mixture_MC_draws_1d, logsumexp_jit, log_norm
 from figaro.exceptions import except_hook, FIGAROException
+from figaro.utils import get_priors
 
 from numba import jit, njit, prange
 from numba.extending import get_cython_function_address
