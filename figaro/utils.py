@@ -180,7 +180,8 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
     if k is not None:
         k_out = k
     else:
-        k_out = np.linalg.det(L_out)**(1./dim)
+        s, log_k_out = np.linalg.logdet(L_out)
+        k_out = np.exp(log_k_out/self.dim)
         
     return (k_out, L_out, df_out, mu_out)
 
