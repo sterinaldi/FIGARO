@@ -10,7 +10,6 @@ from collections import Counter
 from scipy.stats import multivariate_normal as mn
 
 from figaro.transform import transform_to_probit
-from figaro.mixture import mixture
 from figaro.exceptions import FIGAROException
 
 #-–––––––––-#
@@ -221,6 +220,8 @@ def make_single_gaussian_mixture(mu, cov, bounds, out_folder = '.', save = False
     Returns:
         :np.ndarray: mixtures
     """
+    # Here to avoid circular import
+    from figaro.mixture import mixture
     bounds = np.atleast_2d(bounds)
     
     draws_folder = Path(out_folder, 'draws')
