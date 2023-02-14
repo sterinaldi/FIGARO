@@ -181,7 +181,7 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
         k_out = k
     else:
         s, log_k_out = np.linalg.slogdet(L_out)
-        k_out = np.exp(log_k_out/self.dim)
+        k_out = np.exp(log_k_out/dim)
         
     return (k_out, L_out, df_out, mu_out)
 
