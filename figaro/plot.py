@@ -367,7 +367,8 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
     fig.subplots_adjust(left=lb, bottom=lb, right=tr, top=tr, wspace=whspace, hspace=whspace)
     # Samples (if available)
     if samples is not None:
-        corner(samples, color = '#1f77b4', fig = fig, hist_kwargs = {'density': True, 'label':'$\mathrm{Samples}$', 'linewidth':0.7} , plot_density = False, contour_kwargs = {'linewidths':0.3, 'linestyles':'dashed'}, levels = [0.5,0.68,0.9], no_fill_contours = True)
+        bins = [int(np.sqrt(len(samples[:, c]))) for c in range(dim)]
+        corner(samples, color = '#1f77b4', fig = fig, hist_kwargs = {'density': True, 'label':'$\mathrm{Samples}$', 'linewidth':0.7} , plot_density = False, contour_kwargs = {'linewidths':0.3, 'linestyles':'dashed'}, levels = [0.5,0.68,0.9], no_fill_contours = True, bins = bins)
     # 1D plots (diagonal)
     for column in range(K):
         ax = axs[column, column]
@@ -461,6 +462,8 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
             ax.set_xticks(xticks)
             yticks = np.linspace(lim[0,0], lim[0,1], 5)
             ax.set_yticks(yticks)
+            ax.set_xlim(*lim[1])
+            ax.set_ylim(*lim[0])
             if column == 0:
                 ax.set_ylabel(labels[row])
                 [l.set_rotation(45) for l in ax.get_yticklabels()]
