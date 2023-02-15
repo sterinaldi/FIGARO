@@ -110,8 +110,6 @@ def _condition(mix, vals, dims, norm = True):
     means     = np.zeros(shape = (mix.n_cl, dim))
     covs      = np.zeros(shape = (mix.n_cl, dim, dim))
     weights   = np.zeros(shape = mix.n_cl)
-    if norm:
-        marg_dist = _marginalise(mix, axis = np.arange(mix.dim)[~idx])
     for i, (mu, cov) in enumerate(zip(mix.means, mix.covs)):
         # Subvectors and submatrices
         mu1 = mu[~idx]
@@ -125,5 +123,5 @@ def _condition(mix, vals, dims, norm = True):
     # Weights
     weights = mix.w*weights
     if norm:
-        weights /= marg_dist.pdf(vals)
+        weights /= _marginalise(mix, axis = np.arange(mix.dim)[~idx]).pdf(vals)
     return mixture(means, covs, weights, bounds, dim, mix.n_cl, mix.n_pts, probit = mix.probit)
