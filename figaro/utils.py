@@ -169,7 +169,7 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
         else:
             L_out = np.identity(dim)*(np.diff(bounds, axis = 1)/10)**2
     if draw_flag:
-        ss = mn(np.mean(bounds, axis = -1), L_out).rvs(10000)
+        ss = mn(np.mean(bounds, axis = -1), L_out).rvs(3000)
         if dim == 1:
             ss = np.atleast_2d(ss).T
         # Keeping only samples within bounds
