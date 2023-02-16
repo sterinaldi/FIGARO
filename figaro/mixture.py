@@ -879,9 +879,15 @@ class HDPGMM(DPGMM):
         df = np.max([self.prior.nu, self.dim + 2])
         self.sigma_MC = invwishart(df = df, scale = self.prior.L).rvs(size = self.MC_draws)
         if self.dim == 1:
-            self.mu_MC = np.array([np.random.normal(loc = self.prior.mu[0], scale = s) for s in np.sqrt(self.sigma_MC/self.prior.k)])
+            if self.probit:
+                self.mu_MC = np.random.normal(loc = 0., scale = 1., size = self.MC_draws)
+            else:
+                self.mu_MC = np.random.uniform(low = self.bounds[0,0], high = self.bounds[0,1], size = self.MC_draws)
         else:
-            self.mu_MC = np.array([mn(self.prior.mu, s).rvs() for s in rescale_covariance(self.sigma_MC, self.prior.k)])
+            if self.probit:
+                self.mu_MC = mn(np.zeros(self.dim), np.identity(self.dim)).rvs(self.MC_draws)
+            else:
+                self.mu_MC = np.random.uniform(low = self.bounds[:,0], high = self.bounds[:,1], size = (self.MC_draws, self.dim))
         # For logsumexp_jit
         self.b_ones = np.ones(self.MC_draws)
     
@@ -890,9 +896,15 @@ class HDPGMM(DPGMM):
         df = np.max([self.prior.nu, self.dim + 2])
         self.sigma_MC = invwishart(df = df, scale = self.prior.L).rvs(size = self.MC_draws)
         if self.dim == 1:
-            self.mu_MC = np.array([np.random.normal(loc = self.prior.mu[0], scale = s) for s in np.sqrt(self.sigma_MC/self.prior.k)])
+            if self.probit:
+                self.mu_MC = np.random.normal(loc = 0., scale = 1., size = self.MC_draws)
+            else:
+                self.mu_MC = np.random.uniform(low = self.bounds[0,0], high = self.bounds[0,1], size = self.MC_draws)
         else:
-            self.mu_MC = np.array([mn(self.prior.mu, s).rvs() for s in rescale_covariance(self.sigma_MC, self.prior.k)])
+            if self.probit:
+                self.mu_MC = mn(np.zeros(self.dim), np.identity(self.dim)).rvs(self.MC_draws)
+            else:
+                self.mu_MC = np.random.uniform(low = self.bounds[:,0], high = self.bounds[:,1], size = (self.MC_draws, self.dim))
     
     def add_new_point(self, ev):
         """
