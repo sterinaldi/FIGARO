@@ -21,7 +21,7 @@ Without LALSuite, the following FIGARO functions won't be available:
 * `figaro.threeDvolume.VolumeReconstruction` will ignore any provided galaxy catalog. The volume reconstruction will be available.
 
 To install LALSuite, follow the instructions provided [here](https://wiki.ligo.org/Computing/LALSuiteInstall). In most cases, `conda install -c conda-forge lalsuite` will work.
-The parallelized scripts use [Ray](https://docs.ray.io/en/latest/) to parallelize. Ray is not included in `igwn-py39` nor is automatically installed with FIGARO.
+The parallelized scripts use [Ray](https://docs.ray.io/en/latest/) to parallelize. Ray is not included in `igwn-py39` nor is automatically installed with FIGARO (but it is included in `figaro_env`). 
 If you wish to use these scripts, please install Ray via `pip install ray` and then (re-)install FIGARO to include also the parallelized scripts.
 
 FIGARO comes with several plug-and-play console scripts:
