@@ -1,8 +1,8 @@
 import numpy as np
 from numba import njit
-from figaro.mixture import mixture
 from figaro.exceptions import FIGAROException
 from figaro.likelihood import log_norm, inv_jit
+from figaro.decorators import probit
 
 @njit
 def _cond_mean_cov(vals, mu1, mu2, s11, s22, s12):
@@ -26,7 +26,7 @@ def _cond_mean_cov(vals, mu1, mu2, s11, s22, s12):
     mean = mu1 + s12@(s22_inv@(vals - mu2))
     cov  = s11 - s12@(s22_inv@s12.T)
     return mean, cov
-    
+
 def _marginalise(mix, axis = -1):
     """
     Marginalise out one or more dimensions from a FIGARO mixture.
@@ -38,6 +38,8 @@ def _marginalise(mix, axis = -1):
     Returns:
         :figaro.mixture.mixture: the marginalised mixture
     """
+    # Circular import
+    from figaro.mixture import mixture
     ax     = np.atleast_1d(axis)
     dim    = mix.dim - len(ax)
     if dim < 1:
@@ -66,6 +68,7 @@ def marginalise(draws, axis = -1):
     else:
         return _marginalise(draws, axis)
 
+@probit
 def _condition(mix, vals, dims, norm = True):
     """
     Probability density conditioned on specific values of a subset of parameters.
@@ -82,8 +85,10 @@ def _condition(mix, vals, dims, norm = True):
     Returns:
         :figaro.mixture.mixture: the conditioned mixture(s)
     """
-    vals = np.atleast_1d(vals)
+    # Circular import
+    from figaro.mixture import mixture
     ax   = np.atleast_1d(dims)
+    vals = vals[ax]
     dim  = mix.dim - len(ax)
     idx  = np.array([i in ax for i in range(mix.dim)])
     if dim < 1:
@@ -122,6 +127,10 @@ def condition(draws, vals, dims, norm = True):
         :figaro.mixture.mixture: the conditioned mixture(s)
     """
     if np.iterable(draws):
-        return np.array([_condition(d, vals, dims, norm) for d in draws])
+        v       = np.mean(draws[0].bounds, axis = -1)
+        v[dims] = vals
+        return np.array([_condition(d, v, dims, norm) for d in draws])
     else:
-        return _condition(draws, vals, dims, norm)
+        v       = np.mean(draws.bounds, axis = -1)
+        v[dims] = vals
+        return _condition(draws, v, dims, norm)
