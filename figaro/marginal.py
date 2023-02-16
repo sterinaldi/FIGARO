@@ -29,7 +29,7 @@ def _cond_mean_cov(vals, mu1, mu2, s11, s22, s12):
     
 def _marginalise(mix, axis = -1):
     """
-    Marginalises out one or more dimensions from a FIGARO draw.
+    Marginalise out one or more dimensions from a FIGARO mixture.
     
     Arguments:
         :figaro.mixture.mixture draws: mixture
@@ -50,7 +50,7 @@ def _marginalise(mix, axis = -1):
 
 def marginalise(draws, axis = -1):
     """
-    Marginalises out one or more dimensions from a FIGARO draw.
+    Marginalise out one or more dimensions from a FIGARO draw.
     
     Arguments:
         :figaro.mixture.mixture draws: mixture(s)
@@ -68,7 +68,7 @@ def marginalise(draws, axis = -1):
 
 def condition(draws, vals, dims, norm = True):
     """
-    Returns the probability density conditioned on specific values of a subset of parameters.
+    Probability density conditioned on specific values of a subset of parameters.
     
     Arguments:
         :figaro.mixture.mixture draws: mixture(s)
@@ -86,7 +86,7 @@ def condition(draws, vals, dims, norm = True):
 
 def _condition(mix, vals, dims, norm = True):
     """
-    Returns the probability density conditioned on specific values of a subset of parameters.
+    Probability density conditioned on specific values of a subset of parameters.
     See:
      * https://stats.stackexchange.com/questions/348941/general-conditional-distributions-for-multivariate-gaussian-mixtures
      * https://stats.stackexchange.com/questions/30588/deriving-the-conditional-distributions-of-a-multivariate-normal-distribution
