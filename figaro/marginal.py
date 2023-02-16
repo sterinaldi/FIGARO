@@ -66,24 +66,6 @@ def marginalise(draws, axis = -1):
     else:
         return _marginalise(draws, axis)
 
-def condition(draws, vals, dims, norm = True):
-    """
-    Probability density conditioned on specific values of a subset of parameters.
-    
-    Arguments:
-        :figaro.mixture.mixture draws: mixture(s)
-        :iterable vals:                value(s) to condition on
-        :int or list of int dims:      dimension(s) associated with given vals (starting from 0)
-        :bool norm:                    normalize the distribution
-    
-    Returns:
-        :figaro.mixture.mixture: the conditioned mixture(s)
-    """
-    if np.iterable(draws):
-        return np.array([_condition(d, vals, dims, norm) for d in draws])
-    else:
-        return _condition(draws, vals, dims, norm)
-
 def _condition(mix, vals, dims, norm = True):
     """
     Probability density conditioned on specific values of a subset of parameters.
@@ -125,3 +107,21 @@ def _condition(mix, vals, dims, norm = True):
     if norm:
         weights /= _marginalise(mix, axis = np.arange(mix.dim)[~idx]).pdf(vals)
     return mixture(means, covs, weights, bounds, dim, mix.n_cl, mix.n_pts, probit = mix.probit)
+
+def condition(draws, vals, dims, norm = True):
+    """
+    Probability density conditioned on specific values of a subset of parameters.
+    
+    Arguments:
+        :figaro.mixture.mixture draws: mixture(s)
+        :iterable vals:                value(s) to condition on
+        :int or list of int dims:      dimension(s) associated with given vals (starting from 0)
+        :bool norm:                    normalize the distribution
+    
+    Returns:
+        :figaro.mixture.mixture: the conditioned mixture(s)
+    """
+    if np.iterable(draws):
+        return np.array([_condition(d, vals, dims, norm) for d in draws])
+    else:
+        return _condition(draws, vals, dims, norm)
