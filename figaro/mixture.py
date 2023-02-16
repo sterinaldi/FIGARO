@@ -14,6 +14,7 @@ from figaro.transform import *
 from figaro.likelihood import evaluate_mixture_MC_draws, evaluate_mixture_MC_draws_1d, logsumexp_jit, log_norm
 from figaro.exceptions import except_hook, FIGAROException
 from figaro.utils import get_priors
+from figaro.marginal import _condition, _marginalise
 
 from numba import jit, njit, prange
 from numba.extending import get_cython_function_address
@@ -271,7 +272,7 @@ class component_h:
             
 class _density:
     """
-    Class to initialise a common set of methods for mixture models. Not to be use
+    Class to initialise a common set of methods for mixture models. Not to be used
     """
     def __init__(self):
         pass
@@ -567,6 +568,34 @@ class mixture(_density):
         self.n_cl   = n_cl
         self.n_pts  = n_pts
         self.probit = probit
+    
+    def marginalise(self, axis = -1):
+        """
+        Marginalise out one or more dimensions from the mixture.
+        
+        Arguments:
+            :int or list of int axis:      axis to marginalise on
+        
+        Returns:
+            :figaro.mixture.mixture: the marginalised mixture
+        """
+        return _marginalise(self, axis)
+    
+    def condition(self, vals, dims, norm = True):
+        """
+        Mixture conditioned on specific values of a subset of parameters.
+        
+        Arguments:
+            :iterable vals:                value(s) to condition on
+            :int or list of int dims:      dimension(s) associated with given vals (starting from 0)
+            :bool norm:                    normalize the distribution
+        
+        Returns:
+            :figaro.mixture.mixture: the conditioned mixture
+        """
+        v       = np.mean(self.bounds, axis = -1)
+        v[dims] = vals
+        return _condition(self, v, dims, norm)
 
 #-------------------#
 # Inference classes #
