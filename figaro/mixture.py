@@ -80,12 +80,12 @@ def _student_t(df, t, mu, sigma, dim):
     return (A - B - C - D + E)[0]
 
 @jit
-def rescale_covariance(covs, k):
-    out_covs = np.zeros(shape = np.shape(covs), dtype = np.float64)
-    for i, c in enumerate(covs):
-        diag = np.diag(c)
-        rho  = c/np.outer(diag, diag)
-        out_covs[i] = rho*np.outer(diag/np.sqrt(k), diag/np.sqrt(k))
+def rescale_covariance(rho, covs):
+    out_covs = np.zeros(shape = np.shape(rho), dtype = np.float64)
+    for i, (r, c) in enumerate(zip(rho, covs)):
+        diag = np.diag(r)
+        R  = r/np.outer(diag, diag)
+        out_covs[i] = R*np.outer(c, c)
     return out_covs
 
 @jit
@@ -220,7 +220,6 @@ class prior:
         self.nu  = np.max([nu, mu.shape[-1]+2])
         self.L   = L*(self.nu-mu.shape[-1]-1)
         self.mu  = mu
-        self.nu0 = nu
 
 class component:
     """
@@ -876,31 +875,33 @@ class HDPGMM(DPGMM):
         self.dim = len(bounds)
         super().__init__(bounds = bounds, prior_pars = prior_pars, alpha0 = alpha0, probit = probit)
         self.MC_draws = int(MC_draws)
-        self.sigma_MC = invwishart(df = self.prior.nu0, scale = self.prior.L).rvs(size = self.MC_draws)
-        if self.dim == 1:
-            if self.probit:
-                self.mu_MC = np.random.normal(loc = 0., scale = 1., size = self.MC_draws)
-            else:
-                self.mu_MC = np.random.uniform(low = self.bounds[0,0], high = self.bounds[0,1], size = self.MC_draws)
-        else:
-            if self.probit:
-                self.mu_MC = mn(np.zeros(self.dim), np.identity(self.dim)).rvs(self.MC_draws)
-            else:
-                self.mu_MC = np.random.uniform(low = self.bounds[:,0], high = self.bounds[:,1], size = (self.MC_draws, self.dim))
+        self._draw_MC_samples()
         # For logsumexp_jit
         self.b_ones = np.ones(self.MC_draws)
     
     def initialise(self, prior_pars = None):
         super().initialise(prior_pars = prior_pars)
-        self.sigma_MC = invwishart(df = self.prior.nu0, scale = self.prior.L).rvs(size = self.MC_draws)
+        self._draw_MC_samples()
+    
+    def _draw_MC_samples(self):
+        """
+        Draws MC samples for mu and sigma
+        """
+        rho = invwishart(df = self.dim + 2, scale = np.atleast_2d(np.identity(self.dim))).rvs(size = self.MC_draws).reshape(self.MC_draws, self.dim, self.dim)
+        if self.probit:
+            covs = np.exp(np.random.uniform(low = np.log(1e-4), high = np.log(0.5), size = (self.MC_draws, self.dim)))
+        else:
+            covs = np.exp(np.random.uniform(low = np.log(np.diff(self.bounds, axis = 1).flatten()/1e4), high = np.log(np.diff(self.bounds, axis = 1).flatten()/2), size = (self.MC_draws, self.dim)))
+        self.sigma_MC = rescale_covariance(rho, covs)
         if self.dim == 1:
+            self.sigma_MC = self.sigma_MC.flatten()
             if self.probit:
-                self.mu_MC = np.random.normal(loc = 0., scale = 1., size = self.MC_draws)
+                self.mu_MC = np.random.normal(loc = 0., scale = 1.5, size = self.MC_draws)
             else:
                 self.mu_MC = np.random.uniform(low = self.bounds[0,0], high = self.bounds[0,1], size = self.MC_draws)
         else:
             if self.probit:
-                self.mu_MC = mn(np.zeros(self.dim), np.identity(self.dim)).rvs(self.MC_draws)
+                self.mu_MC = mn(np.zeros(self.dim), np.identity(self.dim)*1.5).rvs(self.MC_draws)
             else:
                 self.mu_MC = np.random.uniform(low = self.bounds[:,0], high = self.bounds[:,1], size = (self.MC_draws, self.dim))
     
