@@ -407,6 +407,9 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
         ax.set_xticks(ticks)
         [l.set_rotation(45) for l in ax.get_xticklabels()]
         ax.set_xlim(lim[0], lim[1])
+        if column < K-1:
+            ax.set_xticklabels([])
+            ax.set_yticklabels([])
 
     # 2D plots (off-diagonal)
     for row in range(K):
