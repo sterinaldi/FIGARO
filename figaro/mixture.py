@@ -896,12 +896,12 @@ class HDPGMM(DPGMM):
         if self.dim == 1:
             self.sigma_MC = self.sigma_MC.flatten()
             if self.probit:
-                self.mu_MC = np.random.normal(loc = 0., scale = 1.5, size = self.MC_draws)
+                self.mu_MC = np.random.normal(loc = 0., scale = 1., size = self.MC_draws)
             else:
                 self.mu_MC = np.random.uniform(low = self.bounds[0,0], high = self.bounds[0,1], size = self.MC_draws)
         else:
             if self.probit:
-                self.mu_MC = mn(np.zeros(self.dim), np.identity(self.dim)*1.5).rvs(self.MC_draws)
+                self.mu_MC = mn(np.zeros(self.dim), np.identity(self.dim)*1.).rvs(self.MC_draws)
             else:
                 self.mu_MC = np.random.uniform(low = self.bounds[:,0], high = self.bounds[:,1], size = (self.MC_draws, self.dim))
     
