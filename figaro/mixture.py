@@ -889,7 +889,7 @@ class HDPGMM(DPGMM):
         """
         rho = invwishart(df = self.dim + 2, scale = np.atleast_2d(np.identity(self.dim))).rvs(size = self.MC_draws).reshape(self.MC_draws, self.dim, self.dim)
         if self.probit:
-            covs = np.exp(np.random.uniform(low = np.log(1e-4), high = np.log(0.5), size = (self.MC_draws, self.dim)))
+            covs = np.exp(np.random.uniform(low = np.log(1e-3), high = np.log(0.5), size = (self.MC_draws, self.dim)))
         else:
             covs = np.exp(np.random.uniform(low = np.log(np.diff(self.bounds, axis = 1).flatten()/1e4), high = np.log(np.diff(self.bounds, axis = 1).flatten()/2), size = (self.MC_draws, self.dim)))
         self.sigma_MC = rescale_covariance(rho, covs)
