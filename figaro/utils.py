@@ -225,6 +225,10 @@ def make_single_gaussian_mixture(mu, cov, bounds, out_folder = '.', save = False
     from figaro.mixture import mixture
     bounds = np.atleast_2d(bounds)
     
+    out_folder = Path(out_folder)
+    if not out_folder.exists():
+        out_folder.mkdir()
+    
     draws_folder = Path(out_folder, 'draws')
     if not draws_folder.exists():
         draws_folder.mkdir()
