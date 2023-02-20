@@ -79,27 +79,6 @@ def _student_t(df, t, mu, sigma, dim):
 
     return (A - B - C - D + E)[0]
 
-#@jit
-#def rescale_covariance(rho, covs):
-#    out_covs = np.zeros(shape = np.shape(rho), dtype = np.float64)
-#    for i, (r, c) in enumerate(zip(rho, covs)):
-##       diag = np.diag(r)
-##       R    = r/np.outer(diag, diag)
-##       diag = diag/diag[0]
-#        _, logdet = np.linalg.slogdet(r)
-#        out_covs[i] = r*np.exp(np.log(c).sum() - logdet)#R*np.outer(c, c)
-#    return out_covs
-
-#@jit
-#def rescale_covariance(rho, covs):
-#    out_covs     = np.ones(shape = np.shape(rho), dtype = np.float64)
-#    for i, (r, c) in enumerate(zip(rho, covs)):
-#        coeff = r[0,1]/np.sqrt(r[0,0]*r[1,1])
-#        out_covs[i,0,1] = coeff
-#        out_covs[i,1,0] = coeff
-#        out_covs[i] = out_covs[i]*np.outer(c, c)
-#    return out_covs
-
 @jit
 def update_alpha(alpha, n, K, burnin = 1000):
     """
@@ -899,19 +878,18 @@ class HDPGMM(DPGMM):
         """
         Draws MC samples for mu and sigma
         """
-        rho = invwishart(df = self.dim+2, scale = np.atleast_2d(np.identity(self.dim)*3)).rvs(size = self.MC_draws).reshape(self.MC_draws, self.dim, self.dim)
         if self.probit:
             covs = np.exp(np.random.uniform(low = np.log(1e-3), high = np.log(0.5), size = (self.MC_draws, self.dim)))
         else:
             covs = np.exp(np.random.uniform(low = np.log(np.diff(self.bounds, axis = 1).flatten()/1e3), high = np.log(np.diff(self.bounds, axis = 1).flatten()/2), size = (self.MC_draws, self.dim)))
-        self.sigma_MC = rho#rescale_covariance(rho, covs)
         if self.dim == 1:
-            self.sigma_MC = covs.flatten()#self.sigma_MC.flatten()
+            self.sigma_MC = covs.flatten()
             if self.probit:
                 self.mu_MC = np.random.normal(loc = 0., scale = 1., size = self.MC_draws)
             else:
                 self.mu_MC = np.random.uniform(low = self.bounds[0,0], high = self.bounds[0,1], size = self.MC_draws)
         else:
+            self.sigma_MC = np.array([invwishart(df = self.dim+2, scale = np.identity(self.dim)*cov).rvs() for cov in covs])
             if self.probit:
                 self.mu_MC = mn(np.zeros(self.dim), np.identity(self.dim)).rvs(self.MC_draws)
             else:
