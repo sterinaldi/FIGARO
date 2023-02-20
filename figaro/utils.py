@@ -241,7 +241,7 @@ def make_single_gaussian_mixture(mu, cov, bounds, out_folder = '.', save = False
         if probit:
             ss = np.atleast_2d(mn(m, c).rvs(n_samps))
             # 1D issue
-            if c.shape == (1,1):
+            if c.shape == (1,):
                 ss = ss.T
             # Keeping only samples within bounds
             ss = ss[np.where((np.prod(bounds[:,0] < ss, axis = 1) & np.prod(ss < bounds[:,1], axis = 1)))]
