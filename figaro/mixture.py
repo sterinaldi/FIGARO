@@ -80,15 +80,6 @@ def _student_t(df, t, mu, sigma, dim):
     return (A - B - C - D + E)[0]
 
 @jit
-def rescale_covariance(rho, covs):
-    out_covs = np.zeros(shape = np.shape(rho), dtype = np.float64)
-    for i, (r, c) in enumerate(zip(rho, covs)):
-        diag = np.diag(r)
-        R  = r/np.outer(diag, diag)
-        out_covs[i] = R*np.outer(c, c)
-    return out_covs
-
-@jit
 def update_alpha(alpha, n, K, burnin = 1000):
     """
     Update concentration parameter using a Metropolis-Hastings sampling scheme.
@@ -887,19 +878,18 @@ class HDPGMM(DPGMM):
         """
         Draws MC samples for mu and sigma
         """
-        rho = invwishart(df = self.dim + 2, scale = np.atleast_2d(np.identity(self.dim))).rvs(size = self.MC_draws).reshape(self.MC_draws, self.dim, self.dim)
         if self.probit:
             covs = np.exp(np.random.uniform(low = np.log(1e-3), high = np.log(0.5), size = (self.MC_draws, self.dim)))
         else:
             covs = np.exp(np.random.uniform(low = np.log(np.diff(self.bounds, axis = 1).flatten()/1e3), high = np.log(np.diff(self.bounds, axis = 1).flatten()/2), size = (self.MC_draws, self.dim)))
-        self.sigma_MC = rescale_covariance(rho, covs)
         if self.dim == 1:
-            self.sigma_MC = self.sigma_MC.flatten()
+            self.sigma_MC = covs.flatten()
             if self.probit:
                 self.mu_MC = np.random.normal(loc = 0., scale = 1., size = self.MC_draws)
             else:
                 self.mu_MC = np.random.uniform(low = self.bounds[0,0], high = self.bounds[0,1], size = self.MC_draws)
         else:
+            self.sigma_MC = np.array([invwishart(df = self.dim+2, scale = np.identity(self.dim)*cov).rvs() for cov in covs])
             if self.probit:
                 self.mu_MC = mn(np.zeros(self.dim), np.identity(self.dim)*1.).rvs(self.MC_draws)
             else:
