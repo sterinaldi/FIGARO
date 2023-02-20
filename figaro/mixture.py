@@ -899,18 +899,19 @@ class HDPGMM(DPGMM):
         """
         Draws MC samples for mu and sigma
         """
-        rho = invwishart(df = self.dim+0.001, scale = np.atleast_2d(np.identity(self.dim)*3)).rvs(size = self.MC_draws).reshape(self.MC_draws, self.dim, self.dim)
+        rho = invwishart(df = self.dim+2, scale = np.atleast_2d(np.identity(self.dim)*3)).rvs(size = self.MC_draws).reshape(self.MC_draws, self.dim, self.dim)
         if self.probit:
-            covs = np.exp(np.random.uniform(low = np.log(1e-5), high = np.log(0.5), size = (self.MC_draws, self.dim)))
+            covs = np.exp(np.random.uniform(low = np.log(1e-3), high = np.log(0.5), size = (self.MC_draws, self.dim)))
         else:
-            covs = np.exp(np.random.uniform(low = np.log(np.diff(self.bounds, axis = 1).flatten()/1e5), high = np.log(np.diff(self.bounds, axis = 1).flatten()/3), size = (self.MC_draws, self.dim)))
+            covs = np.exp(np.random.uniform(low = np.log(np.diff(self.bounds, axis = 1).flatten()/1e4), high = np.log(np.diff(self.bounds, axis = 1).flatten()/2), size = (self.MC_draws, self.dim)))
         self.sigma_MC = rho#rescale_covariance(rho, covs)
         if self.dim == 1:
-            self.sigma_MC = self.sigma_MC.flatten()
+            self.sigma_MC = covs.flatten()#self.sigma_MC.flatten()
             if self.probit:
                 self.mu_MC = np.random.normal(loc = 0., scale = 1., size = self.MC_draws)
             else:
-                self.mu_MC = np.random.uniform(low = self.bounds[0,0], high = self.bounds[0,1], size = self.MC_draws)
+#                self.mu_MC = np.random.uniform(low = self.bounds[0,0], high = self.bounds[0,1], size = self.MC_draws)
+                self.mu_MC = np.random.normal(loc = np.mean(self.bounds), scale = np.diff(self.bounds, axis = 1).flatten()/4, size = self.MC_draws)
         else:
             if self.probit:
                 self.mu_MC = mn(np.zeros(self.dim), np.identity(self.dim)).rvs(self.MC_draws)
