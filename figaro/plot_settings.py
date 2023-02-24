@@ -11,7 +11,6 @@ rcParams["xtick.direction"] = "in"
 rcParams["ytick.direction"] = "in"
 rcParams["legend.fontsize"] = 12
 rcParams["legend.frameon"]  = False
-rcParams["legend.loc"]      = "best"
 rcParams["axes.labelsize"]  = 16
 rcParams["axes.grid"]       = True
 rcParams["grid.alpha"]      = 0.6
