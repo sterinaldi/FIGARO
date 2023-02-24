@@ -334,10 +334,8 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                             elif waveform != 'combined':
                                 snr = np.array(data[lab])
                                 samples.append(data[lab])
-                                print(data[lab])
                             if snr_threshold is not None:
                                 flag_filter = True
-                            print(samples)
                         except:
                             warnings.warn("SNR filter is not available with this dataset.")
                     if name == 'far' and far_threshold is not None:
