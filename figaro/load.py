@@ -330,10 +330,11 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                         try:
                             if MDC_flag:
                                 snr = np.array(data['snr'])
-                                samples.append(data[lab])
+                                samples.append(data['snr'])
                             elif waveform != 'combined':
                                 snr = np.array(data[lab])
                                 samples.append(data[lab])
+                                print(data[lab])
                             if snr_threshold is not None:
                                 flag_filter = True
                         except:
