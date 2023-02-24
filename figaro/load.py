@@ -152,6 +152,7 @@ def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.
     events      = []
     names       = []
     n_events    = len(event_files)
+    removed_snr = False
     if volume:
         par = ['ra', 'dec', 'luminosity_distance']
     for event in tqdm(event_files, desc = 'Loading events'):
@@ -199,11 +200,12 @@ def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.
                     if out.shape[-1] == len(par):
                         events.append(out)
                     elif 'snr' in par:
-                        warnings.warn("At least one event does not have SNR. Such events are not loaded.")
+                        removed_snr = True
                         names.remove(name)
                 else:
                     names.remove(name)
-                
+    if removed_snr:
+        warnings.warn("At least one event does not have SNR samples. These events cannot be loaded for this parameter choices.")
     return (events, np.array(names))
 
 def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, waveform = 'combined', snr_threshold = None, far_threshold = None):
