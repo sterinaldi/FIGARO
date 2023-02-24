@@ -446,6 +446,7 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                 samples_loaded = np.array(samples)
                 samples = []
                 for pi in par:
+                    if not (par == 'snr' or name == 'far')
                     samples.append(samples_loaded[np.where(loaded_pars == pi)[0]].flatten())
                 samples = np.array(samples)
                 samples = samples.T
