@@ -430,8 +430,9 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
 
             for name in GW_par.keys():
                 if name in par:
-                    samples.append(ss[name])
-                    loaded_pars.append(name)
+                    if not (name == 'snr' or name == 'far'):
+                        samples.append(ss[name])
+                        loaded_pars.append(name)
 
             if len(par) == 1:
                 samples = np.atleast_2d(samples).T
