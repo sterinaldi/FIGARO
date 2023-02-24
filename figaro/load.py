@@ -196,7 +196,11 @@ def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.
             else:
                 out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate, waveform = waveform, snr_threshold = snr_threshold, far_threshold = far_threshold)
                 if out is not None:
-                    events.append(out)
+                    if out.shape[-1] == len(par):
+                        events.append(out)
+                    elif 'snr' in par:
+                        warnings.warn("At least one event does not have SNR. Such events are not loaded.")
+                        names.remove(name)
                 else:
                     names.remove(name)
                 
@@ -371,7 +375,7 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                 samples_loaded = np.array(samples)
                 samples = []
                 for pi in par:
-                    if not (pi == 'far' or (pi == 'snr' and not flag_filter)):
+                    if not (pi == 'far' or (pi == 'snr' and flag_filter)):
                         samples.append(samples_loaded[np.where(loaded_pars == pi)[0]].flatten())
                 samples = np.array(samples)
                 if flag_filter:
