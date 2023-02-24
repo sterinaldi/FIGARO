@@ -879,7 +879,7 @@ class HDPGMM(DPGMM):
         Draws MC samples for mu and sigma
         """
         if self.probit:
-            covs = np.exp(np.random.uniform(low = np.log(1e-3), high = np.log(0.5), size = (self.MC_draws, self.dim)))
+            covs = np.exp(np.random.uniform(low = np.log(1e-3), high = np.log(0.05), size = (self.MC_draws, self.dim)))
         else:
             covs = np.exp(np.random.uniform(low = np.log(np.diff(self.bounds, axis = 1).flatten()/1e3), high = np.log(np.diff(self.bounds, axis = 1).flatten()/2), size = (self.MC_draws, self.dim)))
         if self.dim == 1:
