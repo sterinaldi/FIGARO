@@ -36,7 +36,7 @@ GW_par = {'m1'                 : 'mass_1_source',
           's2z'                : 'spin_2z',
           's1'                 : 'spin_1',
           's2'                 : 'spin_2',
-          'snr'                : 'snr',
+          'snr'                : 'network_matched_filter_snr',
           'far'                : 'far',
           }
 
@@ -252,8 +252,10 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
             # LVK R&P mock data challenge file format
             try:
                 data = f['MDC']['posterior_samples']
+                MDC_flag = True
             # GWTC-2, GWTC-3
             except:
+                MDC_flag = False
                 if waveform == 'combined':
                     # GWTC-2
                     try:
@@ -324,10 +326,14 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
             for name, lab in zip(GW_par.keys(), GW_par.values()):
                 flag_filter = False
                 if name in par:
-                    if name == 'snr' and snr_threshold is not None:
+                    if name == 'snr':
                         try:
-                            flag_filter = True
-                            snr = np.array(data[lab])
+                            if MDC_flag:
+                                snr = np.array(data['snr'])
+                            elif waveform != 'combined':
+                                snr = np.array(data[lab])
+                            if snr_threshold is not None
+                                flag_filter = True
                         except:
                             warnings.warn("SNR filter is not available with this dataset.")
                     if name == 'far' and far_threshold is not None:
@@ -363,7 +369,7 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                 samples_loaded = np.array(samples)
                 samples = []
                 for pi in par:
-                    if not (pi == 'snr' or pi == 'far'):
+                    if not (pi == 'far' or (pi == 'snr' and not flag_filter)):
                         samples.append(samples_loaded[np.where(loaded_pars == pi)[0]].flatten())
                 samples = np.array(samples)
                 if flag_filter:
