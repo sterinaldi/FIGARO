@@ -205,7 +205,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
     if samples is not None:
         ax.set_xlim(xlim)
     ax.set_ylim(bottom = 1e-5, top = np.max(p[95])*1.1)
-    ax.legend()
+    ax.legend(loc = 0)
     
     fig.align_labels()
     
@@ -276,7 +276,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         ax.set_ylabel('$p({0})$'.format(label))
         ax.autoscale(True)
         ax.set_ylim(bottom = 1e-5, top = np.max(p[95])*1.1)
-        ax.legend()
+        ax.legend(loc = 0)
         if save:
             fig.savefig(Path(log_folder, 'log_true_{0}.pdf'.format(name)), bbox_inches = 'tight')
             ax.set_yscale('linear')
@@ -566,7 +566,7 @@ def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', na
     if samples is not None:
         ax.set_xlim(xlim)
     ax.set_ylim(bottom = 1e-5, top = np.max(p[95])*1.1)
-    ax.legend()
+    ax.legend(loc = 0)
     if logy:
         ax.set_yscale('log')
     if logx:
