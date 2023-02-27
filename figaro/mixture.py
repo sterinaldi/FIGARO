@@ -847,11 +847,12 @@ class HDPGMM(DPGMM):
     Child of DPGMM class
     
     Arguments:
-        :iterable bounds:     boundaries of the rectangle over which the distribution is defined. It should be in the format [[xmin, xmax],[ymin, ymax],...]
-        :iterable prior_pars: NIW prior parameters (k, L, nu, mu)
-        :double alpha0:       initial guess for concentration parameter
-        :double MC_draws:     number of MC draws for integral
-        :bool probit:         whether to use the probit transformation or not
+        :iterable bounds:  boundaries of the rectangle over which the distribution is defined. It should be in the format [[xmin, xmax],[ymin, ymax],...]
+        :double alpha0:    initial guess for concentration parameter
+        :double MC_draws:  number of MC draws for integral
+        :bool probit:      whether to use the probit transformation or not
+        :double sigma_min: lower bound for Jeffreys' prior on standard deviation
+        :double sigma_max: upper bound for Jeffreys' prior on standard deviation
     
     Returns:
         :HDPGMM: instance of HDPGMM class
@@ -860,18 +861,39 @@ class HDPGMM(DPGMM):
                        alpha0     = 1.,
                        prior_pars = None,
                        MC_draws   = 2e3,
-                       probit     = True
+                       probit     = True,
+                       sigma_min  = None,
+                       sigma_max  = None,
                        ):
         bounds   = np.atleast_2d(bounds)
         self.dim = len(bounds)
-        super().__init__(bounds = bounds, prior_pars = prior_pars, alpha0 = alpha0, probit = probit)
+        super().__init__(bounds = bounds, alpha0 = alpha0, probit = probit)
         self.MC_draws = int(MC_draws)
-        self._draw_MC_samples()
         # For logsumexp_jit
         self.b_ones = np.ones(self.MC_draws)
-    
-    def initialise(self, prior_pars = None):
-        super().initialise(prior_pars = prior_pars)
+        # Jeffreys prior bounds
+        if sigma_min is None:
+            if self.probit:
+                self.log_sigma_min = np.log(2e-3) - np.log(np.diff(self.bounds, axis = 1).flatten()/2)
+            else:
+                self.log_sigma_min = np.log(np.diff(self.bounds, axis = 1).flatten()/1e-3)
+        else:
+            self.log_sigma_min = np.log(sigma_min)
+        if sigma_max is None:
+            if self.probit:
+                self.log_sigma_max = np.log(0.2) - np.zeros(self.dim)
+            else:
+                self.log_sigma_max = np.log(np.diff(self.bounds, axis = 1).flatten()/4)
+        else:
+            self.log_sigma_max = np.log(sigma_max)
+        # MC samples
+        self._draw_MC_samples()
+        
+    def initialise(self):
+        """
+        Initialise the mixture to initial conditions
+        """
+        super().initialise()
         self._draw_MC_samples()
     
     def _draw_MC_samples(self):
@@ -879,9 +901,9 @@ class HDPGMM(DPGMM):
         Draws MC samples for mu and sigma
         """
         if self.probit:
-            covs = np.exp(np.random.uniform(low = np.log(1e-4), high = np.log(0.05), size = (self.MC_draws, self.dim)))
+            covs = np.exp(np.random.uniform(low = self.log_sigma_min, high = self.log_sigma_max, size = (self.MC_draws, self.dim)))
         else:
-            covs = np.exp(np.random.uniform(low = np.log(np.diff(self.bounds, axis = 1).flatten()/1e4), high = np.log(np.diff(self.bounds, axis = 1).flatten()/2), size = (self.MC_draws, self.dim)))
+            covs = np.exp(np.random.uniform(low = self.log_sigma_min, high = self.log_sigma_max, size = (self.MC_draws, self.dim)))
         if self.dim == 1:
             self.sigma_MC = covs.flatten()
             if self.probit:
@@ -889,7 +911,7 @@ class HDPGMM(DPGMM):
             else:
                 self.mu_MC = np.random.uniform(low = self.bounds[0,0], high = self.bounds[0,1], size = self.MC_draws)
         else:
-            self.sigma_MC = np.array([invwishart(df = self.dim+2, scale = np.identity(self.dim)*cov).rvs() for cov in covs])
+            self.sigma_MC = np.array([invwishart(df = self.dim+2, scale = np.identity(self.dim)*cov**2).rvs() for cov in covs])
             if self.probit:
                 self.mu_MC = mn(np.zeros(self.dim), np.identity(self.dim)*1.).rvs(self.MC_draws)
             else:
