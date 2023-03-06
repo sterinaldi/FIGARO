@@ -138,9 +138,9 @@ def main():
 
     # Reconstruction
     if not options.postprocess:
-        mix = DPGMM(options.bounds, probit = options.probit)
+        mix        = DPGMM(options.bounds, probit = options.probit)
         grid, diff = recursive_grid(options.bounds, options.grid_points)
-        logdiff = np.sum(np.log(diff))
+        logdiff    = np.sum(np.log(diff))
         posteriors = []
         CR_levels  = []
         CR_medians = []
@@ -152,15 +152,30 @@ def main():
             t = true_vals[name]
             if options.run_events:
                 # Estimate prior pars from samples
-                mix.initialise(prior_pars = get_priors(mix.bounds, samples = ev, probit = options.probit))
+                mix.initialise(prior_pars = get_priors(mix.bounds, samples = ev, probit = options.probit, hierarchical = False))
                 # Draw samples
                 draws = [mix.density_from_samples(ev) for _ in range(options.n_draws)]
                 posteriors.append(draws)
                 if options.save_plots:
                     if dim == 1:
-                        plot_median_cr(draws, samples = ev, out_folder = output_plots, name = name, label = options.symbol, unit = options.unit, subfolder = True, true_value = t)
+                        plot_median_cr(draws,
+                                       samples    = ev,
+                                       out_folder = output_plots,
+                                       name       = name,
+                                       label      = options.symbol,
+                                       unit       = options.unit,
+                                       subfolder  = True,
+                                       true_value = t,
+                                       )
                     else:
-                        plot_multidim(draws, samples = ev, out_folder = output_plots, name = name, labels = symbols, units = units, true_value = t)
+                        plot_multidim(draws,
+                                      samples    = ev,
+                                      out_folder = output_plots,
+                                      name       = name,
+                                      labels     = symbols,
+                                      units      = units,
+                                      true_value = t,
+                                      )
                 # Save single-event draws
                 save_density(draws, folder = output_draws, name = 'draws_'+name, ext = options.ext)
             else:

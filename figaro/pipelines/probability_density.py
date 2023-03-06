@@ -126,9 +126,10 @@ def main():
         # Reconstruction
         if not options.postprocess:
             # Actual analysis
-            mix = DPGMM(options.bounds, prior_pars = get_priors(options.bounds, samples = samples, std = options.sigma_prior, probit = options.probit), probit = options.probit)
-            desc = name + ' ({0}/{1})'.format(i+1, len(files))
-            draws = np.array([mix.density_from_samples(samples) for _ in tqdm(range(options.n_draws), desc = desc)])
+            prior_pars = get_priors(options.bounds, samples = samples, std = options.sigma_prior, probit = options.probit, hierarchical = False)
+            mix        = DPGMM(options.bounds, prior_pars = prior_pars, probit = options.probit)
+            desc       = name + ' ({0}/{1})'.format(i+1, len(files))
+            draws      = np.array([mix.density_from_samples(samples) for _ in tqdm(range(options.n_draws), desc = desc)])
             # Save reconstruction
             save_density(draws, folder = output_draws, name = 'draws_'+name, ext = options.ext)
         else:

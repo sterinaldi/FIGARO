@@ -21,46 +21,74 @@ class worker:
     def __init__(self, bounds,
                        out_folder_plots,
                        out_folder_draws,
-                       ext = 'pkl',
-                       sigma = None,
+                       ext         = 'pkl',
+                       se_sigma    = None,
+                       sigma_min   = None,
+                       sigma_max   = None,
                        all_samples = None,
-                       label = None,
-                       unit = None,
-                       save_se = True,
-                       MC_draws = 2000,
-                       probit = True
+                       label       = None,
+                       unit        = None,
+                       save_se     = True,
+                       MC_draws    = 2000,
+                       probit      = True,
                        ):
         self.dim                  = bounds.shape[0]
         self.bounds               = bounds
         self.mixture              = DPGMM(self.bounds, probit = probit)
         self.hierarchical_mixture = HDPGMM(self.bounds,
-                                           MC_draws = MC_draws,
-                                           probit = probit,
+                                           MC_draws   = MC_draws,
+                                           probit     = probit,
                                            prior_pars = get_priors(self.bounds,
-                                                                   samples = all_samples,
-                                                                   std = sigma,
-                                                                   probit = probit))
+                                                                   samples      = all_samples,
+                                                                   sigma_min    = sigma_min,
+                                                                   sigma_max    = sigma_max,
+                                                                   probit       = probit,
+                                                                   hierarchical = True,
+                                                                   )
+                                            )
         self.out_folder_plots = out_folder_plots
         self.out_folder_draws = out_folder_draws
-        self.save_se = save_se
-        self.label = label
-        self.unit = unit
-        self.posteriors = None
-        self.probit = probit
-        self.ext = ext
+        self.save_se          = save_se
+        self.label            = label
+        self.unit             = unit
+        self.posteriors       = None
+        self.probit           = probit
+        self.ext              = ext
 
     def run_event(self, pars):
+        # Unpack data
         samples, name, n_draws = pars
+        # Copying (issues with shuffling)
         ev = np.copy(samples)
         ev.setflags(write = True)
-        self.mixture.initialise(prior_pars = get_priors(self.bounds, samples = ev, probit = self.probit))
-        draws = [self.mixture.density_from_samples(ev) for _ in range(n_draws)]
+        # Actual inference
+        prior_pars = get_priors(self.bounds, samples = ev, probit = self.probit, std = self.se_sigma, hierarchical = False)
+        self.mixture.initialise(prior_pars = prior_pars)
+        draws      = [self.mixture.density_from_samples(ev) for _ in range(n_draws)]
+        # Plots
         plt_bounds = np.atleast_2d([ev.min(axis = 0), ev.max(axis = 0)]).T
         if self.save_se:
             if self.dim == 1:
-                plot_median_cr(draws, samples = ev, bounds = plt_bounds[0], out_folder = self.out_folder_plots, name = name, label = self.label, unit = self.unit, subfolder = True)
+                plot_median_cr(draws,
+                               samples    = ev,
+                               bounds     = plt_bounds[0],
+                               out_folder = self.out_folder_plots,
+                               name       = name,
+                               label      = self.label,
+                               unit       = self.unit,
+                               subfolder  = True,
+                               )
             else:
-                plot_multidim(draws, samples = ev, bounds = plt_bounds, out_folder = self.out_folder_plots, name = name, labels = self.label, units = self.unit, subfolder = True)
+                plot_multidim(draws,
+                              samples    = ev,
+                              bounds     = plt_bounds,
+                              out_folder = self.out_folder_plots,
+                              name       = name,
+                              labels     = self.label,
+                              units      = self.unit,
+                              subfolder  = True,
+                              )
+        # Saving
         save_density(draws, folder = self.out_folder_draws, name = 'draws_'+name, ext = self.ext)
         return draws
 
@@ -99,7 +127,9 @@ def main():
     parser.add_option("--exclude_points", dest = "exclude_points", action = 'store_true', help = "Exclude points outside bounds from analysis", default = False)
     parser.add_option("--cosmology", type = "string", dest = "cosmology", help = "Cosmological parameters (h, om, ol). Default values from Planck (2021)", default = '0.674,0.315,0.685')
     parser.add_option("-e", "--events", dest = "run_events", action = 'store_false', help = "Skip single-event analysis", default = True)
-    parser.add_option("--sigma_prior", dest = "sigma_prior", type = "string", help = "Expected standard deviation (prior) for hierarchical inference - single value or n-dim values. If None, it is estimated from samples", default = None)
+    parser.add_option("--se_sigma_prior", dest = "se_sigma_prior", type = "string", help = "Expected standard deviation (prior) for single-event inference - single value or n-dim values. If None, it is estimated from samples", default = None)
+    parser.add_option("--sigma_min", dest = "sigma_min", type = "string", help = "Minimum standard deviation (prior) for hierarchical inference - single value or n-dim values. If None, it is estimated from samples", default = None)
+    parser.add_option("--sigma_max", dest = "sigma_max", type = "string", help = "Maximum standard deviation (prior) for hierarchical inference - single value or n-dim values. If None, it is estimated from samples", default = None)
     parser.add_option("--n_parallel", dest = "n_parallel", type = "int", help = "Number of parallel threads", default = 4)
     parser.add_option("--mc_draws", dest = "mc_draws", type = "int", help = "Number of draws for assignment MC integral", default = 2000)
     parser.add_option("--snr_threshold", dest = "snr_threshold", type = "float", help = "SNR threshold for simulated GW datasets", default = None)
@@ -157,8 +187,12 @@ def main():
     # Read number of single-event draws
     if options.n_se_draws is None:
         options.n_se_draws = options.n_draws
-    if options.sigma_prior is not None:
-        options.sigma_prior = np.array([float(s) for s in options.sigma_prior.split(',')])
+    if options.se_sigma_prior is not None:
+        options.se_sigma_prior = np.array([float(s) for s in options.se_sigma_prior.split(',')])
+    if options.sigma_min is not None:
+        options.sigma_min = np.array([float(s) for s in options.sigma_min.split(',')])
+    if options.sigma_max is not None:
+        options.sigma_max = np.array([float(s) for s in options.sigma_max.split(',')])
 
     # If provided, load injected density
     inj_density = None
@@ -222,7 +256,9 @@ def main():
                                         out_folder_plots = output_plots,
                                         out_folder_draws = output_draws,
                                         ext              = options.ext,
-                                        sigma            = options.sigma_prior,
+                                        se_sigma         = options.se_sigma_prior,
+                                        sigma_min        = options.sigma_min,
+                                        sigma_max        = options.sigma_max,
                                         all_samples      = all_samples,
                                         label            = symbols,
                                         unit             = units,
@@ -256,9 +292,25 @@ def main():
         draws = load_density(Path(output_draws, 'draws_'+options.h_name+'.'+options.ext))
     # Plot
     if dim == 1:
-        plot_median_cr(draws, injected = inj_density, selfunc = selfunc, samples = true_vals, out_folder = output_plots, name = options.h_name, label = options.symbol, unit = options.unit, hierarchical = True)
+        plot_median_cr(draws,
+                       injected     = inj_density,
+                       selfunc      = selfunc,
+                       samples      = true_vals,
+                       out_folder   = output_plots,
+                       name         = options.h_name,
+                       label        = options.symbol,
+                       unit         = options.unit,
+                       hierarchical = True,
+                       )
     else:
-        plot_multidim(draws, samples = true_vals, out_folder = output_plots, name = options.h_name, labels = symbols, units = units, hierarchical = True)
+        plot_multidim(draws,
+                      samples      = true_vals,
+                      out_folder   = output_plots,
+                      name         = options.h_name,
+                      labels       = symbols,
+                      units        = units,
+                      hierarchical = True,
+                      )
 
 if __name__ == '__main__':
     main()

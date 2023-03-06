@@ -23,7 +23,7 @@ class worker:
                        probit = True,
                        ):
         self.dim     = bounds.shape[-1]
-        self.mixture = DPGMM(bounds, prior_pars = get_priors(bounds, samples = samples, std = sigma, probit = probit), probit = probit)
+        self.mixture = DPGMM(bounds, prior_pars = get_priors(bounds, samples = samples, std = sigma, probit = probit, hierarchical = False), probit = probit)
         self.samples = np.copy(samples)
         self.samples.setflags(write = True)
 
