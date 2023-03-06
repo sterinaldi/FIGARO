@@ -874,18 +874,18 @@ class HDPGMM(DPGMM):
         # Jeffreys prior bounds
         if sigma_min is None:
             if self.probit:
-                self.log_sigma_min = np.log(2e-3) - np.log(np.diff(self.bounds, axis = 1).flatten()/2)
+                self.log_sigma_min = np.ones(self.dim)*np.log(1e-4)
             else:
-                self.log_sigma_min = np.log(np.diff(self.bounds, axis = 1).flatten()/1e-3)
+                self.log_sigma_min = np.log(np.diff(self.bounds, axis = 1).flatten()/1e3)
         else:
-            self.log_sigma_min = np.log(sigma_min)
+            self.log_sigma_min = np.log(np.ones(self.dim)*sigma_min)
         if sigma_max is None:
             if self.probit:
-                self.log_sigma_max = np.log(0.2) - np.zeros(self.dim)
+                self.log_sigma_max = np.ones(self.dim)*np.log(0.1)
             else:
-                self.log_sigma_max = np.log(np.diff(self.bounds, axis = 1).flatten()/4)
+                self.log_sigma_max = np.log(np.diff(self.bounds, axis = 1).flatten()/2)
         else:
-            self.log_sigma_max = np.log(sigma_max)
+            self.log_sigma_max = np.log(np.ones(self.dim)*sigma_max)
         # MC samples
         self._draw_MC_samples()
         
