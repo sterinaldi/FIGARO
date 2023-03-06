@@ -862,10 +862,13 @@ class HDPGMM(DPGMM):
                        prior_pars = None,
                        MC_draws   = 2e3,
                        probit     = True,
-                       sigma_min  = None,
-                       sigma_max  = None,
                        ):
         bounds   = np.atleast_2d(bounds)
+        if prior_pars is not None:
+            sigma_min, sigma_max = prior_pars
+        else:
+            sigma_min = None
+            sigma_max = None
         self.dim = len(bounds)
         super().__init__(bounds = bounds, alpha0 = alpha0, probit = probit)
         self.MC_draws = int(MC_draws)
@@ -881,7 +884,7 @@ class HDPGMM(DPGMM):
             self.log_sigma_min = np.log(np.ones(self.dim)*sigma_min)
         if sigma_max is None:
             if self.probit:
-                self.log_sigma_max = np.ones(self.dim)*np.log(0.1)
+                self.log_sigma_max = np.ones(self.dim)*np.log(1e-1)
             else:
                 self.log_sigma_max = np.log(np.diff(self.bounds, axis = 1).flatten()/2)
         else:
@@ -907,13 +910,13 @@ class HDPGMM(DPGMM):
         if self.dim == 1:
             self.sigma_MC = covs.flatten()
             if self.probit:
-                self.mu_MC = np.random.normal(loc = 0., scale = 1., size = self.MC_draws)
+                self.mu_MC = np.random.normal(loc = 0., scale = 2., size = self.MC_draws)
             else:
                 self.mu_MC = np.random.uniform(low = self.bounds[0,0], high = self.bounds[0,1], size = self.MC_draws)
         else:
             self.sigma_MC = np.array([invwishart(df = self.dim+2, scale = np.identity(self.dim)*cov**2).rvs() for cov in covs])
             if self.probit:
-                self.mu_MC = mn(np.zeros(self.dim), np.identity(self.dim)*1.).rvs(self.MC_draws)
+                self.mu_MC = mn(np.zeros(self.dim), np.identity(self.dim)*2.).rvs(self.MC_draws)
             else:
                 self.mu_MC = np.random.uniform(low = self.bounds[:,0], high = self.bounds[:,1], size = (self.MC_draws, self.dim))
     
