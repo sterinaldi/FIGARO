@@ -143,7 +143,13 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
             warnings.warn("The provided upper bound is invalid for at least one draw. {0} will be used instead.".format(x_max))
         else:
             x_max = bounds[1]
-    
+
+    fig, ax = plt.subplots()
+    # If samples are available, use them as bounds
+    if samples is not None:
+        ax.hist(samples, bins = int(np.sqrt(len(samples))), histtype = 'step', density = True, label = '$\mathrm{Samples}$', log = True)
+        x_min, x_max = ax.get_xlim()
+        
     x    = np.linspace(x_min, x_max, n_pts+2)[1:-1]
     dx   = x[1]-x[0]
     
@@ -156,12 +162,9 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
     norm = p[50].sum()*dx
     for perc in percentiles:
         p[perc] = p[perc]/norm
-    
-    fig, ax = plt.subplots()
-    
+
     # Samples (if available)
     if samples is not None:
-        ax.hist(samples, bins = int(np.sqrt(len(samples))), histtype = 'step', density = True, label = '$\mathrm{Samples}$', log = True)
         xlim = ax.get_xlim()
         ylim = ax.get_ylim()
     else:
@@ -378,7 +381,10 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
         dims.remove(column)
         marg_draws = marginalise(draws, dims)
         # Credible regions
-        lim = bounds[column]
+        if samples is not None:
+            lim = ax.get_xlim()
+        else:
+            lim = bounds[column]
         x   = np.linspace(lim[0], lim[1], n_pts+2)[1:-1]
         dx  = x[1]-x[0]
         
@@ -430,7 +436,10 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
             marg_draws = marginalise(draws, dims)
             
             # Credible regions
-            lim = bounds[[row, column]]
+            if samples is not None:
+                lim = np.array([ax.get_ylim(), ax.get_xlim()])
+            else:
+                lim = bounds[[row, column]]
             grid, dgrid = recursive_grid(lim[::-1], np.ones(2, dtype = int)*int(n_pts))
             
             x = np.linspace(lim[0,0], lim[0,1], n_pts+2)[1:-1]
