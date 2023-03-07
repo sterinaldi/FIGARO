@@ -148,7 +148,9 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
     # If samples are available, use them as bounds
     if samples is not None:
         ax.hist(samples, bins = int(np.sqrt(len(samples))), histtype = 'step', density = True, label = '$\mathrm{Samples}$', log = True)
-        x_min, x_max = ax.get_xlim()
+        x_min_l, x_max_l = ax.get_xlim()
+        x_min = np.max((x_min, x_min_l))
+        x_max = np.min((x_max, x_max_l))
         
     x    = np.linspace(x_min, x_max, n_pts+2)[1:-1]
     dx   = x[1]-x[0]
@@ -381,10 +383,12 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
         dims.remove(column)
         marg_draws = marginalise(draws, dims)
         # Credible regions
+        lim = bounds[column]
         if samples is not None:
-            lim = ax.get_xlim()
-        else:
-            lim = bounds[column]
+            lim_l = ax.get_xlim()
+            lim[0] = np.max((lim[0], lim_l[0]))
+            lim[1] = np.min((lim[1], lim_l[1]))
+            
         x   = np.linspace(lim[0], lim[1], n_pts+2)[1:-1]
         dx  = x[1]-x[0]
         
@@ -436,10 +440,13 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
             marg_draws = marginalise(draws, dims)
             
             # Credible regions
+            lim = bounds[[row, column]]
             if samples is not None:
-                lim = np.array([ax.get_ylim(), ax.get_xlim()])
-            else:
-                lim = bounds[[row, column]]
+                lim_l = np.array([ax.get_ylim(), ax.get_xlim()])
+                for i in range(2):
+                    lim[i,0] = np.max((lim[i,0], lim_l[i,0]))
+                    lim[i,1] = np.min((lim[i,1], lim_l[i,1]))
+                
             grid, dgrid = recursive_grid(lim[::-1], np.ones(2, dtype = int)*int(n_pts))
             
             x = np.linspace(lim[0,0], lim[0,1], n_pts+2)[1:-1]
