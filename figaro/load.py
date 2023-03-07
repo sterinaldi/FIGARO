@@ -257,7 +257,10 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
         try:
             # LVK R&P mock data challenge file format
             try:
-                data = f['MDC']['posterior_samples']
+                try:
+                    data = f['MDC']['posterior_samples']
+                except:
+                    data = f['posterior_samples']
                 MDC_flag = True
             # GWTC-2, GWTC-3
             except:
