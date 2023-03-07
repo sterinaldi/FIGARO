@@ -124,12 +124,12 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
         if sigma_min is not None:
             sigma_min = np.atleast_2d(sigma_min)*np.ones((1, dim))
             if probit:
-                sigma_min = transform_to_probit(sigma_min, bounds)
+                sigma_min = transform_to_probit(np.mean(bounds, axis = -1)+sigma_min, bounds)
             out_sigma_min = sigma_min
         if sigma_max is not None:
             sigma_max = np.atleast_2d(sigma_max)*np.ones((1, dim))
             if probit:
-                sigma_max = transform_to_probit(sigma_max, bounds)
+                sigma_max = transform_to_probit(np.mean(bounds, axis = -1)+sigma_max, bounds)
             out_sigma_max = sigma_max
         if samples is not None:
             if probit:
@@ -198,16 +198,10 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
         elif samples is not None:
             if probit:
                 # 1/3 (arbitrary) std of samples
-                L_out = np.atleast_2d(np.cov(probit_samples.T))/9
+                L_out = np.atleast_2d(np.cov(probit_samples.T))/9.
             else:
                 # 1/3 (arbitrary) std of samples
-                L_out = np.atleast_2d(np.cov(samples.T))/9
-            diag  = np.sqrt(np.diag(L_out))
-            if probit:
-                stds = np.minimum(diag, 0.2)
-            else:
-                stds = diag
-            L_out = L_out*np.outer(stds, stds)/np.outer(diag, diag)
+                L_out = np.atleast_2d(np.cov(samples.T))/9.
         else:
             if probit:
                 L_out = np.identity(dim)*0.2**2
