@@ -255,10 +255,11 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
         samples     = []
         loaded_pars = []
         try:
-            # LVK R&P mock data challenge file format
             try:
+                # LVK R&P mock data challenge
                 try:
                     data = f['MDC']['posterior_samples']
+                # Playground
                 except:
                     data = f['posterior_samples']
                 MDC_flag = True
