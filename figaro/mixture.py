@@ -741,6 +741,7 @@ class DPGMM(_density):
             :mixture: the inferred mixture
         """
         np.random.shuffle(samples)
+        samples = np.ascontiguousarray(samples)
         for s in samples:
             self.add_new_point(s)
         d = self.build_mixture()
@@ -910,15 +911,20 @@ class HDPGMM(DPGMM):
         if self.dim == 1:
             self.sigma_MC = covs.flatten()
             if self.probit:
-                self.mu_MC = np.random.normal(loc = 0., scale = 2., size = self.MC_draws)
+                self.mu_MC = np.random.normal(loc = 0., scale = 1., size = self.MC_draws)
             else:
                 self.mu_MC = np.random.uniform(low = self.bounds[0,0], high = self.bounds[0,1], size = self.MC_draws)
         else:
-            self.sigma_MC = np.array([invwishart(df = self.dim+2, scale = np.identity(self.dim)*cov**2).rvs() for cov in covs])
-            if self.probit:
-                self.mu_MC = mn(np.zeros(self.dim), np.identity(self.dim)*2.).rvs(self.MC_draws)
-            else:
-                self.mu_MC = np.random.uniform(low = self.bounds[:,0], high = self.bounds[:,1], size = (self.MC_draws, self.dim))
+            self.sigma_MC = np.array([invwishart(df = self.dim+2, scale = np.identity(self.dim)).rvs() for cov in covs])
+            rhos = np.array([c/np.outer(np.sqrt(np.diag(c)), np.sqrt(np.diag(c))) for c in self.sigma_MC])
+            self.sigma_MC = np.array([r*np.outer(c,c) for r, c in zip(rhos, covs)])
+#            if self.probit:
+#                self.mu_MC = mn(np.zeros(self.dim), np.identity(self.dim)*1.).rvs(self.MC_draws)
+#            else:
+#                self.mu_MC = np.random.uniform(low = self.bounds[:,0], high = self.bounds[:,1], size = (self.MC_draws, self.dim))
+            self.mu_MC = np.random.uniform(low = self.bounds[:,0], high = self.bounds[:,1], size = (self.MC_draws, self.dim))
+            if probit:
+                self.mu_MC = transform_to_probit(self.mu_MC, self.bounds)
     
     def add_new_point(self, ev):
         """
