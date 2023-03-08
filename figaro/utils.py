@@ -80,7 +80,7 @@ def rejection_sampler(n_draws, f, bounds, selfunc = None):
         samples.extend(pts[np.where(h < probs)])
     return np.array(samples).flatten()[:n_draws]
 
-def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df = None, k = None, sigma_min = None, sigma_max = None, probit = True, hierarchical = False):
+def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df = None, k = None, scale = 3., sigma_min = None, sigma_max = None, probit = True, hierarchical = False):
     """
     This method takes the prior parameters for the Normal-Inverse-Wishart distribution in the natural space and returns them as parameters in the probit space, ordered as required by FIGARO. In the following, D will denote the dimensionality of the inferred distribution.
 
@@ -103,6 +103,7 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
         :np.ndarray cov:                 covariance matrix [DPGMM]
         :int df:                         degrees of freedom for Inverse Wishart distribution [DPGMM]
         :double k:                       scale parameter for Normal distribution [DPGMM]
+        :double scale:                   fraction of samples std [DPGMM]
         :double or np.ndarray sigma_min: lower bound of Jeffreys prior [(H)DPGMM]
         :double or np.ndarray sigma_max: upper bound of Jeffreys prior [(H)DPGMM]
         :bool probit:                    whether the probit transformation will be applied or not
@@ -197,18 +198,17 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
                 draw_flag = True
         elif samples is not None:
             if probit:
-                # 1/3 (arbitrary) std of samples
-                L_out = np.atleast_2d(np.cov(probit_samples.T))/9.
+                L_out = np.atleast_2d(np.cov(probit_samples.T))
             else:
-                # 1/3 (arbitrary) std of samples
-                L_out = np.atleast_2d(np.cov(samples.T))/9.
+                L_out = np.atleast_2d(np.cov(samples.T))
+            L_out = L_out/scale**2
         else:
             if probit:
                 L_out = np.identity(dim)*0.2**2
             else:
                 L_out = np.identity(dim)*(np.diff(bounds, axis = 1)/10)**2
         if draw_flag:
-            ss = mn(np.mean(bounds, axis = -1), L_out).rvs(3000)
+            ss = mn(mu_out, L_out).rvs(3000)
             if dim == 1:
                 ss = np.atleast_2d(ss).T
             # Keeping only samples within bounds
@@ -221,7 +221,6 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
         else:
             s, log_k_out = np.linalg.slogdet(L_out)
             k_out = np.exp(log_k_out/dim)
-            
         return (k_out, L_out, df_out, mu_out)
 
 def rvs_median(draws, n_draws):
