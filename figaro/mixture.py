@@ -865,31 +865,16 @@ class HDPGMM(DPGMM):
                        probit     = True,
                        ):
         bounds   = np.atleast_2d(bounds)
-        if prior_pars is not None:
-            sigma_min, sigma_max = prior_pars
-        else:
-            sigma_min = None
-            sigma_max = None
         self.dim = len(bounds)
         super().__init__(bounds = bounds, alpha0 = alpha0, probit = probit)
+        if prior_pars is not None:
+            self.exp_sigma, self.a = prior_pars
+        else:
+            self.exp_sigma, self.a = get_priors(bounds = self.bounds, probit = self.probit, hierarchical = True)
+        self.invgamma = invgamma(self.a)
         self.MC_draws = int(MC_draws)
         # For logsumexp_jit
         self.b_ones = np.ones(self.MC_draws)
-        # Jeffreys prior bounds
-        if sigma_min is None:
-            if self.probit:
-                self.log_sigma_min = np.ones(self.dim)*np.log(1e-4)
-            else:
-                self.log_sigma_min = np.log(np.diff(self.bounds, axis = 1).flatten()/1e3)
-        else:
-            self.log_sigma_min = np.log(np.ones(self.dim)*sigma_min)
-        if sigma_max is None:
-            if self.probit:
-                self.log_sigma_max = np.ones(self.dim)*np.log(1e-1)
-            else:
-                self.log_sigma_max = np.log(np.diff(self.bounds, axis = 1).flatten()/2)
-        else:
-            self.log_sigma_max = np.log(np.ones(self.dim)*sigma_max)
         # MC samples
         self._draw_MC_samples()
         
@@ -904,17 +889,15 @@ class HDPGMM(DPGMM):
         """
         Draws MC samples for mu and sigma
         """
-        covs = np.sqrt(np.array([invgamma(2).rvs(self.MC_draws)*np.exp(2*self.log_sigma_min[0,i]) for i in range(self.dim)]).T)
+        covs = np.sqrt(np.array([self.invgamma.rvs(self.MC_draws)*(self.exp_sigma[i]**2*(self.a-1)) for i in range(self.dim)]).T)
         if self.dim == 1:
-            self.sigma_MC = covs.flatten()
+            self.sigma_MC = (covs**2).flatten()
             if self.probit:
                 self.mu_MC = np.random.normal(loc = 0., scale = 1., size = self.MC_draws)
             else:
                 self.mu_MC = np.random.uniform(low = self.bounds[0,0], high = self.bounds[0,1], size = self.MC_draws)
         else:
-            self.sigma_MC = np.array([invwishart(df = self.dim+1, scale = np.identity(self.dim)).rvs() for cov in covs])
-            rhos = np.array([c/np.outer(np.sqrt(np.diag(c)), np.sqrt(np.diag(c))) for c in self.sigma_MC])
-            self.sigma_MC = np.array([r*np.outer(c,c) for r, c in zip(rhos, covs)])
+            self.sigma_MC = np.array([invwishart(df = self.dim+1, scale = np.identity(self.dim)*cov).rvs() for cov in covs])
             if self.probit:
                 self.mu_MC = mn(np.zeros(self.dim), np.identity(self.dim)*1.).rvs(self.MC_draws)
             else:
