@@ -23,8 +23,7 @@ class worker:
                        out_folder_draws,
                        ext         = 'pkl',
                        se_sigma    = None,
-                       sigma_min   = None,
-                       sigma_max   = None,
+                       hier_sigma  = None,
                        all_samples = None,
                        label       = None,
                        unit        = None,
@@ -40,8 +39,7 @@ class worker:
                                            probit     = probit,
                                            prior_pars = get_priors(self.bounds,
                                                                    samples      = all_samples,
-                                                                   sigma_min    = sigma_min,
-                                                                   sigma_max    = sigma_max,
+                                                                   std          = hier_sigma,
                                                                    probit       = probit,
                                                                    hierarchical = True,
                                                                    )
@@ -128,8 +126,7 @@ def main():
     parser.add_option("--cosmology", type = "string", dest = "cosmology", help = "Cosmological parameters (h, om, ol). Default values from Planck (2021)", default = '0.674,0.315,0.685')
     parser.add_option("-e", "--events", dest = "run_events", action = 'store_false', help = "Skip single-event analysis", default = True)
     parser.add_option("--se_sigma_prior", dest = "se_sigma_prior", type = "string", help = "Expected standard deviation (prior) for single-event inference - single value or n-dim values. If None, it is estimated from samples", default = None)
-    parser.add_option("--sigma_min", dest = "sigma_min", type = "string", help = "Minimum standard deviation (prior) for hierarchical inference - single value or n-dim values. If None, it is estimated from samples", default = None)
-    parser.add_option("--sigma_max", dest = "sigma_max", type = "string", help = "Maximum standard deviation (prior) for hierarchical inference - single value or n-dim values. If None, it is estimated from samples", default = None)
+    parser.add_option("--sigma_prior", dest = "sigma_prior", type = "string", help = "Expected standard deviation (prior) for hierarchical inference - single value or n-dim values. If None, it is estimated from samples", default = None)
     parser.add_option("--n_parallel", dest = "n_parallel", type = "int", help = "Number of parallel threads", default = 4)
     parser.add_option("--mc_draws", dest = "mc_draws", type = "int", help = "Number of draws for assignment MC integral", default = 2000)
     parser.add_option("--snr_threshold", dest = "snr_threshold", type = "float", help = "SNR threshold for simulated GW datasets", default = None)
@@ -189,10 +186,8 @@ def main():
         options.n_se_draws = options.n_draws
     if options.se_sigma_prior is not None:
         options.se_sigma_prior = np.array([float(s) for s in options.se_sigma_prior.split(',')])
-    if options.sigma_min is not None:
-        options.sigma_min = np.array([float(s) for s in options.sigma_min.split(',')])
-    if options.sigma_max is not None:
-        options.sigma_max = np.array([float(s) for s in options.sigma_max.split(',')])
+    if options.sigma_prior is not None:
+        options.sigma_prior = np.array([float(s) for s in options.sigma_prior.split(',')])
 
     # If provided, load injected density
     inj_density = None
@@ -257,8 +252,7 @@ def main():
                                         out_folder_draws = output_draws,
                                         ext              = options.ext,
                                         se_sigma         = options.se_sigma_prior,
-                                        sigma_min        = options.sigma_min,
-                                        sigma_max        = options.sigma_max,
+                                        hier_sigma       = options.sigma_prior,
                                         all_samples      = all_samples,
                                         label            = symbols,
                                         unit             = units,
