@@ -80,7 +80,7 @@ def rejection_sampler(n_draws, f, bounds, selfunc = None):
         samples.extend(pts[np.where(h < probs)])
     return np.array(samples).flatten()[:n_draws]
 
-def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df = None, k = None, scale = 3., sigma_min = None, sigma_max = None, probit = True, hierarchical = False):
+def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df = None, k = None, a = None, scale = 5., probit = True, hierarchical = False):
     """
     This method takes the prior parameters for the Normal-Inverse-Wishart distribution in the natural space and returns them as parameters in the probit space, ordered as required by FIGARO. In the following, D will denote the dimensionality of the inferred distribution.
 
@@ -99,13 +99,12 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
         :np.ndarray bounds:              boundaries for probit transformation
         :np.ndarray samples:             2D array with samples
         :double or np.ndarray mean:      mean [DPGMM]
-        :double or np.ndarray std:       expected standard deviation (if double, the same std is used for all dimensions, if np.ndarray must match the number of dimensions) [DPGMM]
+        :double or np.ndarray std:       expected standard deviation (if double, the same std is used for all dimensions, if np.ndarray must match the number of dimensions) [DPGMM and (H)DPGMM]
         :np.ndarray cov:                 covariance matrix [DPGMM]
         :int df:                         degrees of freedom for Inverse Wishart distribution [DPGMM]
         :double k:                       scale parameter for Normal distribution [DPGMM]
+        :double a:                       shape parameter for the Inverse Gamma distribution [(H)DPGMM]
         :double scale:                   fraction of samples std [DPGMM]
-        :double or np.ndarray sigma_min: lower bound of Jeffreys prior [(H)DPGMM]
-        :double or np.ndarray sigma_max: upper bound of Jeffreys prior [(H)DPGMM]
         :bool probit:                    whether the probit transformation will be applied or not
         :bool hierarchical:              returns the prior pars for (H)DPGMM rather than for DPGMM
         
@@ -120,45 +119,27 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
         if probit:
             probit_samples = transform_to_probit(samples, bounds)
     if hierarchical:
-        out_sigma_min = None
-        out_sigma_max = None
-        if sigma_min is not None:
-            sigma_min = np.atleast_2d(sigma_min)*np.ones((1, dim))
+        if std is not None:
+            out_sigma = np.atleast_2d(std)*np.ones((1, dim))
             if probit:
-                sigma_min = transform_to_probit(np.mean(bounds, axis = -1)+sigma_min, bounds)
-            out_sigma_min = sigma_min
-        if sigma_max is not None:
-            sigma_max = np.atleast_2d(sigma_max)*np.ones((1, dim))
+                out_sigma = transform_to_probit(np.mean(bounds, axis = -1)+out_sigma, bounds)
+        elif samples is not None:
             if probit:
-                sigma_max = transform_to_probit(np.mean(bounds, axis = -1)+sigma_max, bounds)
-            out_sigma_max = sigma_max
-        if samples is not None:
-            if probit:
-                samples_std = np.sqrt(np.diag(np.atleast_2d(np.cov(probit_samples.T))))
+                out_sigma = np.sqrt(np.diag(np.atleast_2d(np.cov(probit_samples.T))))
             else:
-                samples_std = np.sqrt(np.diag(np.atleast_2d(np.cov(samples.T))))
-            if sigma_min is None:
-                if probit:
-                    out_sigma_min = samples_std*1e-3
-                else:
-                    out_sigma_min = samples_std/15.
-            if sigma_max is None:
-                if probit:
-                    out_sigma_max = samples_std*1e-1
-                else:
-                    out_sigma_max = samples_std/2.
-        if (out_sigma_min is None or out_sigma_max is None):
-            if out_sigma_min is None:
-                if probit:
-                    out_sigma_min = np.ones(self.dim)*1e-4
-                else:
-                    out_sigma_min = np.diff(bounds, axis = 1).flatten()*1e-3
-            if out_sigma_max is None:
-                if probit:
-                    out_sigma_max = np.ones(self.dim)*1e-1
-                else:
-                    out_sigma_max = np.diff(bounds, axis = 1).flatten()/10.
-        return (out_sigma_min, out_sigma_max)
+                out_sigma = np.sqrt(np.diag(np.atleast_2d(np.cov(samples.T))))
+            out_sigma = out_sigma/scale
+        else:
+            out_sigma = np.diff(bounds, axis = -1)/10.
+            if probit:
+                out_sigma = transform_to_probit(np.mean(bounds, axis = -1)+out_sigma, bounds)
+        out_sigma = out_sigma.flatten()
+        if a is not None:
+            out_a = a
+        else:
+            out_a = 2.
+            
+        return (out_sigma, out_a)
     
     else:
         # DF
@@ -201,14 +182,14 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
                 L_out = np.atleast_2d(np.cov(probit_samples.T))
             else:
                 L_out = np.atleast_2d(np.cov(samples.T))
-            L_out = L_out/scale**2
+            L_out = np.identity(dim)*np.diag(L_out/scale**2)
         else:
             if probit:
                 L_out = np.identity(dim)*0.2**2
             else:
                 L_out = np.identity(dim)*(np.diff(bounds, axis = 1)/10)**2
         if draw_flag:
-            ss = mn(mu_out, L_out).rvs(3000)
+            ss = mn(np.mean(bounds, axis = -1), L_out).rvs(3000)
             if dim == 1:
                 ss = np.atleast_2d(ss).T
             # Keeping only samples within bounds
