@@ -7,7 +7,7 @@ from pathlib import Path
 
 from scipy.special import gammaln, logsumexp
 from scipy.stats import multivariate_normal as mn
-from scipy.stats import invwishart, norm
+from scipy.stats import invwishart, norm, invgamma
 
 from figaro.decorators import *
 from figaro.transform import *
@@ -904,10 +904,7 @@ class HDPGMM(DPGMM):
         """
         Draws MC samples for mu and sigma
         """
-        if self.probit:
-            covs = np.exp(np.random.uniform(low = self.log_sigma_min, high = self.log_sigma_max, size = (self.MC_draws, self.dim)))
-        else:
-            covs = np.exp(np.random.uniform(low = self.log_sigma_min, high = self.log_sigma_max, size = (self.MC_draws, self.dim)))
+        covs = np.sqrt(np.array([invgamma(2).rvs(self.MC_draws)*np.exp(2*self.log_sigma_min[0,i]) for i in range(self.dim)]).T)
         if self.dim == 1:
             self.sigma_MC = covs.flatten()
             if self.probit:
@@ -915,16 +912,13 @@ class HDPGMM(DPGMM):
             else:
                 self.mu_MC = np.random.uniform(low = self.bounds[0,0], high = self.bounds[0,1], size = self.MC_draws)
         else:
-            self.sigma_MC = np.array([invwishart(df = self.dim+2, scale = np.identity(self.dim)).rvs() for cov in covs])
+            self.sigma_MC = np.array([invwishart(df = self.dim+1, scale = np.identity(self.dim)).rvs() for cov in covs])
             rhos = np.array([c/np.outer(np.sqrt(np.diag(c)), np.sqrt(np.diag(c))) for c in self.sigma_MC])
             self.sigma_MC = np.array([r*np.outer(c,c) for r, c in zip(rhos, covs)])
-#            if self.probit:
-#                self.mu_MC = mn(np.zeros(self.dim), np.identity(self.dim)*1.).rvs(self.MC_draws)
-#            else:
-#                self.mu_MC = np.random.uniform(low = self.bounds[:,0], high = self.bounds[:,1], size = (self.MC_draws, self.dim))
-            self.mu_MC = np.random.uniform(low = self.bounds[:,0], high = self.bounds[:,1], size = (self.MC_draws, self.dim))
-            if probit:
-                self.mu_MC = transform_to_probit(self.mu_MC, self.bounds)
+            if self.probit:
+                self.mu_MC = mn(np.zeros(self.dim), np.identity(self.dim)*1.).rvs(self.MC_draws)
+            else:
+                self.mu_MC = np.random.uniform(low = self.bounds[:,0], high = self.bounds[:,1], size = (self.MC_draws, self.dim))
     
     def add_new_point(self, ev):
         """
