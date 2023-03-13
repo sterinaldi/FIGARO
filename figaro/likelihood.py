@@ -35,8 +35,8 @@ def scalar_product(v, M, n):
         :double: v*M*v^T
     """
     res = 0.
-    for i in prange(n):
-        for j in prange(n):
+    for i in range(n):
+        for j in range(n):
             res = res + M[i,j]*v[i]*v[j]
     return res
 
@@ -61,9 +61,9 @@ def log_norm(x, mu, cov):
     Multivariate Normal logpdf
     
     Arguments:
-        :np.ndarray x: value
-        :np.ndarray m: mean vector
-        :np.ndarray s: covariance matrix
+        :np.ndarray x:   value
+        :np.ndarray mu:  mean vector
+        :np.ndarray cov: covariance matrix
     
     Returns:
         :double: MultivariateNormal(m,s).logpdf(x)
@@ -71,6 +71,28 @@ def log_norm(x, mu, cov):
     inv_cov  = inv_jit(cov)
     exponent = -0.5*scalar_product(x-mu, inv_cov, len(mu))
     lognorm  = 0.5*len(mu)*LOG2PI+0.5*logdet_jit(cov)
+    return -lognorm+exponent
+
+@jit
+def log_norm_int(x, mu, cov_1, inv_cov_1, cov_2):
+    """
+    Multivariate Normal logpdf (tailored to this problem!)
+    See https://arxiv.org/pdf/1811.04751v1.pdf
+    
+    Arguments:
+        :np.ndarray x:         value
+        :np.ndarray mu:        mean vector
+        :np.ndarray cov_1:     1st covariance matrix
+        :np.ndarray inv_cov_1: inverse of 1st covariance matrix
+        :np.ndarray cov_2:     2nd covariance matrix
+    
+    Returns:
+        :double: MultivariateNormal(m,s).logpdf(x)
+    """
+    inv_cov_2  = inv_jit(cov_2)
+    inv_cov    = inv_cov_1@inv_jit(inv_cov_1+inv_cov_2)@inv_cov_2
+    exponent   = -0.5*scalar_product(x-mu, inv_cov, len(mu))
+    lognorm    = 0.5*len(mu)*LOG2PI+0.5*(logdet_jit(cov_1) + logdet_jit(cov_2) + logdet_jit(inv_cov_1+inv_cov_2))
     return -lognorm+exponent
 
 #------------#
@@ -131,7 +153,8 @@ def eval_mix(mu, sigma, means, covs):
     Returns:
         :np.ndarray: probability for each event mixture components
     """
-    return np.array([log_norm(means[i], mu, sigma+covs[i]) for i in prange(len(means))])
+    inv_sigma = inv_jit(sigma)
+    return np.array([log_norm_int(means[i], mu, sigma, inv_sigma, covs[i]) for i in prange(len(means))])
 
 @jit
 def evaluate_mixture_MC_draws(mu, sigma, means, covs, w):
