@@ -35,8 +35,8 @@ def scalar_product(v, M, n):
         :double: v*M*v^T
     """
     res = 0.
-    for i in range(n):
-        for j in range(n):
+    for i in prange(n):
+        for j in prange(n):
             res = res + M[i,j]*v[i]*v[j]
     return res
 
