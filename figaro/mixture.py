@@ -889,20 +889,16 @@ class HDPGMM(DPGMM):
         """
         Draws MC samples for mu and sigma
         """
-        covs = np.sqrt(np.array([self.invgamma.rvs(self.MC_draws)*(self.exp_sigma[i]**2*(self.a-1)) for i in range(self.dim)]).T)
+        self.sigma_MC = np.array([self.invgamma.rvs(self.MC_draws)*(self.exp_sigma[i]**2*(self.a+1)) for i in range(self.dim)]).T
+        self.mu_MC    = np.random.uniform(low = self.bounds[:,0], high = self.bounds[:,1], size = (self.MC_draws, self.dim))
+        if self.probit:
+            self.mu_MC = transform_to_probit(self.mu_MC, bounds)
         if self.dim == 1:
-            self.sigma_MC = (covs**2).flatten()
-            if self.probit:
-                self.mu_MC = np.random.normal(loc = 0., scale = 1., size = self.MC_draws)
-            else:
-                self.mu_MC = np.random.uniform(low = self.bounds[0,0], high = self.bounds[0,1], size = self.MC_draws)
+            self.sigma_MC = self.sigma_MC.flatten()
+            self.mu_MC = self.mu_MC.flatten()
         else:
-            self.sigma_MC = np.array([invwishart(df = self.dim+1, scale = np.identity(self.dim)*cov).rvs() for cov in covs])
-            if self.probit:
-                self.mu_MC = mn(np.zeros(self.dim), np.identity(self.dim)*1.).rvs(self.MC_draws)
-            else:
-                self.mu_MC = np.random.uniform(low = self.bounds[:,0], high = self.bounds[:,1], size = (self.MC_draws, self.dim))
-    
+            self.sigma_MC = np.array([invwishart(df = self.dim+2, scale = np.identity(self.dim)*cov).rvs() for cov in self.sigma_MC])
+            
     def add_new_point(self, ev):
         """
         Update the probability density reconstruction adding a new sample
