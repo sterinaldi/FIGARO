@@ -25,7 +25,7 @@ def transform_to_probit(x, bounds):
         :np.ndarray: sample(s)
     '''
     dbounds = bounds[:,1]-bounds[:,0]
-    sigma   = dbounds*0.84 - dbounds*0.5
+    sigma   = dbounds*0.34
     cdf = (x - bounds[:,0])/dbounds
     o = np.sqrt(2.0)*erfinv(2*cdf-1)*sigma
     return o
@@ -45,18 +45,20 @@ def transform_from_probit(x, bounds):
         :np.ndarray: sample(s)
     '''
     dbounds = bounds[:,1]-bounds[:,0]
-    sigma   = dbounds*0.84 - dbounds*0.5
+    sigma   = dbounds*0.34
     cdf = 0.5*(1.0+erf(x/(np.sqrt(2.0)*sigma)))
     o = bounds[:,0]+dbounds*cdf
     return o
 
 def probit_log_jacobian(x, bounds):
-    return -0.5*x**2-0.5*log2PI+np.log(bounds[:,1]-bounds[:,0])
+    dbounds = bounds[:,1]-bounds[:,0]
+    sigma   = dbounds*0.34
+    return -0.5*(x/sigma)**2-0.5*(log2PI + np.log(sigma))+np.log(dbounds)
 
 def probit_logJ(x, bounds, flag = True):
     if not flag:
         return np.zeros(len(x))
     dbounds = bounds[:,1]-bounds[:,0]
-    sigma   = dbounds*0.84 - dbounds*0.5
+    sigma   = dbounds*0.34
     res     = np.sum(-0.5*(x/sigma)**2-0.5*(log2PI + np.log(sigma))+np.log(dbounds), axis = -1)
     return res
