@@ -892,7 +892,7 @@ class HDPGMM(DPGMM):
         self.sigma_MC = np.array([self.invgamma.rvs(self.MC_draws)*(self.exp_sigma[i]**2*(self.a+1)) for i in range(self.dim)]).T
         self.mu_MC    = np.random.uniform(low = self.bounds[:,0], high = self.bounds[:,1], size = (self.MC_draws, self.dim))
         if self.probit:
-            self.mu_MC = transform_to_probit(self.mu_MC, bounds)
+            self.mu_MC = transform_to_probit(self.mu_MC, self.bounds)
         if self.dim == 1:
             self.sigma_MC = self.sigma_MC.flatten()
             self.mu_MC = self.mu_MC.flatten()
