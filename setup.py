@@ -21,7 +21,7 @@ except ModuleNotFoundError:
     ray_flag = False
 
 try:
-    from Cython.Build import cythonize
+    from Cython.Build import cythonize, build_ext
 except ImportError:
     raise ImportError("Cython not found. Please install it via\n\tpip install Cython")
 
@@ -33,14 +33,6 @@ else:
 
 with open("README.md") as readme_file:
     long_description = readme_file.read()
-
-# see https://stackoverflow.com/a/21621689/1862861 for why this is here
-class build_ext(_build_ext):
-    def finalize_options(self):
-        _build_ext.finalize_options(self)
-        # Prevent numpy from thinking it is still in its setup process:
-        __builtins__.__NUMPY_SETUP__ = False
-        self.include_dirs.append(numpy.get_include())
 
 ext_modules=[
              Extension("figaro.cumulative",
@@ -105,7 +97,7 @@ setup(
     author = 'Stefano Rinaldi, Walter Del Pozzo, Daniele Sanfratello',
     author_email = 'stefano.rinaldi@phd.unipi.it, walter.delpozzo@unipi.it, d.sanfratello@studenti.unipi.it',
     url = 'https://github.com/sterinaldi/figaro',
-    python_requires = '>=3.7',
+    python_requires = '>=3.9',
     packages = ['figaro'],
     py_modules = pymodules,
     install_requires=requirements,
@@ -116,23 +108,13 @@ setup(
     entry_points = {
         'console_scripts': scripts,
         },
-    version='1.0.0',
+    version='1.0.6',
     long_description=long_description,
     long_description_content_type='text/markdown',
+    cmdclass = {
+            "build_ext": build_ext
+            }
     )
-
-setup(
-      name = 'figaro/cumulative',
-      ext_modules = cythonize(ext_modules, language_level = "3"),
-      include_dirs=['figaro', numpy.get_include()]
-      )
-if lal_flag:
-    setup(
-          name = 'figaro/cosmology',
-          ext_modules = cythonize(ext_modules, language_level = "3"),
-          include_dirs=['figaro', numpy.get_include()]
-          )
-
 
 if not lal_flag:
     warnings.warn("\n\nWARNING: No LAL installation found, please install LAL - see https://wiki.ligo.org/Computing/LALSuiteInstall. Some functions - GW posterior samples loading and catalog loading - won't be available and errors might be raised.\n", stacklevel = 2)
