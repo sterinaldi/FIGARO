@@ -185,7 +185,7 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
             L_out = np.identity(dim)*np.diag(L_out/scale**2)
         else:
             if probit:
-                L_out = np.identity(dim)*0.2**2
+                L_out = np.identity(dim)*(transform_to_probit(np.mean(bounds, axis = -1)+np.diff(bounds, axis = 1)/10, bounds).flatten())**2
             else:
                 L_out = np.identity(dim)*(np.diff(bounds, axis = 1)/10)**2
         if draw_flag:
