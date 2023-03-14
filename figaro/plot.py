@@ -154,7 +154,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
             x_min = np.max((x_min, x_min_l))
             x_max = np.min((x_max, x_max_l))
     xlim = (x_min, x_max)
-    x    = np.linspace(x_min, x_max, n_pts+2)[1:-1]
+    x    = np.linspace(x_min, x_max, n_pts)
     dx   = x[1]-x[0]
     
     probs = np.array([d.pdf(x) for d in draws])
@@ -390,7 +390,7 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
             lim[0] = np.max((lim[0], lim_l[0]))
             lim[1] = np.min((lim[1], lim_l[1]))
             
-        x   = np.linspace(lim[0], lim[1], n_pts+2)[1:-1]
+        x   = np.linspace(lim[0], lim[1], n_pts)
         dx  = x[1]-x[0]
         
         probs = np.array([d.pdf(x) for d in marg_draws])
@@ -450,8 +450,8 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
                 
             grid, dgrid = recursive_grid(lim[::-1], np.ones(2, dtype = int)*int(n_pts))
             
-            x = np.linspace(lim[0,0], lim[0,1], n_pts+2)[1:-1]
-            y = np.linspace(lim[1,0], lim[1,1], n_pts+2)[1:-1]
+            x = np.linspace(lim[0,0], lim[0,1], n_pts)
+            y = np.linspace(lim[1,0], lim[1,1], n_pts)
             
             dd = np.array([d.pdf(grid) for d in marg_draws])
             median = np.percentile(dd, 50, axis = 0)
@@ -663,7 +663,7 @@ def pp_plot_cdf(draws, injection, n_points = 1000, out_folder = '.', name = 'eve
     all_bounds = np.atleast_2d([d.bounds[0] for d in draws])
     x_min = np.max(all_bounds[:,0])
     x_max = np.min(all_bounds[:,1])
-    x = np.linspace(x_min, x_max, n_points+2)[1:-1]
+    x = np.linspace(x_min, x_max, n_points)
     
     functions     = np.array([mix(x) for mix in draws])
     median        = np.percentile(functions, 50, axis = 0)
