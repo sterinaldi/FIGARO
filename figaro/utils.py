@@ -33,7 +33,7 @@ def recursive_grid(bounds, n_pts, get_1d = False):
     bounds = np.atleast_2d(bounds)
     n_pts  = np.atleast_1d(n_pts)
     if len(bounds) == 1:
-        d  = np.linspace(bounds[0,0], bounds[0,1], n_pts[0]+2)[1:-1]
+        d  = np.linspace(bounds[0,0], bounds[0,1], n_pts[0])
         dD = d[1]-d[0]
         if get_1d:
             return np.atleast_2d(d).T, [dD], [d]
@@ -43,7 +43,7 @@ def recursive_grid(bounds, n_pts, get_1d = False):
             grid_nm1, diff, l_1d = recursive_grid(np.array(bounds)[1:], n_pts[1:], get_1d)
         else:
             grid_nm1, diff = recursive_grid(np.array(bounds)[1:], n_pts[1:], get_1d)
-        d = np.linspace(bounds[0,0], bounds[0,1], n_pts[0]+2)[1:-1]
+        d = np.linspace(bounds[0,0], bounds[0,1], n_pts[0])
         diff.insert(0, d[1]-d[0])
         grid     = []
         for di in d:
