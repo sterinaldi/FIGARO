@@ -279,7 +279,9 @@ class _density:
                 x = np.atleast_2d(x).T
             else:
                 x = np.atleast_2d(x)
-        return self._pdf(x)
+        with np.errstate(invalid = 'ignore'):
+            p = np.nan_to_num(self._pdf(x), nan = 0.)
+        return p
 
     def logpdf(self, x):
         if self.n_cl == 0:
@@ -289,7 +291,9 @@ class _density:
                 x = np.atleast_2d(x).T
             else:
                 x = np.atleast_2d(x)
-        return self._logpdf(x)
+        with np.errstate(invalid = 'ignore'):
+            logp = np.nan_to_num(self._logpdf(x), nan = -np.inf)
+        return logp
 
     @probit
     def _pdf(self, x):

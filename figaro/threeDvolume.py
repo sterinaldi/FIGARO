@@ -161,9 +161,9 @@ class VolumeReconstruction(DPGMM):
         self.latex = latex
         
         # Grid
-        self.ra   = np.linspace(0,2*np.pi, n_gridpoints[0], endpoint = False)
-        self.dec  = np.linspace(-np.pi/2, np.pi/2., n_gridpoints[1]+2)[1:-1]
-        self.dist = np.linspace(0, max_dist, n_gridpoints[2]+2)[1:-1]
+        self.ra   = np.linspace(0,2*np.pi, n_gridpoints[0])
+        self.dec  = np.linspace(-np.pi/2, np.pi/2., n_gridpoints[1])
+        self.dist = np.linspace(0, max_dist, n_gridpoints[2])
         self.dD   = np.diff(self.dist)[0]
         self.dra  = np.diff(self.ra)[0]
         self.ddec = np.diff(self.dec)[0]

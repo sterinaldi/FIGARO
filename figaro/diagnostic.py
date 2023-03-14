@@ -139,7 +139,7 @@ def autocorrelation(draws, bounds = None, out_folder = '.', name = 'event', n_po
             warnings.warn("The provided upper bound is invalid for at least one draw. {0} will be used instead.".format(x_max))
         else:
             x_max = bounds[1]
-    x  = np.linspace(x_min, x_max, n_points+2)[1:-1]
+    x  = np.linspace(x_min, x_max, n_points)
     dx = x[1] - x[0]
     
     functions = np.array([mix.pdf(x) for mix in draws])
