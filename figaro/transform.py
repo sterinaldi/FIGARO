@@ -53,12 +53,13 @@ def transform_from_probit(x, bounds):
 def probit_log_jacobian(x, bounds):
     dbounds = bounds[:,1]-bounds[:,0]
     sigma   = dbounds*0.34
-    return -0.5*(x/sigma)**2-0.5*(log2PI + np.log(sigma))+np.log(dbounds)
+    res     = -0.5*(x/sigma)**2-0.5*(log2PI)+np.log(dbounds)-np.log(sigma)
+    return res
 
 def probit_logJ(x, bounds, flag = True):
     if not flag:
         return np.zeros(len(x))
     dbounds = bounds[:,1]-bounds[:,0]
     sigma   = dbounds*0.34
-    res     = np.sum(-0.5*(x/sigma)**2-0.5*(log2PI + np.log(sigma))+np.log(dbounds), axis = -1)
+    res     = np.sum(-0.5*(x/sigma)**2-0.5*log2PI+np.log(dbounds)-np.log(sigma), axis = -1)
     return res
