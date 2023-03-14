@@ -145,13 +145,15 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
             x_max = bounds[1]
 
     fig, ax = plt.subplots()
+
     # If samples are available, use them as bounds
     if samples is not None:
         ax.hist(samples, bins = int(np.sqrt(len(samples))), histtype = 'step', density = True, label = '$\mathrm{Samples}$', log = True)
-        x_min_l, x_max_l = ax.get_xlim()
-        x_min = np.max((x_min, x_min_l))
-        x_max = np.min((x_max, x_max_l))
-        
+        if bounds is None:
+            x_min_l, x_max_l = ax.get_xlim()
+            x_min = np.max((x_min, x_min_l))
+            x_max = np.min((x_max, x_max_l))
+    xlim = (x_min, x_max)
     x    = np.linspace(x_min, x_max, n_pts+2)[1:-1]
     dx   = x[1]-x[0]
     
@@ -167,7 +169,6 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
 
     # Samples (if available)
     if samples is not None:
-        xlim = ax.get_xlim()
         ylim = ax.get_ylim()
     else:
         ax.set_yscale('log')
@@ -384,7 +385,7 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
         marg_draws = marginalise(draws, dims)
         # Credible regions
         lim = bounds[column]
-        if samples is not None:
+        if samples is not None and bounds is None:
             lim_l = ax.get_xlim()
             lim[0] = np.max((lim[0], lim_l[0]))
             lim[1] = np.min((lim[1], lim_l[1]))
@@ -441,7 +442,7 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
             
             # Credible regions
             lim = bounds[[row, column]]
-            if samples is not None:
+            if samples is not None and bounds is None:
                 lim_l = np.array([ax.get_ylim(), ax.get_xlim()])
                 for i in range(2):
                     lim[i,0] = np.max((lim[i,0], lim_l[i,0]))
