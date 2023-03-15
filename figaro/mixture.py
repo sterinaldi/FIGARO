@@ -255,8 +255,9 @@ class component_h:
         
         log_norm_D = logsumexp_jit(logL_D, b = b_ones)
         
-        self.mu    = np.average(mu_MC, weights = np.exp(logL_D - log_norm_D), axis = 0)
-        self.sigma = np.average(sigma_MC, weights = np.exp(logL_D - log_norm_D), axis = 0)
+        idx        = np.random.choice(len(mu_MC), p = np.exp(logL_D - log_norm_D))
+        self.mu    = np.copy(mu_MC[idx])
+        self.sigma = np.copy(sigma_MC[idx])
         if dim == 1:
             self.mu = np.atleast_2d(self.mu).T
             self.sigma = np.atleast_2d(self.sigma).T
@@ -901,7 +902,9 @@ class HDPGMM(DPGMM):
             self.sigma_MC = self.sigma_MC.flatten()
             self.mu_MC = self.mu_MC.flatten()
         else:
-            self.sigma_MC = np.array([invwishart(df = self.dim+2, scale = np.identity(self.dim)*cov).rvs() for cov in self.sigma_MC])
+            rhos = invwishart(df = self.dim+2, scale = np.identity(self.dim)).rvs(size = self.MC_draws)
+            rhos = np.array([r/np.outer(np.sqrt(np.diag(r)), np.sqrt(np.diag(r))) for r in rhos])
+            self.sigma_MC = np.array([r*np.outer(s,s) for r, s in zip(rhos, np.sqrt(self.sigma_MC))])
             
     def add_new_point(self, ev):
         """
@@ -995,9 +998,10 @@ class HDPGMM(DPGMM):
         ss.logL_D = logL_D
 
         log_norm_D = logsumexp_jit(logL_D, self.b_ones)
-
-        ss.mu    = np.average(self.mu_MC, weights = np.exp(logL_D - log_norm_D), axis = 0)
-        ss.sigma = np.average(self.sigma_MC, weights = np.exp(logL_D - log_norm_D), axis = 0)
+        
+        idx      = np.random.choice(self.MC_draws, p = np.exp(logL_D - log_norm_D))
+        ss.mu    = np.copy(self.mu_MC[idx])
+        ss.sigma = np.copy(self.sigma_MC[idx])
         if self.dim == 1:
             ss.mu = np.atleast_2d(ss.mu).T
             ss.sigma = np.atleast_2d(ss.sigma).T
