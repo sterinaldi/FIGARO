@@ -866,7 +866,7 @@ class HDPGMM(DPGMM):
     def __init__(self, bounds,
                        alpha0     = 1.,
                        prior_pars = None,
-                       MC_draws   = 2e3,
+                       MC_draws   = None,
                        probit     = True,
                        ):
         bounds   = np.atleast_2d(bounds)
@@ -877,7 +877,10 @@ class HDPGMM(DPGMM):
         else:
             self.exp_sigma, self.a = get_priors(bounds = self.bounds, probit = self.probit, hierarchical = True)
         self.invgamma = invgamma(self.a)
-        self.MC_draws = int(MC_draws)
+        if MC_draws is None:
+            self.MC_draws = int((self.dim+1)*1e3)
+        else:
+            self.MC_draws = int(MC_draws)
         # For logsumexp_jit
         self.b_ones = np.ones(self.MC_draws)
         # MC samples
