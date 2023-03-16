@@ -336,7 +336,10 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
         labels = [l[:-1]+'\ [{0}]$'.format(u) if not u == '' else l for l, u in zip(labels, units)]
     
     levels = np.atleast_1d(levels)
-
+    
+    ext_bounds = False
+    if bounds is not None:
+        ext_bounds = True
     all_bounds = np.atleast_2d([d.bounds for d in draws])
     x_min = np.min(all_bounds, axis = -1).max(axis = 0)
     x_max = np.max(all_bounds, axis = -1).min(axis = 0)
@@ -385,7 +388,7 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
         marg_draws = marginalise(draws, dims)
         # Credible regions
         lim = bounds[column]
-        if samples is not None and bounds is None:
+        if samples is not None and not ext_bounds:
             lim_l = ax.get_xlim()
             lim[0] = np.max((lim[0], lim_l[0]))
             lim[1] = np.min((lim[1], lim_l[1]))
@@ -442,7 +445,7 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
             
             # Credible regions
             lim = bounds[[row, column]]
-            if samples is not None and bounds is None:
+            if samples is not None and not ext_bounds:
                 lim_l = np.array([ax.get_ylim(), ax.get_xlim()])
                 for i in range(2):
                     lim[i,0] = np.max((lim[i,0], lim_l[i,0]))
