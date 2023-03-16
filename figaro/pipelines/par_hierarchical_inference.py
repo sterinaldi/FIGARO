@@ -46,6 +46,7 @@ class worker:
                                             )
         self.out_folder_plots = out_folder_plots
         self.out_folder_draws = out_folder_draws
+        self.se_sigma         = se_sigma
         self.save_se          = save_se
         self.label            = label
         self.unit             = unit
