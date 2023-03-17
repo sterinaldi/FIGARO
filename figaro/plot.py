@@ -491,9 +491,13 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
             if column == 0:
                 ax.set_ylabel(labels[row])
                 [l.set_rotation(45) for l in ax.get_yticklabels()]
+            else:
+                ax.set_yticklabels([])
             if row == K - 1:
                 [l.set_rotation(45) for l in ax.get_xticklabels()]
                 ax.set_xlabel(labels[column])
+            else:
+                ax.set_xticklabels([])
 
     fig.axes[K-1].legend(*fig.axes[0].get_legend_handles_labels(), loc = 'center')
     fig.align_labels()
