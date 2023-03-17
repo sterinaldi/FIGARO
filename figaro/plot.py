@@ -365,7 +365,7 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
     factor = 2.0          # size of one side of one panel
     lbdim = 0.5 * factor  # size of left/bottom margin
     trdim = 0.2 * factor  # size of top/right margin
-    whspace = 0.1         # w/hspace size
+    whspace = 0.2         # w/hspace size
     plotdim = factor * dim + factor * (K - 1.0) * whspace
     dim_plt = lbdim + plotdim + trdim
     
@@ -498,7 +498,6 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
                 ax.set_xlabel(labels[column])
             else:
                 ax.set_xticklabels([])
-
     fig.axes[K-1].legend(*fig.axes[0].get_legend_handles_labels(), loc = 'center')
     fig.align_labels()
     
