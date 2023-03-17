@@ -365,7 +365,7 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
     factor = 2.0          # size of one side of one panel
     lbdim = 0.5 * factor  # size of left/bottom margin
     trdim = 0.2 * factor  # size of top/right margin
-    whspace = 0.2         # w/hspace size
+    whspace = 0.15        # w/hspace size
     plotdim = factor * dim + factor * (K - 1.0) * whspace
     dim_plt = lbdim + plotdim + trdim
     
