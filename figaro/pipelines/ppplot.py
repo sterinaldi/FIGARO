@@ -92,6 +92,11 @@ def main():
         dim = 1
     if dim > 3:
         raise Exception("PP-plots can be computed up to 3 dimensions")
+    # Load true values
+    if options.true_vals is not None:
+        options.true_vals = Path(options.true_vals).resolve()
+        with open(options.true_vals, 'r') as f:
+            true_vals = json.load(f)
     # Check all events have an entry in true_vals dict
     if not np.array([name in true_vals.keys() for name in names]).all():
         raise Exception("Please provide a dictionary storing all the true values. Dict keys must match event names. The following events appear not to have a true value:\n{0}".format(np.array(names)[np.where([name not in true_vals.keys() for name in names])]))
@@ -119,22 +124,16 @@ def main():
             units = options.unit
     # Read grid points
     if options.grid_points is not None:
-        pts = options.grid_points.split('.')
+        pts = options.grid_points.split(',')
         if len(pts) == dim:
             options.grid_points = np.array([int(d) for d in pts])
         elif len(pts) == 1:
             options.grid_points = np.ones(dim, dtype = int)*int(pts[0])
         else:
             print("Wrong number of grid point provided. Falling back to default number")
-            options.grid_points = np.ones(dim, dtype = int)*int((1000/dim**2)**dim)
+            options.grid_points = np.ones(dim, dtype = int)*200
     else:
-        options.grid_points = np.ones(dim, dtype = int)*int((1000/dim**2)**dim)
-
-    # Load true values
-    if options.true_vals is not None:
-        options.true_vals = Path(options.true_vals).resolve()
-        with open(options.true_vals, 'r') as f:
-            true_vals = json.load(f)
+        options.grid_points = np.ones(dim, dtype = int)*200
 
     # Reconstruction
     if not options.postprocess:
