@@ -703,7 +703,7 @@ class DPGMM(_density):
                 ss        = None
                 scores[i] = np.log(self.alpha)
             else:
-                ss        = self.mixture[i]
+                ss        = self.mixture[i-1]
                 scores[i] = np.log(ss.N)
             scores[i] += self._log_predictive_likelihood(x, ss)
         norm = logsumexp_jit(scores, b = np.ones(self.n_cl+1))
@@ -941,7 +941,7 @@ class HDPGMM(DPGMM):
                 logL_D = np.zeros(self.MC_draws)
                 scores[i] = np.log(self.alpha)
             else:
-                ss        = self.mixture[i]
+                ss        = self.mixture[i-1]
                 logL_D    = ss.logL_D
                 scores[i] = np.log(ss.N)
             scores[i] += logsumexp_jit(logL_D + logL_x, b = self.b_ones) - logsumexp_jit(logL_D, b = self.b_ones)
