@@ -681,7 +681,7 @@ class DPGMM(_density):
         Returns:
             :double: log Likelihood
         """
-        if ss == "new":
+        if ss is None:
             ss = component(np.zeros(self.dim), prior = self.prior)
             ss.N = 0.
         t_df, t_shape, mu_n = compute_t_pars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.S, ss.N, self.dim)
@@ -697,20 +697,17 @@ class DPGMM(_density):
         Returns:
             :dict: p_i for each component
         """
-        scores = {}
-        for i in list(np.arange(self.n_cl)) + ["new"]:
-            if i == "new":
-                ss = "new"
+        scores = np.zeros(self.n_cl+1)
+        for i in range(self.n_cl+1):
+            if i == 0:
+                ss        = None
+                scores[i] = np.log(self.alpha)
             else:
-                ss = self.mixture[i]
-            scores[i] = self._log_predictive_likelihood(x, ss)
-            if ss == "new":
-                scores[i] += np.log(self.alpha)
-            else:
-                scores[i] += np.log(ss.N)
-        norm   = logsumexp(np.array([score for score in scores.values()]), b = np.ones(self.n_cl+1))
-        scores = {cid: (np.exp(score - norm) if score < np.inf else 0) for cid, score in scores.items()} # score < inf checks also for NaNs
-        return scores
+                ss        = self.mixture[i]
+                scores[i] = np.log(ss.N)
+            scores[i] += self._log_predictive_likelihood(x, ss)
+        norm = logsumexp_jit(scores, b = np.ones(self.n_cl+1))
+        return np.exp(scores - norm)
 
     def _assign_to_cluster(self, x):
         """
@@ -719,16 +716,16 @@ class DPGMM(_density):
         Arguments:
             :np.ndarray x: sample
         """
-        scores = self._cluster_assignment_distribution(x).items()
-        labels, scores = zip(*scores)
-        cid = np.random.choice(labels, p=scores)
-        if cid == "new":
+        scores = self._cluster_assignment_distribution(x)#.items()
+#        labels, scores = zip(*scores)
+        cid = np.random.choice(self.n_cl+1, p=scores)
+        if cid == 0:
             self.mixture.append(component(x, prior = self.prior))
             self.N_list.append(1.)
             self.n_cl += 1
         else:
-            self.mixture[int(cid)] = self._add_datapoint_to_component(x, self.mixture[int(cid)])
-            self.N_list[int(cid)] += 1
+            self.mixture[int(cid)-1] = self._add_datapoint_to_component(x, self.mixture[int(cid)-1])
+            self.N_list[int(cid)-1] += 1
         # Update weights
         self.w = np.array(self.N_list)
         self.w = self.w/self.w.sum()
@@ -931,28 +928,26 @@ class HDPGMM(DPGMM):
         Returns:
             :dict: p_i for each component
         """
-        scores = {}
-        logL_N = {}
+        scores = np.zeros(self.n_cl+1)
+        logL_N = np.zeros((self.n_cl+1, self.MC_draws))
         
         if self.dim == 1:
             logL_x = evaluate_mixture_MC_draws_1d(self.mu_MC, self.sigma_MC, x.means, x.covs, x.w)
         else:
             logL_x = evaluate_mixture_MC_draws(self.mu_MC, self.sigma_MC, x.means, x.covs, x.w)
-        for i in list(np.arange(self.n_cl)) + ["new"]:
-            if i == "new":
-                ss = "new"
+        for i in range(self.n_cl+1):
+            if i == 0:
+                ss = None
                 logL_D = np.zeros(self.MC_draws)
+                scores[i] = np.log(self.alpha)
             else:
-                ss = self.mixture[i]
-                logL_D = ss.logL_D
-            scores[i] = logsumexp_jit(logL_D + logL_x, b = self.b_ones) - logsumexp_jit(logL_D, b = self.b_ones)
-            logL_N[i] = logL_D + logL_x
-            if ss == "new":
-                scores[i] += np.log(self.alpha)
-            else:
-                scores[i] += np.log(ss.N)
-        norm   = logsumexp(np.array([score for score in scores.values()]), b = np.ones(self.n_cl+1))
-        scores = {cid: (np.exp(score - norm) if score < np.inf else 0)  for cid, score in scores.items()} # score < inf checks also for NaNs
+                ss        = self.mixture[i]
+                logL_D    = ss.logL_D
+                scores[i] = np.log(ss.N)
+            scores[i] += logsumexp_jit(logL_D + logL_x, b = self.b_ones) - logsumexp_jit(logL_D, b = self.b_ones)
+            logL_N[i]  = logL_D + logL_x
+        norm   = logsumexp_jit(scores, b = np.ones(self.n_cl+1))
+        scores = np.exp(scores-norm)
         return scores, logL_N
 
     def _assign_to_cluster(self, x):
@@ -963,19 +958,17 @@ class HDPGMM(DPGMM):
             :np.ndarray x: sample
         """
         scores, logL_N = self._cluster_assignment_distribution(x)
-        scores = scores.items()
-        labels, scores = zip(*scores)
         try:
-            cid = np.random.choice(labels, p=scores)
+            cid = np.random.choice(self.n_cl+1, p=scores)
         except ValueError:
-            cid = "new"
-        if cid == "new":
+            cid = 0
+        if cid == 0:
             self.mixture.append(component_h(x, self.dim, self.prior, logL_N[cid], self.mu_MC, self.sigma_MC, self.b_ones))
             self.N_list.append(1.)
             self.n_cl += 1
         else:
-            self.mixture[int(cid)] = self._add_datapoint_to_component(x, self.mixture[int(cid)], logL_N[int(cid)])
-            self.N_list[int(cid)] += 1
+            self.mixture[int(cid)-1] = self._add_datapoint_to_component(x, self.mixture[int(cid)-1], logL_N[int(cid)])
+            self.N_list[int(cid)-1] += 1
         # Update weights
         self.w = np.array(self.N_list)
         self.w = self.w/self.w.sum()
