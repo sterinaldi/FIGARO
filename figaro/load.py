@@ -22,6 +22,7 @@ GW_par = {'m1'                 : 'mass_1_source',
           'm1_detect'          : 'mass_1',
           'm2_detect'          : 'mass_2',
           'mc'                 : 'chirp_mass_source',
+          'mc_detect'          : 'chirp_mass',
           'mt'                 : 'total_mass_source',
           'z'                  : 'redshift',
           'q'                  : 'mass_ratio',
@@ -32,12 +33,22 @@ GW_par = {'m1'                 : 'mass_1_source',
           'cos_theta_jn'       : 'cos_theta_jn',
           'cos_tilt_1'         : 'cos_tilt_1',
           'cos_tilt_2'         : 'cos_tilt_2',
+          's1x'                : 'spin_1x',
+          's2x'                : 'spin_2x',
+          's1y'                : 'spin_1y',
+          's2y'                : 'spin_2y',
           's1z'                : 'spin_1z',
           's2z'                : 'spin_2z',
           's1'                 : 'spin_1',
           's2'                 : 'spin_2',
+          'psi'                : 'psi',
+          'cos_iota'           : 'cos_iota',
+          'phase'              : 'phase',
+          'tc'                 : 'geocent_time',
           'snr'                : 'network_matched_filter_snr',
           'far'                : 'far',
+          'log_prior'          : 'log_prior',
+          'log_likelihood'     : 'log_likelihood',
           }
 
 def _find_redshift(omega, dl):
@@ -254,6 +265,7 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
     with h5py.File(Path(event), 'r') as f:
         samples     = []
         loaded_pars = []
+        flag_filter = False
         try:
             try:
                 # LVK R&P mock data challenge
@@ -334,27 +346,23 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                                         data = f['SEOBNRv4T_surrogate_LS']['posterior_samples']
                 
             for name, lab in zip(GW_par.keys(), GW_par.values()):
-                flag_filter = False
                 if name in par:
                     if name == 'snr':
                         try:
-                            if MDC_flag:
-                                snr = np.array(data['snr'])
-                                samples.append(data['snr'])
-                            elif waveform != 'combined':
+                            if MDC_flag or waveform != 'combined':
                                 snr = np.array(data[lab])
                                 samples.append(data[lab])
                             if snr_threshold is not None:
                                 flag_filter = True
                         except:
                             warnings.warn("SNR filter is not available with this dataset.")
-                    if name == 'far' and far_threshold is not None:
+                    elif name == 'far' and far_threshold is not None:
                         try:
                             flag_filter = True
                             far = np.array(data[lab])
                         except:
                             warnings.warn("FAR filter is not available with this dataset.")
-                    if name == 's1':
+                    elif name == 's1':
                         try:
                             samples.append(data[lab])
                         except:
@@ -458,7 +466,6 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                         samples.append(samples_loaded[np.where(loaded_pars == pi)[0]].flatten())
                 samples = np.array(samples)
                 samples = samples.T
-
             if n_samples > -1:
                 s = int(min([n_samples, len(samples)]))
                 return samples[rdstate.choice(np.arange(len(samples)), size = s, replace = False)]
