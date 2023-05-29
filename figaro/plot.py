@@ -296,7 +296,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         plt.close()
     
 
-def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False, n_pts = 200, true_value = None, figsize = 7, levels = [0.5, 0.68, 0.9], scatter_points = False, median_label = None):
+def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False, n_pts = 200, true_value = None, levels = [0.5, 0.68, 0.9], scatter_points = False, median_label = None):
     """
     Plot the recovered multidimensional distribution along with samples from the true distribution (if available) as corner plot.
     
@@ -315,7 +315,6 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
         :bool subfolder:         whether to save in a dedicated subfolder
         :int n_pts:              number of grid points (same for each dimension)
         :iterable true_value:    true value to plot
-        :double figsize:         figure size (matplotlib)
         :iterable levels:        credible levels to plot
         :bool scatter_points:    scatter samples on 2d plots
         :str median_label:       label to assign to the reconstruction
@@ -328,7 +327,7 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
         else:
             median_label = '\mathrm{DPGMM}'
     if labels is None:
-        labels = ['$x_{0}$'.format(i+1) for i in range(dim)]
+        labels = ['$x_{'+'{0}'.format(i+1)+'}$' for i in range(dim)]
     else:
         labels = ['${0}$'.format(l) for l in labels]
     
@@ -362,22 +361,22 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
     bounds = np.array([x_min, x_max]).T
     
     K = dim
-    factor = 2.0          # size of one side of one panel
+    factor = 3.0          # size of one side of one panel
     lbdim = 0.5 * factor  # size of left/bottom margin
     trdim = 0.2 * factor  # size of top/right margin
-    whspace = 0.1         # w/hspace size
+    whspace = 0.2         # w/hspace size
     plotdim = factor * dim + factor * (K - 1.0) * whspace
     dim_plt = lbdim + plotdim + trdim
     
-    fig, axs = plt.subplots(K, K, figsize=(figsize, figsize))
+    fig, axs = plt.subplots(K, K, figsize=(dim_plt, dim_plt))
     # Format the figure.
     lb = lbdim / dim_plt
     tr = (lbdim + plotdim) / dim_plt
     fig.subplots_adjust(left=lb, bottom=lb, right=tr, top=tr, wspace=whspace, hspace=whspace)
     # Samples (if available)
     if samples is not None:
-        bins = [int(np.sqrt(len(samples[:, c]))) for c in range(dim)]
-        corner(samples, color = '#1f77b4', fig = fig, hist_kwargs = {'density': True, 'label':'$\mathrm{Samples}$', 'linewidth':0.7} , plot_density = False, contour_kwargs = {'linewidths':0.3, 'linestyles':'dashed'}, levels = [0.5,0.68,0.9], no_fill_contours = True, bins = bins, quiet = True)
+        bins = np.array([int(np.sqrt(len(samples[:, c]))) for c in range(dim)])
+        corner(samples, color = '#1f77b4', fig = fig, hist_kwargs = {'density': True, 'label':'$\mathrm{Samples}$', 'linewidth':0.7} , plot_density = False, contour_kwargs = {'linewidths':0.3, 'linestyles':'dashed'}, levels = [0.5,0.68,0.9], no_fill_contours = True, hist_bin_factor = bins/20, quiet = True)
         
     # 1D plots (diagonal)
     for column in range(K):
