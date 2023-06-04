@@ -7,7 +7,7 @@ from pathlib import Path
 
 from scipy.special import gammaln, logsumexp
 from scipy.stats import multivariate_normal as mn
-from scipy.stats import invwishart, norm, invgamma
+from scipy.stats import invwishart, norm, invgamma, dirichlet
 
 from figaro.decorators import *
 from figaro.transform import *
@@ -771,7 +771,14 @@ class DPGMM(_density):
         """
         if self.n_cl == 0:
             raise FIGAROException("You are trying to build an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, the inferred mixture is returned by that method as an instance of mixture class.")
-        return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, self.n_pts, probit = self.probit)
+        means     = np.zeros((self.n_cl, self.dim))
+        variances = np.zeros((self.n_cl, self.dim, self.dim))
+        for i, ss in enumerate(self.mixture):
+            k_n, mu_n, nu_n, L_n = compute_hyperpars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.S, ss.N)
+            variances[i]         = invwishart(df = nu_n, scale = L_n).rvs()
+            means[i]             = mn(mean = mu_n[0], cov = variances[i]/k_n).rvs()
+        w = dirichlet(self.w*self.n_pts+self.alpha/self.n_cl).rvs()[0]
+        return mixture(means, variances, w, self.bounds, self.dim, self.n_cl, self.n_pts, probit = self.probit)
 
     # Methods to overwrite _density methods
     def _rvs_probit(self, n_samps):
@@ -1004,6 +1011,17 @@ class HDPGMM(DPGMM):
         
         ss.N += 1
         return ss
+
+    def build_mixture(self):
+        """
+        Instances a mixture class representing the inferred distribution
+        
+        Returns:
+            :mixture: the inferred distribution
+        """
+        if self.n_cl == 0:
+            raise FIGAROException("You are trying to build an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, the inferred mixture is returned by that method as an instance of mixture class.")
+        return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, self.n_pts, probit = self.probit)
 
     def density_from_samples(self, events):
         """
