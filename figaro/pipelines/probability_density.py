@@ -34,6 +34,7 @@ def main():
     parser.add_option("--exclude_points", dest = "exclude_points", action = 'store_true', help = "Exclude points outside bounds from analysis", default = False)
     parser.add_option("--cosmology", type = "string", dest = "cosmology", help = "Cosmological parameters (h, om, ol). Default values from Planck (2021)", default = '0.674,0.315,0.685')
     parser.add_option("--sigma_prior", dest = "sigma_prior", type = "string", help = "Expected standard deviation (prior) - single value or n-dim values. If None, it is estimated from samples", default = None)
+    parser.add_option("--fraction", dest = "scale", type = "float", help = "Fraction of samples standard deviation for sigma prior. Overrided by sigma_prior." default = None)
     parser.add_option("--snr_threshold", dest = "snr_threshold", type = "float", help = "SNR threshold for simulated GW datasets", default = None)
     parser.add_option("--far_threshold", dest = "far_threshold", type = "float", help = "FAR threshold for simulated GW datasets", default = None)
     parser.add_option("--no_probit", dest = "probit", action = 'store_false', help = "Disable probit transformation", default = True)
@@ -126,7 +127,7 @@ def main():
         # Reconstruction
         if not options.postprocess:
             # Actual analysis
-            prior_pars = get_priors(options.bounds, samples = samples, std = options.sigma_prior, probit = options.probit, hierarchical = False)
+            prior_pars = get_priors(options.bounds, samples = samples, std = options.sigma_prior, scale = options.scale, probit = options.probit, hierarchical = False)
             mix        = DPGMM(options.bounds, prior_pars = prior_pars, probit = options.probit)
             desc       = name + ' ({0}/{1})'.format(i+1, len(files))
             draws      = np.array([mix.density_from_samples(samples) for _ in tqdm(range(options.n_draws), desc = desc)])

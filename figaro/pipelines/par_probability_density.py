@@ -21,9 +21,10 @@ class worker:
                        sigma = None,
                        samples = None,
                        probit = True,
+                       scale = None,
                        ):
         self.dim     = bounds.shape[-1]
-        self.mixture = DPGMM(bounds, prior_pars = get_priors(bounds, samples = samples, std = sigma, probit = probit, hierarchical = False), probit = probit)
+        self.mixture = DPGMM(bounds, prior_pars = get_priors(bounds, samples = samples, std = sigma, scale = scale, probit = probit, hierarchical = False), probit = probit)
         self.samples = np.copy(samples)
         self.samples.setflags(write = True)
 
@@ -52,6 +53,7 @@ def main():
     parser.add_option("--exclude_points", dest = "exclude_points", action = 'store_true', help = "Exclude points outside bounds from analysis", default = False)
     parser.add_option("--cosmology", type = "string", dest = "cosmology", help = "Cosmological parameters (h, om, ol). Default values from Planck (2021)", default = '0.674,0.315,0.685')
     parser.add_option("--sigma_prior", dest = "sigma_prior", type = "string", help = "Expected standard deviation (prior) - single value or n-dim values. If None, it is estimated from samples", default = None)
+    parser.add_option("--fraction", dest = "scale", type = "float", help = "Fraction of samples standard deviation for sigma prior. Overrided by sigma_prior." default = None)
     parser.add_option("--n_parallel", dest = "n_parallel", type = "int", help = "Number of parallel threads", default = 4)
     parser.add_option("--snr_threshold", dest = "snr_threshold", type = "float", help = "SNR threshold for simulated GW datasets", default = None)
     parser.add_option("--far_threshold", dest = "far_threshold", type = "float", help = "FAR threshold for simulated GW datasets", default = None)
@@ -153,6 +155,7 @@ def main():
             desc = name + ' ({0}/{1})'.format(i+1, len(files))
             pool = ActorPool([worker.remote(bounds  = options.bounds,
                                             sigma   = options.sigma_prior,
+                                            scale   = options.scale,
                                             samples = samples,
                                             probit  = options.probit,
                                             )

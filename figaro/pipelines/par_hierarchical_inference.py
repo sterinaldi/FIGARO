@@ -24,6 +24,7 @@ class worker:
                        ext         = 'pkl',
                        se_sigma    = None,
                        hier_sigma  = None,
+                       scale       = None,
                        all_samples = None,
                        label       = None,
                        unit        = None,
@@ -40,6 +41,7 @@ class worker:
                                            prior_pars = get_priors(self.bounds,
                                                                    samples      = all_samples,
                                                                    std          = hier_sigma,
+                                                                   scale        = scale
                                                                    probit       = probit,
                                                                    hierarchical = True,
                                                                    )
@@ -47,6 +49,7 @@ class worker:
         self.out_folder_plots = out_folder_plots
         self.out_folder_draws = out_folder_draws
         self.se_sigma         = se_sigma
+        self.scale            = scale
         self.save_se          = save_se
         self.label            = label
         self.unit             = unit
@@ -61,7 +64,7 @@ class worker:
         ev = np.copy(samples)
         ev.setflags(write = True)
         # Actual inference
-        prior_pars = get_priors(self.bounds, samples = ev, probit = self.probit, std = self.se_sigma, hierarchical = False)
+        prior_pars = get_priors(self.bounds, samples = ev, probit = self.probit, std = self.se_sigma, scale = self.scale, hierarchical = False)
         self.mixture.initialise(prior_pars = prior_pars)
         draws      = [self.mixture.density_from_samples(ev) for _ in range(n_draws)]
         # Plots
@@ -128,6 +131,7 @@ def main():
     parser.add_option("-e", "--events", dest = "run_events", action = 'store_false', help = "Skip single-event analysis", default = True)
     parser.add_option("--se_sigma_prior", dest = "se_sigma_prior", type = "string", help = "Expected standard deviation (prior) for single-event inference - single value or n-dim values. If None, it is estimated from samples", default = None)
     parser.add_option("--sigma_prior", dest = "sigma_prior", type = "string", help = "Expected standard deviation (prior) for hierarchical inference - single value or n-dim values. If None, it is estimated from samples", default = None)
+    parser.add_option("--fraction", dest = "scale", type = "float", help = "Fraction of samples standard deviation for sigma prior. Overrided by sigma_prior." default = None)
     parser.add_option("--n_parallel", dest = "n_parallel", type = "int", help = "Number of parallel threads", default = 4)
     parser.add_option("--mc_draws", dest = "mc_draws", type = "int", help = "Number of draws for assignment MC integral", default = None)
     parser.add_option("--snr_threshold", dest = "snr_threshold", type = "float", help = "SNR threshold for simulated GW datasets", default = None)
