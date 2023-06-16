@@ -80,7 +80,7 @@ def rejection_sampler(n_draws, f, bounds, selfunc = None):
         samples.extend(pts[np.where(h < probs)])
     return np.array(samples).flatten()[:n_draws]
 
-def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df = None, k = None, a = None, scale = 5., probit = True, hierarchical = False):
+def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df = None, k = None, a = None, scale = None, probit = True, hierarchical = False):
     """
     This method takes the prior parameters for the Normal-Inverse-Wishart distribution in the natural space and returns them as parameters in the probit space, ordered as required by FIGARO. In the following, D will denote the dimensionality of the inferred distribution.
 
@@ -113,6 +113,8 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
     """
     bounds = np.atleast_2d(bounds)
     dim = len(bounds)
+    if scale is None:
+        scale = 5.
     if samples is not None:
         if len(np.shape(samples)) < 2:
             samples = np.atleast_2d(samples).T
