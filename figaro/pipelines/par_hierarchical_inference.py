@@ -258,6 +258,7 @@ def main():
                                         ext              = options.ext,
                                         se_sigma         = options.se_sigma_prior,
                                         hier_sigma       = options.sigma_prior,
+                                        scale            = options.scale,
                                         all_samples      = all_samples,
                                         label            = symbols,
                                         unit             = units,
