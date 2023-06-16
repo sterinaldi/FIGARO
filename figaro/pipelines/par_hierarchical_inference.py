@@ -41,7 +41,7 @@ class worker:
                                            prior_pars = get_priors(self.bounds,
                                                                    samples      = all_samples,
                                                                    std          = hier_sigma,
-                                                                   scale        = scale
+                                                                   scale        = scale,
                                                                    probit       = probit,
                                                                    hierarchical = True,
                                                                    )
