@@ -63,3 +63,10 @@ def probit_logJ(x, bounds, flag = True):
     sigma   = dbounds*0.34
     res     = np.sum(-0.5*(x/sigma)**2-0.5*log2PI+np.log(dbounds)-np.log(sigma), axis = -1)
     return res
+
+def log_gradient_inv_jacobian(x, bounds, flag = True):
+    if not flag:
+        return np.zeros(len(x))
+    dbounds = bounds[:,1]-bounds[:,0]
+    sigma   = dbounds*0.34
+    return x/sigma
