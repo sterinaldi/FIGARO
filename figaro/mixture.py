@@ -11,7 +11,7 @@ from scipy.stats import invwishart, norm, invgamma, dirichlet
 
 from figaro.decorators import *
 from figaro.transform import *
-from figaro.likelihood import evaluate_mixture_MC_draws, evaluate_mixture_MC_draws_1d, logsumexp_jit, log_norm
+from figaro.likelihood import evaluate_mixture_MC_draws, evaluate_mixture_MC_draws_1d, logsumexp_jit, log_norm, inv_jit
 from figaro.exceptions import except_hook, FIGAROException
 from figaro.utils import get_priors
 from figaro.marginal import _condition, _marginalise
@@ -264,7 +264,7 @@ class component_h:
             
 class _density:
     """
-    Class to initialise a common set of methods for mixture models. Not to be used
+    Class to initialise a common set of methods for mixture models. Not to be used.
     """
     def __init__(self):
         pass
@@ -434,6 +434,56 @@ class _density:
             :np.ndarray: mixture.pdf(x)
         """
         return np.sum(np.array([w*mn(mean, cov).pdf(x) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
+    
+    @probit
+    def _pdf_array(self, x):
+        """
+        Evaluate every mixture component at point(s) x.
+        
+        Arguments:
+            :np.ndarray x: point(s) to evaluate the components at
+        
+        Returns:
+            :np.ndarray: component.pdf(x) for each mixture component
+        """
+        return _pdf_array_probit(x) * np.exp(-probit_logJ(x, self.bounds, self.probit))
+
+    def _pdf_array_probit(self, x):
+        """
+        Evaluate every mixture component at point(s) x.
+        
+        Arguments:
+            :np.ndarray x: point(s) to evaluate the components at (in probit space)
+        
+        Returns:
+            :np.ndarray: component.pdf(x) for each mixture component
+        """
+        return np.array([w*mn(mean, cov).pdf(x) for mean, cov, w in zip(self.means, self.covs, self.w)])
+
+    @probit
+    def _fast_pdf_array(self, x):
+        """
+        Evaluate every mixture component at point(s) x.
+        
+        Arguments:
+            :np.ndarray x: point(s) to evaluate the components at
+        
+        Returns:
+            :np.ndarray: component.pdf(x) for each mixture component
+        """
+        return _fast_pdf_array_probit(x) * np.exp(-probit_logJ(x, self.bounds, self.probit))
+
+    def _fast_pdf_array_probit(self, x):
+        """
+        Evaluate every mixture component at point(s) x.
+        
+        Arguments:
+            :np.ndarray x: point(s) to evaluate the components at (in probit space)
+        
+        Returns:
+            :np.ndarray: component.pdf(x) for each mixture component
+        """
+        return np.array([w*np.exp(log_norm(x[0], mean, cov)) for mean, cov, w in zip(self.means, self.covs, self.w)])
 
     @probit
     def _logpdf_no_jacobian(self, x):
@@ -536,6 +586,78 @@ class _density:
             for i, n in zip(ctr.keys(), ctr.values()):
                 samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i]).rvs(size = n)).T))
         return np.array(samples[1:])
+    
+    def gradient(self, x):
+        """
+        Gradient of the mixture.
+        
+        Arguments:
+            :np.ndarray x: point to evaluate the gradient at
+        
+        Returns:
+            :np.ndarray: gradient
+        """
+        if self.n_cl == 0:
+            raise FIGAROException("You are trying to evaluate an empty mixture.\n If you are using the density_from_samples() method, you may want to evaluate the output of that method.")
+        if len(np.shape(x)) < 2:
+            if self.dim == 1:
+                x = np.atleast_2d(x).T
+            else:
+                x = np.atleast_2d(x)
+        with np.errstate(invalid = 'ignore'):
+            g = np.nan_to_num([self._gradient(xi) for xi in x], nan = 0.)
+        return g
+    
+    def log_gradient(self, x):
+        """
+        Logarithmic gradient of the mixture.
+        
+        Arguments:
+            :np.ndarray x: point to evaluate the gradient at
+        
+        Returns:
+            :np.ndarray: logarithmic gradient
+        """
+        if self.n_cl == 0:
+            raise FIGAROException("You are trying to evaluate an empty mixture.\n If you are using the density_from_samples() method, you may want to evaluate the output of that method.")
+        if len(np.shape(x)) < 2:
+            if self.dim == 1:
+                x = np.atleast_2d(x).T
+            else:
+                x = np.atleast_2d(x)
+        with np.errstate(invalid = 'ignore'):
+            g = np.nan_to_num([self._log_gradient(xi) for xi in x], nan = 0.)
+        return g
+    
+    def _gradient(self, x):
+        """
+        Gradient of the mixture.
+        
+        Arguments:
+            :np.ndarray x: point to evaluate the gradient at
+        
+        Returns:
+            :np.ndarray: gradient
+        """
+        return self._fast_pdf(x)*self._log_gradient(x)
+    
+    @probit
+    def _log_gradient(self, x):
+        """
+        Logarithmic gradient of the mixture.
+        
+        Arguments:
+            :np.ndarray x: point to evaluate the gradient at
+        
+        Returns:
+            :np.ndarray: logarithmic gradient
+        """
+        p = self._pdf_array_probit(x)
+        B = np.array([-np.dot(inv_jit(sigma),(x - mu)) for mu, sigma in zip(self.means, self.covs)])
+        try:
+            return np.average(B, weights = p, axis = 0) + log_gradient_inv_jacobian(x, self.bounds, self.probit)
+        except ZeroDivisionError:
+            return np.zeros(x.shape[-1])
 
 class mixture(_density):
     """
@@ -592,7 +714,7 @@ class mixture(_density):
         v       = np.mean(self.bounds, axis = -1)
         v[dims] = vals
         return _condition(self, v, dims, norm)
-
+    
 #-------------------#
 # Inference classes #
 #-------------------#
