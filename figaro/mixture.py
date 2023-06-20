@@ -551,31 +551,31 @@ class _density:
         return logsumexp(np.array([w + norm(mean[0], cov[0,0]).logcdf(x) for mean, cov, w in zip(self.means, np.sqrt(self.covs), self.log_w)]), axis = 0)
 
     @from_probit
-    def rvs(self, n_samps):
+    def rvs(self, size = 1):
         """
         Draw samples from mixture
         
         Arguments:
-            :int n_samps: number of samples to draw
+            :int size: number of samples to draw
         
         Returns:
             :np.ndarray: samples
         """
         if self.n_cl == 0:
             raise FIGAROException("You are trying to draw samples from an empty mixture.\n If you are using the density_from_samples() method, you may want to draw samples from the output of that method.")
-        return self._rvs_probit(n_samps)
+        return self._rvs_probit(size)
         
-    def _rvs_probit(self, n_samps):
+    def _rvs_probit(self, size = 1):
         """
         Draw samples from mixture in probit space
         
         Arguments:
-            :int n_samps: number of samples to draw
+            :int size: number of samples to draw
         
         Returns:
             :np.ndarray: samples in probit space
         """
-        idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = n_samps)
+        idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = size)
         ctr = Counter(idx)
         if self.dim > 1:
             samples = np.empty(shape = (1,self.dim))
@@ -903,17 +903,17 @@ class DPGMM(_density):
         return mixture(means, variances, w, self.bounds, self.dim, self.n_cl, self.n_pts, probit = self.probit)
 
     # Methods to overwrite _density methods
-    def _rvs_probit(self, n_samps):
+    def _rvs_probit(self, size = 1):
         """
         Draw samples from mixture in probit space
         
         Arguments:
-            :int n_samps: number of samples to draw
+            :int size: number of samples to draw
         
         Returns:
             :np.ndarray: samples in probit space
         """
-        idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = n_samps)
+        idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = size)
         ctr = Counter(idx)
         if self.dim > 1:
             samples = np.empty(shape = (1,self.dim))
