@@ -105,12 +105,12 @@ def _condition(mix, vals, dims, norm = True):
         s12 = cov[idx,:][:,~idx]
         s22 = cov[idx,:][:,idx]
         # Parameters
-        means[i], covs[i] = _cond_mean_cov(vals, mu1, mu2, s11, s22, s12)
+        means[i], covs[i] = _cond_mean_cov(vals, mu1, mu2, s11, s22, s12.T)
         weights[i] = np.exp(log_norm(vals, mu2, s22))
     # Weights
     weights = mix.w*weights
     if norm:
-        weights /= _marginalise(mix, axis = np.arange(mix.dim)[~idx]).pdf(vals)
+        weights /= _marginalise(mix, axis = np.arange(mix.dim)[~idx])._pdf_probit(vals)
     return mixture(means, covs, weights, bounds, dim, mix.n_cl, mix.n_pts, probit = mix.probit)
 
 def condition(draws, vals, dims, norm = True):
