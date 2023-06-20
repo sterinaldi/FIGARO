@@ -109,11 +109,11 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674
         if par is not None:
             warnings.warn("Par names (or volume keyword) are ignored for .txt/.dat/.csv files")
         if n_samples > -1:
-            samples = np.atleast_1d(np.genfromtxt(event))
+            samples = np.atleast_1d(np.loadtxt(event))
             s = int(min([n_samples, len(samples)]))
             out = samples[rdstate.choice(np.arange(len(samples)), size = s, replace = False)]
         else:
-            out = np.genfromtxt(event)
+            out = np.loadtxt(event)
     else:
         # Check that a list of parameters is passed
         if par is None:
@@ -180,7 +180,7 @@ def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.
             if par is not None:
                 warnings.warn("Par names (or volume keyword) are ignored for .txt/.dat files")
             if n_samples > -1:
-                samples = np.atleast_1d(np.genfromtxt(event))
+                samples = np.atleast_1d(np.loadtxt(event))
                 s = int(min([n_samples, len(samples)]))
                 samples_subset = samples[rdstate.choice(np.arange(len(samples)), size = s, replace = False)]
                 if len(np.shape(samples_subset)) == 1:
@@ -188,7 +188,7 @@ def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.
                 events.append(samples_subset)
                     
             else:
-                samples = np.atleast_1d(np.genfromtxt(event))
+                samples = np.atleast_1d(np.loadtxt(event))
                 if len(np.shape(samples)) == 1:
                     samples = np.atleast_2d(samples).T
                 events.append(samples)
