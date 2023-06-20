@@ -207,18 +207,18 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
             k_out = np.exp(log_k_out/dim)
         return (k_out, L_out, df_out, mu_out)
 
-def rvs_median(draws, n_draws):
+def rvs_median(draws, size = 1):
     """
     Generates samples from median distribution of a set of draws.
     
     Arguments:
         :iterable draws: container for mixture instances
-        :int n_draws:    number of samples
+        :int size:    number of samples
     
     Returns:
         :np.ndarray: samples
     """
-    idx = np.random.choice(np.arange(len(draws)), size = int(n_draws))
+    idx = np.random.choice(np.arange(len(draws)), size = int(size))
     ctr = Counter(idx)
     samples = np.empty(shape = (1, draws[0].dim))
     for i, n in zip(ctr.keys(), ctr.values()):
