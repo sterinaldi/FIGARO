@@ -93,10 +93,10 @@ def _condition(mix, vals, dims, norm = True):
     idx  = np.array([i in ax for i in range(mix.dim)])
     if dim < 1:
         raise FIGAROException("Cannot condition on all dimensions")
-    bounds    = np.delete(mix.bounds, ax, axis = 0)
-    means     = np.zeros(shape = (mix.n_cl, dim))
-    covs      = np.zeros(shape = (mix.n_cl, dim, dim))
-    weights   = np.zeros(shape = mix.n_cl)
+    bounds      = np.delete(mix.bounds, ax, axis = 0)
+    means       = np.zeros(shape = (mix.n_cl, dim))
+    covs        = np.zeros(shape = (mix.n_cl, dim, dim))
+    log_weights = np.zeros(shape = mix.n_cl)
     for i, (mu, cov) in enumerate(zip(mix.means, mix.covs)):
         # Subvectors and submatrices
         mu1 = mu[~idx]
@@ -106,12 +106,12 @@ def _condition(mix, vals, dims, norm = True):
         s22 = cov[idx,:][:,idx]
         # Parameters
         means[i], covs[i] = _cond_mean_cov(vals, mu1, mu2, s11, s22, s12.T)
-        weights[i] = np.exp(log_norm(vals, mu2, s22))
+        log_weights[i]    = log_norm(vals, mu2, s22)
     # Weights
-    weights = mix.w*weights
+    log_weights = mix.log_w + log_weights
     if norm:
-        weights /= _marginalise(mix, axis = np.arange(mix.dim)[~idx])._pdf_probit(vals)
-    return mixture(means, covs, weights, bounds, dim, mix.n_cl, mix.n_pts, probit = mix.probit)
+        log_weights -= _marginalise(mix, axis = np.arange(mix.dim)[~idx])._logpdf_probit(vals)
+    return mixture(means, covs, np.exp(log_weights), bounds, dim, mix.n_cl, mix.n_pts, probit = mix.probit)
 
 def condition(draws, vals, dims, norm = True):
     """
