@@ -731,7 +731,7 @@ def pp_plot_levels(CR_levels, median_CR = None, out_folder = '.', name = 'MDC', 
         handles, labels = ax.get_legend_handles_labels()
         line = Line2D([0], [0], label='$\mathrm{Draws}$', lw = lw, color = c)
         handles.extend([line])
-        ax.legend(handles=handles, frameon = False)
+        ax.legend(handles=handles)
     else:
         x = np.append(0, np.append(CR_levels, 1))
         ax.plot(np.sort(x), L, lw = 0.8, color = 'steelblue', zorder = n_evs+2)
