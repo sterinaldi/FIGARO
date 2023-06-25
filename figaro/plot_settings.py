@@ -1,4 +1,5 @@
 from matplotlib import rcParams
+from matplotlib.pyplot import hist
 from distutils.spawn import find_executable
 
 tex_flag = False
@@ -11,9 +12,18 @@ rcParams["xtick.direction"] = "in"
 rcParams["ytick.direction"] = "in"
 rcParams["legend.fontsize"] = 12
 rcParams["legend.frameon"]  = False
+rcParams["legend.loc"]      = "best"
 rcParams["axes.labelsize"]  = 16
 rcParams["axes.grid"]       = True
 rcParams["grid.alpha"]      = 0.6
 rcParams["grid.linestyle"]  = "dotted"
 rcParams["lines.linewidth"] = 0.7
 rcParams["contour.negative_linestyle"] = "solid"
+rcParams["hist.bins"] = "sqrt"
+rcParams["savefig.bbox"] = "tight"
+
+# Better way of doing this?
+histdefaults = list(hist.__defaults__)
+histdefaults[2] = True # density
+histdefaults[6] = 'step' # histtype
+hist.__defaults__ = tuple(histdefaults)
