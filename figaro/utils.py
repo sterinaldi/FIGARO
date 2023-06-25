@@ -204,7 +204,10 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
             k_out = k
         else:
             s, log_k_out = np.linalg.slogdet(L_out)
-            k_out = np.exp(log_k_out/dim)
+            if dim > 1:
+                k_out = 1e-4#np.exp(log_k_out/dim)
+            else:
+                k_out = 1e-6#np.min([np.exp(-2*log_k_out), np.exp(2*log_k_out)])
         return (k_out, L_out, df_out, mu_out)
 
 def rvs_median(draws, size = 1):
