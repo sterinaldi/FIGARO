@@ -148,7 +148,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
 
     # If samples are available, use them as bounds
     if samples is not None:
-        ax.hist(samples, label = '$\mathrm{Samples}$', log = True)
+        ax.hist(samples, bins = int(np.sqrt(len(samples))), histtype = 'step', density = True, label = '$\mathrm{Samples}$', log = True)
         if bounds is None:
             x_min_l, x_max_l = ax.get_xlim()
             x_min = np.max((x_min, x_min_l))
@@ -211,7 +211,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
     if samples is not None:
         ax.set_xlim(xlim)
     ax.set_ylim(bottom = 1e-5, top = np.max(p[95])*1.1)
-    ax.legend()
+    ax.legend(loc = 0)
     
     fig.align_labels()
     
@@ -240,12 +240,12 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
             plot_folder = out_folder
             log_folder  = out_folder
             txt_folder  = out_folder
-        fig.savefig(Path(log_folder, 'log_{0}.pdf'.format(name)))
+        fig.savefig(Path(log_folder, 'log_{0}.pdf'.format(name)), bbox_inches = 'tight')
         ax.set_yscale('linear')
         ax.autoscale(True)
         if samples is not None:
             ax.set_xlim(xlim)
-        fig.savefig(Path(plot_folder, '{0}.pdf'.format(name)))
+        fig.savefig(Path(plot_folder, '{0}.pdf'.format(name)), bbox_inches = 'tight')
         np.savetxt(Path(txt_folder, 'prob_{0}.txt'.format(name)), np.array([x, p[50], p[5], p[16], p[84], p[95]]).T, header = 'x 50 5 16 84 95')
     if show:
         ax.set_yscale('linear')
@@ -282,12 +282,12 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         ax.set_ylabel('$p({0})$'.format(label))
         ax.autoscale(True)
         ax.set_ylim(bottom = 1e-5, top = np.max(p[95])*1.1)
-        ax.legend()
+        ax.legend(loc = 0)
         if save:
-            fig.savefig(Path(log_folder, 'log_true_{0}.pdf'.format(name)))
+            fig.savefig(Path(log_folder, 'log_true_{0}.pdf'.format(name)), bbox_inches = 'tight')
             ax.set_yscale('linear')
             ax.autoscale(True)
-            fig.savefig(Path(plot_folder, 'true_{0}.pdf'.format(name)))
+            fig.savefig(Path(plot_folder, 'true_{0}.pdf'.format(name)), bbox_inches = 'tight')
             np.savetxt(Path(txt_folder, 'prob_true_{0}.txt'.format(name)), np.array([x, p[50], p[5], p[16], p[84], p[95]]).T, header = 'x 50 5 16 84 95')
         if show:
             ax.set_yscale('linear')
@@ -504,14 +504,14 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
         plt.show()
     if save:
         if not subfolder:
-            fig.savefig(Path(out_folder, '{0}.pdf'.format(name)))
+            fig.savefig(Path(out_folder, '{0}.pdf'.format(name)), bbox_inches = 'tight')
         else:
             if not Path(out_folder, 'density').exists():
                 try:
                     Path(out_folder, 'density').mkdir()
                 except FileExistsError:
                     pass
-            fig.savefig(Path(out_folder, 'density', '{0}.pdf'.format(name)))
+            fig.savefig(Path(out_folder, 'density', '{0}.pdf'.format(name)), bbox_inches = 'tight')
     plt.close()
     return fig
     
@@ -553,7 +553,7 @@ def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', na
     
     # Samples (if available)
     if samples is not None:
-        ax.hist(samples, label = '$\mathrm{Samples}$')
+        ax.hist(samples, bins = int(np.sqrt(len(samples))), histtype = 'step', density = True, label = '$\mathrm{Samples}$')
         xlim = ax.get_xlim()
         ylim = ax.get_ylim()
     
@@ -588,7 +588,7 @@ def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', na
     if samples is not None:
         ax.set_xlim(xlim)
     ax.set_ylim(bottom = 1e-5, top = np.max(p[95])*1.1)
-    ax.legend()
+    ax.legend(loc = 0)
     if logy:
         ax.set_yscale('log')
     if logx:
@@ -617,7 +617,7 @@ def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', na
         ax.autoscale(True)
         if samples is not None:
             ax.set_xlim(xlim)
-        fig.savefig(Path(plot_folder, '{0}.pdf'.format(name)))
+        fig.savefig(Path(plot_folder, '{0}.pdf'.format(name)), bbox_inches = 'tight')
         np.savetxt(Path(txt_folder, 'prob_{0}.txt'.format(name)), np.array([x, p[50], p[5], p[16], p[84], p[95]]).T, header = 'x 50 5 16 84 95')
     if show:
         ax.autoscale(True)
@@ -649,7 +649,7 @@ def plot_n_clusters_alpha(n_cl, alpha, out_folder = '.', name = 'event', show = 
     if show:
         plt.show()
     if save:
-        fig.savefig(Path(out_folder, '{0}_n_cl_alpha.pdf'.format(name)))
+        fig.savefig(Path(out_folder, '{0}_n_cl_alpha.pdf'.format(name)), bbox_inches = 'tight')
     plt.close()
 
 def pp_plot_cdf(draws, injection, n_points = 1000, out_folder = '.', name = 'event', show = False, save = True):
@@ -688,7 +688,7 @@ def pp_plot_cdf(draws, injection, n_points = 1000, out_folder = '.', name = 'eve
     if show:
         plt.show()
     if save:
-        fig.savefig(Path(out_folder, '{0}_ppplot.pdf'.format(name)))
+        fig.savefig(Path(out_folder, '{0}_ppplot.pdf'.format(name)), bbox_inches = 'tight')
     plt.close()
 
 def pp_plot_levels(CR_levels, median_CR = None, out_folder = '.', name = 'MDC', show = False, save = True):
@@ -731,7 +731,7 @@ def pp_plot_levels(CR_levels, median_CR = None, out_folder = '.', name = 'MDC', 
         handles, labels = ax.get_legend_handles_labels()
         line = Line2D([0], [0], label='$\mathrm{Draws}$', lw = lw, color = c)
         handles.extend([line])
-        ax.legend(handles=handles)
+        ax.legend(handles=handles, loc = 0, frameon = False)
     else:
         x = np.append(0, np.append(CR_levels, 1))
         ax.plot(np.sort(x), L, lw = 0.8, color = 'steelblue', zorder = n_evs+2)
@@ -741,5 +741,5 @@ def pp_plot_levels(CR_levels, median_CR = None, out_folder = '.', name = 'MDC', 
     if show:
         plt.show()
     if save:
-        fig.savefig(Path(out_folder, '{0}_ppplot.pdf'.format(name)))
+        fig.savefig(Path(out_folder, '{0}_ppplot.pdf'.format(name)), bbox_inches = 'tight')
     plt.close()
