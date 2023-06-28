@@ -897,8 +897,14 @@ class DPGMM(_density):
         variances = np.zeros((self.n_cl, self.dim, self.dim))
         for i, ss in enumerate(self.mixture):
             k_n, mu_n, nu_n, L_n = compute_hyperpars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.S, ss.N)
-            variances[i]         = invwishart(df = nu_n, scale = L_n).rvs()
-            means[i]             = mn(mean = mu_n[0], cov = variances[i]/k_n).rvs()
+            nonsing_flag = True
+            while nonsing_flag:
+                try:
+                    variances[i] = invwishart(df = nu_n, scale = L_n).rvs()
+                    means[i]     = mn(mean = mu_n[0], cov = variances[i]/k_n).rvs()
+                    nonsing_flag = False
+                except np.linalg.LinAlgError:
+                    pass
         w = dirichlet(self.w*self.n_pts+self.alpha/self.n_cl).rvs()[0]
         return mixture(means, variances, w, self.bounds, self.dim, self.n_cl, self.n_pts, probit = self.probit)
 
