@@ -97,7 +97,7 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
     
     Arguments:
         :np.ndarray bounds:              boundaries for probit transformation
-        :np.ndarray samples:             2D array with samples
+        :np.ndarray samples:             2D [DPGMM] or 3D [(H)DPGMM] array with samples
         :double or np.ndarray mean:      mean [DPGMM]
         :double or np.ndarray std:       expected standard deviation (if double, the same std is used for all dimensions, if np.ndarray must match the number of dimensions) [DPGMM and (H)DPGMM]
         :np.ndarray cov:                 covariance matrix [DPGMM]
@@ -127,10 +127,13 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
                 out_sigma = transform_to_probit(np.mean(bounds, axis = -1)+out_sigma, bounds)
         elif samples is not None:
             if probit:
-                out_sigma = np.sqrt(np.diag(np.atleast_2d(np.cov(probit_samples.T))))
+                all_samples     = np.concatenate(probit_samples, axis = -1)
+                events_avg_cov  = np.diag(np.atleast_2d(np.mean([np.cov(ev.T) for ev in probit_samples], axis = 0)))
             else:
-                out_sigma = np.sqrt(np.diag(np.atleast_2d(np.cov(samples.T))))
-            out_sigma = out_sigma/scale
+                all_samples     = np.concatenate(samples, axis = 0)
+                events_avg_cov  = np.diag(np.atleast_2d(np.mean([np.cov(ev.T) for ev in samples], axis = 0)))
+            all_samples_cov = np.diag(np.atleast_2d(np.cov(all_samples.T)))
+            out_sigma       = (np.sqrt(all_samples_cov - events_avg_cov)/scale).flatten()
         else:
             out_sigma = np.diff(bounds, axis = -1)/10.
             if probit:
