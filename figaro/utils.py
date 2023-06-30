@@ -116,10 +116,13 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
     if scale is None:
         scale = 5.
     if samples is not None:
-        if len(np.shape(samples)) < 2:
+        if not np.iterable(samples[0]):
             samples = np.atleast_2d(samples).T
         if probit:
-            probit_samples = transform_to_probit(samples, bounds)
+            if len(samples) > 1:
+                probit_samples = [transform_to_probit(s, bounds) for s in samples]
+            else:
+                probit_samples = transform_to_probit(samples, bounds)
     if hierarchical:
         if std is not None:
             out_sigma = np.atleast_2d(std)*np.ones((1, dim))
@@ -127,7 +130,7 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
                 out_sigma = transform_to_probit(np.mean(bounds, axis = -1)+out_sigma, bounds)
         elif samples is not None:
             if probit:
-                all_samples     = np.concatenate(probit_samples, axis = -1)
+                all_samples     = np.concatenate(probit_samples, axis = 0)
                 events_avg_cov  = np.diag(np.atleast_2d(np.mean([np.cov(ev.T) for ev in probit_samples], axis = 0)))
             else:
                 all_samples     = np.concatenate(samples, axis = 0)
