@@ -136,7 +136,6 @@ def main():
         print("Ignoring points outside bounds.")
         for i, ev in enumerate(events):
             events[i] = ev[np.where((np.prod(options.bounds[:,0] < ev, axis = 1) & np.prod(ev < options.bounds[:,1], axis = 1)))]
-        all_samples = np.atleast_2d(np.concatenate(events))
     else:
         # Check if all samples are within bounds
         all_samples = np.atleast_2d(np.concatenate(events))
@@ -185,7 +184,7 @@ def main():
             # Load pre-computed posteriors
             posteriors = load_density(Path(output_draws, 'posteriors_single_event.'+options.ext))
         # Run hierarchical analysis
-        prior_pars = get_priors(options.bounds, samples = all_samples, std = options.sigma_prior, scale = options.scale, probit = options.probit, hierarchical = True)
+        prior_pars = get_priors(options.bounds, samples = events, std = options.sigma_prior, scale = options.scale, probit = options.probit, hierarchical = True)
         mix        = HDPGMM(options.bounds, prior_pars = prior_pars, MC_draws = options.mc_draws, probit = options.probit)
         draws      = np.array([mix.density_from_samples(posteriors) for _ in tqdm(range(options.n_draws), desc = 'Hierarchical')])
         # Save draws

@@ -25,7 +25,7 @@ class worker:
                        se_sigma    = None,
                        hier_sigma  = None,
                        scale       = None,
-                       all_samples = None,
+                       events      = None,
                        label       = None,
                        unit        = None,
                        save_se     = True,
@@ -39,7 +39,7 @@ class worker:
                                            MC_draws   = MC_draws,
                                            probit     = probit,
                                            prior_pars = get_priors(self.bounds,
-                                                                   samples      = all_samples,
+                                                                   samples      = events,
                                                                    std          = hier_sigma,
                                                                    scale        = scale,
                                                                    probit       = probit,
@@ -227,7 +227,6 @@ def main():
         print("Ignoring points outside bounds.")
         for i, ev in enumerate(events):
             events[i] = ev[np.where((np.prod(options.bounds[:,0] < ev, axis = 1) & np.prod(ev < options.bounds[:,1], axis = 1)))]
-        all_samples = np.atleast_2d(np.concatenate(events))
     else:
         # Check if all samples are within bounds
         all_samples = np.atleast_2d(np.concatenate(events))
@@ -259,7 +258,7 @@ def main():
                                         se_sigma         = options.se_sigma_prior,
                                         hier_sigma       = options.sigma_prior,
                                         scale            = options.scale,
-                                        all_samples      = all_samples,
+                                        events           = events,
                                         label            = symbols,
                                         unit             = units,
                                         save_se          = options.save_single_event,
