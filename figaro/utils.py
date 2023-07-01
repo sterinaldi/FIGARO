@@ -119,7 +119,7 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
         if not np.iterable(samples[0]):
             samples = np.atleast_2d(samples).T
         if probit:
-            if len(samples) > 1:
+            if hierarchical:
                 probit_samples = [transform_to_probit(s, bounds) for s in samples]
             else:
                 probit_samples = transform_to_probit(samples, bounds)
@@ -146,9 +146,7 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
             out_a = a
         else:
             out_a = 2.
-            
         return (out_sigma, out_a)
-    
     else:
         # DF
         if df is not None and df > dim+2:
