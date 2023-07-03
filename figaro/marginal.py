@@ -111,7 +111,7 @@ def _condition(mix, vals, dims, norm = True):
     log_weights = mix.log_w + log_weights
     if norm:
         log_weights -= _marginalise(mix, axis = np.arange(mix.dim)[~idx])._logpdf_probit(vals)
-    return mixture(means, covs, np.exp(log_weights), bounds, dim, mix.n_cl, mix.n_pts, probit = mix.probit)
+    return mixture(means, covs, np.exp(log_weights), bounds, dim, mix.n_cl, mix.n_pts, probit = mix.probit, log_w = log_weights)
 
 def condition(draws, vals, dims, norm = True):
     """
