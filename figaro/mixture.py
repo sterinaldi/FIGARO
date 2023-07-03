@@ -676,11 +676,15 @@ class mixture(_density):
     Returns:
         :mixture: instance of mixture class
     """
-    def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, probit = True):
+    def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, probit = True, log_w = None):
         self.means  = means
         self.covs   = covs
-        self.w      = w
-        self.log_w  = np.log(w)
+        if log_w is None:
+            self.w      = w
+            self.log_w  = np.log(w)
+        else:
+            self.log_w  = log_w
+            self.w      = np.exp(log_w)
         self.bounds = bounds
         self.dim    = dim
         self.n_cl   = n_cl
@@ -692,10 +696,10 @@ class mixture(_density):
         Marginalise out one or more dimensions from the mixture.
         
         Arguments:
-            :int or list of int axis:      axis to marginalise on
+            :int or list of int axis: axis to marginalise on. Default: last
         
         Returns:
-            :figaro.mixture.mixture: the marginalised mixture
+            :figaro.mixture.mixture: marginalised mixture
         """
         return _marginalise(self, axis)
     
@@ -704,12 +708,12 @@ class mixture(_density):
         Mixture conditioned on specific values of a subset of parameters.
         
         Arguments:
-            :iterable vals:                value(s) to condition on
-            :int or list of int dims:      dimension(s) associated with given vals (starting from 0)
-            :bool norm:                    normalize the distribution
+            :iterable vals:           value(s) to condition on
+            :int or list of int dims: dimension(s) associated with given vals (starting from 0)
+            :bool norm:               whether to normalize the distribution or not
         
         Returns:
-            :figaro.mixture.mixture: the conditioned mixture
+            :figaro.mixture.mixture: conditioned mixture
         """
         v       = np.mean(self.bounds, axis = -1)
         v[dims] = vals
