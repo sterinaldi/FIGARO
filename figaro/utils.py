@@ -138,7 +138,7 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
             all_samples_cov = np.diag(np.atleast_2d(np.cov(all_samples.T)))
             out_sigma       = (np.sqrt(all_samples_cov - events_avg_cov)/scale).flatten()
         else:
-            out_sigma = np.diff(bounds, axis = -1)/10.
+            out_sigma = np.diff(bounds, axis = -1)/scale
             if probit:
                 out_sigma = transform_to_probit(np.mean(bounds, axis = -1)+out_sigma, bounds)
         out_sigma = out_sigma.flatten()
@@ -185,16 +185,16 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
                 draw_flag = True
         elif samples is not None:
             if probit:
-                L_out = np.atleast_2d(np.cov(probit_samples.T))
+                cov_samples = np.atleast_2d(np.cov(probit_samples.T))
             else:
-                L_out = np.atleast_2d(np.cov(samples.T))
-            L_out = np.identity(dim)*np.diag(L_out/scale**2)
+                cov_samples = np.atleast_2d(np.cov(samples.T))
+            L_out = np.identity(dim)*np.diag(cov_samples/scale**2)
         else:
             if probit:
-                sigma = transform_to_probit(np.atleast_2d(np.mean(bounds, axis = -1)+np.diff(bounds, axis = -1).flatten()/10), bounds)[0]
+                sigma = transform_to_probit(np.atleast_2d(np.mean(bounds, axis = -1)+np.diff(bounds, axis = -1).flatten()/scale), bounds)[0]
                 L_out = np.identity(dim)*sigma**2
             else:
-                L_out = np.identity(dim)*(np.diff(bounds, axis = -1).flatten()/10)**2
+                L_out = np.identity(dim)*(np.diff(bounds, axis = -1).flatten()/scale)**2
         if draw_flag:
             ss = mn(np.mean(bounds, axis = -1), L_out).rvs(3000)
             if dim == 1:
@@ -207,11 +207,10 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
         if k is not None:
             k_out = k
         else:
-            s, log_k_out = np.linalg.slogdet(L_out)
-            if dim > 1:
-                k_out = np.exp(log_k_out/dim)
+            if samples is not None:
+                k_out = np.sqrt(np.mean(np.diag(L_out)/np.diag(cov_samples)))
             else:
-                k_out = 1e-6#np.min([np.exp(-2*log_k_out), np.exp(2*log_k_out)])
+                k_out = 1./scale
         return (k_out, L_out, df_out, mu_out)
 
 def rvs_median(draws, size = 1):
