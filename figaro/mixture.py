@@ -433,7 +433,7 @@ class _density:
         Returns:
             :np.ndarray: mixture.pdf(x)
         """
-        return np.sum(np.array([w*mn(mean, cov).pdf(x) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
+        return np.sum(np.array([w*mn(mean, cov, allow_singular = True).pdf(x) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
     
     @probit
     def _pdf_array(self, x):
@@ -458,7 +458,7 @@ class _density:
         Returns:
             :np.ndarray: component.pdf(x) for each mixture component
         """
-        return np.array([w*mn(mean, cov).pdf(x) for mean, cov, w in zip(self.means, self.covs, self.w)])
+        return np.array([w*mn(mean, cov, allow_singular = True).pdf(x) for mean, cov, w in zip(self.means, self.covs, self.w)])
 
     @probit
     def _fast_pdf_array(self, x):
@@ -508,7 +508,7 @@ class _density:
         Returns:
             :np.ndarray: mixture.logpdf(x)
         """
-        return logsumexp(np.array([w + mn(mean, cov).logpdf(x) for mean, cov, w in zip(self.means, self.covs, self.log_w)]), axis = 0)
+        return logsumexp(np.array([w + mn(mean, cov, allow_singular = True).logpdf(x) for mean, cov, w in zip(self.means, self.covs, self.log_w)]), axis = 0)
 
     def cdf(self, x):
         if self.dim > 1:
@@ -580,11 +580,11 @@ class _density:
         if self.dim > 1:
             samples = np.empty(shape = (1,self.dim))
             for i, n in zip(ctr.keys(), ctr.values()):
-                samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i]).rvs(size = n))))
+                samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i], allow_singular = True).rvs(size = n))))
         else:
             samples = np.array([np.zeros(1)])
             for i, n in zip(ctr.keys(), ctr.values()):
-                samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i]).rvs(size = n)).T))
+                samples = np.concatenate((samples, np.atleast_2d(mn(self.means[i], self.covs[i], allow_singular = True).rvs(size = n)).T))
         return np.array(samples[1:])
     
     def gradient(self, x):
@@ -842,8 +842,7 @@ class DPGMM(_density):
         Arguments:
             :np.ndarray x: sample
         """
-        scores = self._cluster_assignment_distribution(x)#.items()
-#        labels, scores = zip(*scores)
+        scores = self._cluster_assignment_distribution(x)
         cid = np.random.choice(self.n_cl+1, p=scores)
         if cid == 0:
             self.mixture.append(component(x, prior = self.prior))
@@ -901,14 +900,8 @@ class DPGMM(_density):
         variances = np.zeros((self.n_cl, self.dim, self.dim))
         for i, ss in enumerate(self.mixture):
             k_n, mu_n, nu_n, L_n = compute_hyperpars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.S, ss.N)
-            nonsing_flag = True
-            while nonsing_flag:
-                try:
-                    variances[i] = invwishart(df = nu_n, scale = L_n).rvs()
-                    means[i]     = mn(mean = mu_n[0], cov = variances[i]/k_n).rvs()
-                    nonsing_flag = False
-                except np.linalg.LinAlgError:
-                    pass
+            variances[i] = invwishart(df = nu_n, scale = L_n).rvs()
+            means[i]     = mn(mean = mu_n[0], cov = variances[i]/k_n, allow_singular = True).rvs()
         w = dirichlet(self.w*self.n_pts+self.alpha/self.n_cl).rvs()[0]
         return mixture(means, variances, w, self.bounds, self.dim, self.n_cl, self.n_pts, probit = self.probit)
 
@@ -928,11 +921,11 @@ class DPGMM(_density):
         if self.dim > 1:
             samples = np.empty(shape = (1,self.dim))
             for i, n in zip(ctr.keys(), ctr.values()):
-                samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n))))
+                samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma, allow_singular = True).rvs(size = n))))
         else:
             samples = np.array([np.zeros(1)])
             for i, n in zip(ctr.keys(), ctr.values()):
-                samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma).rvs(size = n)).T))
+                samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma, allow_singular = True).rvs(size = n)).T))
         return samples[1:]
 
     def _pdf_probit(self, x):
@@ -945,7 +938,7 @@ class DPGMM(_density):
         Returns:
             :np.ndarray: mixture.pdf(x)
         """
-        return np.sum(np.array([w*mn(comp.mu, comp.sigma).pdf(x) for comp, w in zip(self.mixture, self.w)]), axis = 0)
+        return np.sum(np.array([w*mn(comp.mu, comp.sigma, allow_singular = True).pdf(x) for comp, w in zip(self.mixture, self.w)]), axis = 0)
 
     def _logpdf_probit(self, x):
         """
@@ -957,7 +950,7 @@ class DPGMM(_density):
         Returns:
             :np.ndarray: mixture.logpdf(x)
         """
-        return logsumexp(np.array([w + mn(comp.mu, comp.sigma).logpdf(x) for comp, w in zip(self.mixture, self.log_w)]), axis = 0)
+        return logsumexp(np.array([w + mn(comp.mu, comp.sigma, allow_singular = True).logpdf(x) for comp, w in zip(self.mixture, self.log_w)]), axis = 0)
 
     def _fast_pdf_probit(self, x):
         """
