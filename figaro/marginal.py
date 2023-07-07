@@ -140,8 +140,8 @@ def condition(draws, vals, dims, norm = True, filter = True, tol = 1e-4):
     if np.iterable(draws):
         v       = np.mean(draws[0].bounds, axis = -1)
         v[dims] = vals
-        return np.array([_condition(d, v, dims, norm) for d in draws])
+        return np.array([_condition(d, v, dims, norm, filter, tol) for d in draws])
     else:
         v       = np.mean(draws.bounds, axis = -1)
         v[dims] = vals
-        return _condition(draws, v, dims, norm)
+        return _condition(draws, v, dims, norm, filter, tol)
