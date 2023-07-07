@@ -19,7 +19,7 @@ import socket
 
 from scipy.special import logsumexp
 from scipy.stats import multivariate_normal as mn
-from numba import jit, prange
+from numba import njit, prange
 import dill
 
 from figaro.mixture import DPGMM
@@ -41,7 +41,7 @@ from pathlib import Path
 from distutils.spawn import find_executable
 from tqdm import tqdm
 
-@jit
+@njit
 def log_add(x, y):
     """
     Compute log(np.exp(x) + np.exp(y))
@@ -58,7 +58,7 @@ def log_add(x, y):
     else:
         return y+np.log1p(np.exp(x-y))
 
-@jit
+@njit
 def log_add_array(x,y):
     """
     Compute log(np.exp(x) + np.exp(y)) element-wise

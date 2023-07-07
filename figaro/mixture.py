@@ -16,7 +16,7 @@ from figaro.exceptions import except_hook, FIGAROException
 from figaro.utils import get_priors
 from figaro.marginal import _condition, _marginalise
 
-from numba import jit, njit, prange
+from numba import njit, prange
 from numba.extending import get_cython_function_address
 import ctypes
 
@@ -47,7 +47,7 @@ gammaln_float64 = functype(addr)
 def _numba_gammaln(x):
     return gammaln_float64(x)
 
-@jit
+@njit
 def _student_t(df, t, mu, sigma, dim):
     """
     Multivariate student-t pdf.
@@ -79,7 +79,7 @@ def _student_t(df, t, mu, sigma, dim):
 
     return (A - B - C - D + E)[0]
 
-@jit
+@njit
 def update_alpha(alpha, n, K, burnin = 1000):
     """
     Update concentration parameter using a Metropolis-Hastings sampling scheme.
@@ -104,7 +104,7 @@ def update_alpha(alpha, n, K, burnin = 1000):
                 a_old = a_new
     return a_old
 
-@jit
+@njit
 def compute_t_pars(k, mu, nu, L, mean, S, N, dim):
     """
     Compute parameters for student-t distribution.
@@ -131,7 +131,7 @@ def compute_t_pars(k, mu, nu, L, mean, S, N, dim):
     t_shape = L_n*(k_n+1)/(k_n*t_df)
     return t_df, t_shape, mu_n
 
-@jit
+@njit
 def compute_hyperpars(k, mu, nu, L, mean, S, N):
     """
     Update hyperparameters for Normal Inverse Gamma/Wishart (NIG/NIW).
@@ -158,7 +158,7 @@ def compute_hyperpars(k, mu, nu, L, mean, S, N):
     L_n  = L + S + k*N*((mean - mu).T@(mean - mu))/k_n
     return k_n, mu_n, nu_n, L_n
 
-@jit
+@njit
 def compute_component_suffstats(x, mean, S, N, p_mu, p_k, p_nu, p_L):
     """
     Update mean, covariance, number of samples and maximum a posteriori for mean and covariance.

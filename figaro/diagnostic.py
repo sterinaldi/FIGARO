@@ -1,6 +1,6 @@
 import numpy as np
 
-from numba import jit, prange
+from numba import njit, prange
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -13,7 +13,7 @@ from figaro import plot_settings
 
 log2e = np.log2(np.e)
 
-@jit
+@njit
 def angular_coefficient(x, y):
     """
     Angular coefficient obtained from linear regression.
@@ -82,7 +82,7 @@ def plot_angular_coefficient(entropy, L = 500, ac_expected = None, out_folder = 
     plt.close()
     return S
 
-@jit
+@njit
 def compute_autocorrelation(draws, mean, dx):
     """
     Computes autocorrelation of subsequent draws as <∫(draw[i]-mean)*(draw[i+t]-mean)*dx/∫(draw[i]-mean)**2*dx>
