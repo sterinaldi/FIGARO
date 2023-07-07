@@ -15,7 +15,7 @@ def inv_jit(M):
 def logdet_jit(M):
     return np.log(np.linalg.det(M))
 
-@jit
+@njit
 def logsumexp_jit(a, b):
     a_max = np.max(a)
     tmp = b * np.exp(a - a_max)
