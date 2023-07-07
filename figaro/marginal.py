@@ -120,7 +120,7 @@ def _condition(mix, vals, dims, norm = True, filter = True, tol = 1e-4):
     if filter:
         ww = np.exp(log_weights)
         idx = np.argsort(ww)
-        m = np.where(np.cumsum(ww[idx]) > tol*np.sum(log_weights))[0].min()
+        m = np.where(np.cumsum(ww[idx]) > tol*np.sum(ww))[0].min()
         idx_filt = [i in idx[m:] for i in range(len(ww))]
         if norm:
             log_weights -= logsumexp(log_weights[idx_filt])
