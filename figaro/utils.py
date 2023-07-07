@@ -9,7 +9,7 @@ from typing import cast
 from collections import Counter
 from scipy.stats import multivariate_normal as mn
 
-from figaro.transform import transform_to_probit
+from figaro.transform import transform_to_probit, transform_from_probit
 from figaro.exceptions import FIGAROException
 
 #-–––––––––-#
@@ -166,9 +166,9 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
                 mu_out = mean
         elif samples is not None:
             if probit:
-                mu_out = np.atleast_1d(np.mean(probit_samples, axis = 0))
+                mu_out = np.atleast_1d(np.median(probit_samples, axis = 0))
             else:
-                mu_out = np.atleast_1d(np.mean(samples, axis = 0))
+                mu_out = np.atleast_1d(np.median(samples, axis = 0))
         else:
             if probit:
                 mu_out = np.zeros(dim)
@@ -180,9 +180,10 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
             if probit:
                 draw_flag = True
         elif std is not None:
-            L_out = np.identity(dim)*std**2
             if probit:
-                draw_flag = True
+                L_out = np.identity(dim)*np.minimum(np.abs(mu_out - transform_to_probit((transform_from_probit(mu_out, bounds) + std), bounds)), np.abs(mu_out - transform_to_probit((transform_from_probit(mu_out, bounds) - std), bounds)))**2
+            else:
+                L_out = np.identity(dim)*std**2
         elif samples is not None:
             if probit:
                 cov_samples = np.atleast_2d(np.cov(probit_samples.T))
@@ -196,21 +197,25 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
             else:
                 L_out = np.identity(dim)*(np.diff(bounds, axis = -1).flatten()/scale)**2
         if draw_flag:
-            ss = mn(np.mean(bounds, axis = -1), L_out).rvs(3000)
+            ss = mn(np.mean(bounds, axis = -1), L_out, allow_singular = True).rvs(3000)
             if dim == 1:
                 ss = np.atleast_2d(ss).T
             # Keeping only samples within bounds
             ss = ss[np.where((np.prod(bounds[:,0] < ss, axis = 1) & np.prod(ss < bounds[:,1], axis = 1)))]
-            probit_samples = transform_to_probit(ss, bounds)
-            L_out = np.atleast_2d(np.cov(probit_samples.T))
+            probit_ss = transform_to_probit(ss, bounds)
+            L_out = np.identity(dim)*np.diag(np.atleast_2d(np.cov(probit_ss.T)))
         # k
         if k is not None:
             k_out = k
         else:
             if samples is not None:
-                k_out = np.sqrt(np.mean(np.diag(L_out)/np.diag(cov_samples)))
+                if probit:
+                    cov_samples = np.atleast_2d(np.cov(probit_samples.T))
+                else:
+                    cov_samples = np.atleast_2d(np.cov(samples.T))
+                k_out = np.min(np.diag(L_out)/np.diag(cov_samples))
             else:
-                k_out = 1./scale
+                k_out = 1./(scale)
         return (k_out, L_out, df_out, mu_out)
 
 def rvs_median(draws, size = 1):
@@ -271,7 +276,7 @@ def make_single_gaussian_mixture(mu, cov, bounds, out_folder = '.', save = False
     mixtures = []
     for i, (m, c) in enumerate(zip(mu, cov)):
         if probit:
-            ss = np.atleast_2d(mn(m, c).rvs(n_samps))
+            ss = np.atleast_2d(mn(m, c, allow_singular = True).rvs(n_samps))
             # 1D issue
             if c.shape == (1,) or c.shape == (1,1):
                 ss = ss.T
@@ -287,7 +292,7 @@ def make_single_gaussian_mixture(mu, cov, bounds, out_folder = '.', save = False
             mm = m
             cc = c
             if save:
-                ss = np.atleast_2d(mn(m, c).rvs(n_samps))
+                ss = np.atleast_2d(mn(m, c, allow_singular = True).rvs(n_samps))
                 if c.shape == (1,1):
                     ss = ss.T
                 np.savetxt(Path(events_folder, 'event_{0}.txt'.format(i+1)), ss)
