@@ -69,7 +69,7 @@ def marginalise(draws, axis = -1):
         return _marginalise(draws, axis)
 
 @probit
-def _condition(mix, vals, dims, norm = True):
+def _condition(mix, vals, dims, norm = True, filter = True, tol = 1e-4):
     """
     Probability density conditioned on specific values of a subset of parameters.
     See:
@@ -81,6 +81,8 @@ def _condition(mix, vals, dims, norm = True):
         :iterable vals:              value(s) to condition on
         :int or list of int dims:    dimension(s) associated with given vals (starting from 0)
         :bool norm:                  normalize the distribution
+        :bool filter:                  filter the components with weight < tol
+        :double tol:                   tolerance on the sum of the weights
     
     Returns:
         :figaro.mixture.mixture: the conditioned mixture(s)
@@ -111,9 +113,16 @@ def _condition(mix, vals, dims, norm = True):
     log_weights = mix.log_w + log_weights
     if norm:
         log_weights -= _marginalise(mix, axis = np.arange(mix.dim)[~idx])._logpdf_probit(vals)
-    return mixture(means, covs, np.exp(log_weights), bounds, dim, mix.n_cl, mix.n_pts, probit = mix.probit, log_w = log_weights)
+    # Filter out components with negligible weights
+    idx_filt = [True for _ in range(len(log_weights))]
+    if filter:
+        ww = np.exp(log_weights)
+        idx = np.argsort(ww)
+        m = np.where(np.cumsum(ww[idx]) > tol)[0].min()
+        idx_filt = [i in idx[m:] for i in range(len(ww))]
+    return mixture(means[idx_filt], covs[idx_filt], np.exp(log_weights[idx_filt]), bounds, dim, len(log_weights[idx_filt]), mix.n_pts, probit = mix.probit, log_w = log_weights[idx_filt])
 
-def condition(draws, vals, dims, norm = True):
+def condition(draws, vals, dims, norm = True, filter = True, tol = 1e-4):
     """
     Probability density conditioned on specific values of a subset of parameters.
     
@@ -122,6 +131,8 @@ def condition(draws, vals, dims, norm = True):
         :iterable vals:                value(s) to condition on
         :int or list of int dims:      dimension(s) associated with given vals (starting from 0)
         :bool norm:                    normalize the distribution
+        :bool filter:                  filter the components with weight < tol
+        :double tol:                   tolerance on the sum of the weights
     
     Returns:
         :figaro.mixture.mixture: the conditioned mixture(s)
