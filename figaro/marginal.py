@@ -115,11 +115,14 @@ def _condition(mix, vals, dims, norm = True, filter = True, tol = 1e-4):
         log_weights -= _marginalise(mix, axis = np.arange(mix.dim)[~idx])._logpdf_probit(vals)
     # Filter out components with negligible weights
     idx_filt = [True for _ in range(len(log_weights))]
+    norm_const = 0.
     if filter:
         ww = np.exp(log_weights)
         idx = np.argsort(ww)
-        m = np.where(np.cumsum(ww[idx]) > tol)[0].min()
+        m = np.where(np.cumsum(ww[idx]) > tol*np.sum(log_weights))[0].min()
         idx_filt = [i in idx[m:] for i in range(len(ww))]
+        if norm:
+            log_weights -= logsumexp(log_weights[idx_filt])
     return mixture(means[idx_filt], covs[idx_filt], np.exp(log_weights[idx_filt]), bounds, dim, len(log_weights[idx_filt]), mix.n_pts, probit = mix.probit, log_w = log_weights[idx_filt])
 
 def condition(draws, vals, dims, norm = True, filter = True, tol = 1e-4):
