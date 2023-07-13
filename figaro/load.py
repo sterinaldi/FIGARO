@@ -26,6 +26,7 @@ GW_par = {'m1'                 : 'mass_1_source',
           'mt'                 : 'total_mass_source',
           'z'                  : 'redshift',
           'q'                  : 'mass_ratio',
+          'eta'                : 'symmetric_mass_ratio',
           'chi_eff'            : 'chi_eff',
           'ra'                 : 'ra',
           'dec'                : 'dec',
@@ -444,6 +445,7 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
             ss['mc']      = (ss['m1']*ss['m2'])**(3./5.)/(ss['m1']+ss['m2'])**(1./5.)
             ss['mt']      = ss['m1']+ss['m2']
             ss['q']       = ss['m2']/ss['m1']
+            ss['eta']     = ss['m1']*ss['m2']/(ss['m1']+ss['m2'])**2
             ss['s1z']     = ss['s1']*ss['cos_tilt_1']
             ss['s2z']     = ss['s2']*ss['cos_tilt_2']
             ss['chi_eff'] = (ss['s1z'] + ss['q']*ss['s2z'])/(1+ss['q'])
