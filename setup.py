@@ -8,12 +8,6 @@ from distutils.extension import Extension
 import os
 import warnings
 
-lal_flag = True
-try:
-    import lal
-except ModuleNotFoundError:
-    lal_flag = False
-
 ray_flag = True
 try:
     import ray
@@ -42,26 +36,26 @@ ext_modules=[
                        include_dirs=['figaro', numpy.get_include()]
                        ),
             ]
-if lal_flag:
-    if "LAL_PREFIX" in os.environ:
-        # Older LAL installations requires this
-        lal_prefix     = os.environ.get("LAL_PREFIX")
-        lal_includes   = lal_prefix+"/include"
-        lal_libs       = lal_prefix+"/lib"
-        ext_modules.append(Extension("figaro.cosmology",
-                          sources=[os.path.join("figaro","cosmology.pyx")],
-                          libraries=["m", "lal"], # Unix-like specific
-                          library_dirs = [lal_libs],
-                          extra_compile_args=["-O3","-ffast-math"],
-                          include_dirs=['figaro', lal_includes, numpy.get_include()]
-                          ))
-    else:
-        ext_modules.append(Extension("figaro.cosmology",
-                           sources=[os.path.join("figaro","cosmology.pyx")],
-                           libraries=["m", "lal"], # Unix-like specific
-                           extra_compile_args=["-O3","-ffast-math"],
-                           include_dirs=['figaro', numpy.get_include()]
-                           ))
+
+if "LAL_PREFIX" in os.environ:
+    # Older LAL installations requires this
+    lal_prefix     = os.environ.get("LAL_PREFIX")
+    lal_includes   = lal_prefix+"/include"
+    lal_libs       = lal_prefix+"/lib"
+    ext_modules.append(Extension("figaro.cosmology",
+                      sources=[os.path.join("figaro","cosmology.pyx")],
+                      libraries=["m", "lal"], # Unix-like specific
+                      library_dirs = [lal_libs],
+                      extra_compile_args=["-O3","-ffast-math"],
+                      include_dirs=['figaro', lal_includes, numpy.get_include()]
+                      ))
+else:
+    ext_modules.append(Extension("figaro.cosmology",
+                       sources=[os.path.join("figaro","cosmology.pyx")],
+                       libraries=["m", "lal"], # Unix-like specific
+                       extra_compile_args=["-O3","-ffast-math"],
+                       include_dirs=['figaro', numpy.get_include()]
+                       ))
 
 ext_modules = cythonize(ext_modules, compiler_directives={'language_level' : "3"})
 
@@ -108,7 +102,7 @@ setup(
     entry_points = {
         'console_scripts': scripts,
         },
-    version='1.1.0',
+    version='1.1.1',
     long_description=long_description,
     long_description_content_type='text/markdown',
     cmdclass = {
@@ -116,7 +110,5 @@ setup(
             }
     )
 
-if not lal_flag:
-    warnings.warn("\n\nWARNING: No LAL installation found, please install LAL - see https://wiki.ligo.org/Computing/LALSuiteInstall. Some functions - GW posterior samples loading and catalog loading - won't be available and errors might be raised.\n", stacklevel = 2)
 if not ray_flag:
     warnings.warn("\n\nWARNING: Ray is not installed: parallelized pipelines won't be available. If you want to use them, please install Ray (pip install ray) and reinstall FIGARO.\n", stacklevel = 2)
