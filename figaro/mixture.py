@@ -80,7 +80,7 @@ def _student_t(df, t, mu, sigma, dim):
     return (A - B - C - D + E)[0]
 
 @njit
-def update_alpha(alpha, n, K, burnin = 1000):
+def _update_alpha(alpha, n, K, burnin = 1000):
     """
     Update concentration parameter using a Metropolis-Hastings sampling scheme.
     
@@ -105,7 +105,7 @@ def update_alpha(alpha, n, K, burnin = 1000):
     return a_old
 
 @njit
-def compute_t_pars(k, mu, nu, L, mean, S, N, dim):
+def _compute_t_pars(k, mu, nu, L, mean, S, N, dim):
     """
     Compute parameters for student-t distribution.
     
@@ -125,14 +125,14 @@ def compute_t_pars(k, mu, nu, L, mean, S, N, dim):
         np.ndarray: mean for student-t
     """
     # Update hyperparameters
-    k_n, mu_n, nu_n, L_n = compute_hyperpars(k, mu, nu, L, mean, S, N)
+    k_n, mu_n, nu_n, L_n = _compute_hyperpars(k, mu, nu, L, mean, S, N)
     # Update t-parameters
     t_df    = nu_n - dim + 1
     t_shape = L_n*(k_n+1)/(k_n*t_df)
     return t_df, t_shape, mu_n
 
 @njit
-def compute_hyperpars(k, mu, nu, L, mean, S, N):
+def _compute_hyperpars(k, mu, nu, L, mean, S, N):
     """
     Update hyperparameters for Normal Inverse Gamma/Wishart (NIG/NIW).
     See https://www.cs.ubc.ca/~murphyk/Papers/bayesGauss.pdf
@@ -159,7 +159,7 @@ def compute_hyperpars(k, mu, nu, L, mean, S, N):
     return k_n, mu_n, nu_n, L_n
 
 @njit
-def compute_component_suffstats(x, mean, S, N, p_mu, p_k, p_nu, p_L):
+def _compute_component_suffstats(x, mean, S, N, p_mu, p_k, p_nu, p_L):
     """
     Update mean, covariance, number of samples and maximum a posteriori for mean and covariance.
     
@@ -192,7 +192,7 @@ def compute_component_suffstats(x, mean, S, N, p_mu, p_k, p_nu, p_L):
 # Auxiliary classes #
 #-------------------#
 
-class prior:
+class _prior:
     """
     Class to store the NIW prior parameters
     See https://www.cs.ubc.ca/~murphyk/Papers/bayesGauss.pdf, sec. 9
@@ -212,7 +212,7 @@ class prior:
         self.L   = L*(self.nu-mu.shape[-1]-1)
         self.mu  = mu
 
-class component:
+class _component:
     """
     Class to store the relevant informations for each component in the mixture.
     
@@ -230,7 +230,7 @@ class component:
         self.mu    = np.atleast_2d((prior.mu*prior.k + self.N*self.mean)/(prior.k + self.N)).astype(np.float64)[0]
         self.sigma = np.identity(x.shape[-1]).astype(np.float64)*prior.L/(prior.nu - x.shape[-1] - 1)
 
-class component_h:
+class _component_h:
     """
     Class to store the relevant informations for each component in the mixture.
     To be used in hierarchical inference.
@@ -262,7 +262,7 @@ class component_h:
             self.mu = np.atleast_2d(self.mu).T
             self.sigma = np.atleast_2d(self.sigma).T
             
-class _density:
+class density:
     """
     Class to initialise a common set of methods for mixture models. Not to be used.
     """
@@ -659,10 +659,10 @@ class _density:
         except ZeroDivisionError:
             return np.zeros(x.shape[-1])
 
-class mixture(_density):
+class mixture(density):
     """
     Class to store a single draw from DPGMM/(H)DPGMM.
-    Methods inherited from _density class.
+    Methods inherited from density class.
     
     Arguments:
         iterable means:    component means
@@ -703,7 +703,7 @@ class mixture(_density):
         """
         return _marginalise(self, axis)
     
-    def condition(self, vals, dims, norm = True):
+    def condition(self, vals, dims, norm = True, filter = True, tol = 1e-3):
         """
         Mixture conditioned on specific values of a subset of parameters.
         
@@ -711,19 +711,21 @@ class mixture(_density):
             iterable vals:           value(s) to condition on
             int or list of int dims: dimension(s) associated with given vals (starting from 0)
             bool norm:               whether to normalize the distribution or not
+            bool filter:             filter the components with weight < tol
+            double tol:              tolerance on the sum of the weights
         
         Returns:
             figaro.mixture.mixture: conditioned mixture
         """
         v       = np.mean(self.bounds, axis = -1)
         v[dims] = vals
-        return _condition(self, v, dims, norm)
+        return _condition(self, v, dims, norm, filter, tol = 1e-3)
     
 #-------------------#
 # Inference classes #
 #-------------------#
 
-class DPGMM(_density):
+class DPGMM(density):
     """
     Class to infer a distribution given a set of samples.
     
@@ -745,9 +747,9 @@ class DPGMM(_density):
         self.bounds = np.atleast_2d(bounds)
         self.dim    = len(self.bounds)
         if prior_pars is not None:
-            self.prior = prior(*prior_pars)
+            self.prior = _prior(*prior_pars)
         else:
-            self.prior = prior(*get_priors(bounds = self.bounds, probit = self.probit))
+            self.prior = _prior(*get_priors(bounds = self.bounds, probit = self.probit))
         self.alpha      = alpha0
         self.alpha_0    = alpha0
         self.mixture    = []
@@ -775,7 +777,7 @@ class DPGMM(_density):
         self.n_cl     = 0
         self.n_pts    = 0
         if prior_pars is not None:
-            self.prior = prior(*prior_pars)
+            self.prior = _prior(*prior_pars)
         
     def _add_datapoint_to_component(self, x, ss):
         """
@@ -788,7 +790,7 @@ class DPGMM(_density):
         Returns:
             component: updated component
         """
-        new_mean, new_S, new_N, new_mu, new_sigma = compute_component_suffstats(x, ss.mean, ss.S, ss.N, self.prior.mu, self.prior.k, self.prior.nu, self.prior.L)
+        new_mean, new_S, new_N, new_mu, new_sigma = _compute_component_suffstats(x, ss.mean, ss.S, ss.N, self.prior.mu, self.prior.k, self.prior.nu, self.prior.L)
         ss.mean  = new_mean
         ss.S     = new_S
         ss.N     = new_N
@@ -808,9 +810,9 @@ class DPGMM(_density):
             double: log Likelihood
         """
         if ss is None:
-            ss = component(np.zeros(self.dim), prior = self.prior)
+            ss = _component(np.zeros(self.dim), prior = self.prior)
             ss.N = 0.
-        t_df, t_shape, mu_n = compute_t_pars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.S, ss.N, self.dim)
+        t_df, t_shape, mu_n = _compute_t_pars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.S, ss.N, self.dim)
         return _student_t(df = t_df, t = x, mu = mu_n, sigma = t_shape, dim = self.dim)
 
     def _cluster_assignment_distribution(self, x):
@@ -845,7 +847,7 @@ class DPGMM(_density):
         scores = self._cluster_assignment_distribution(x)
         cid = np.random.choice(self.n_cl+1, p=scores)
         if cid == 0:
-            self.mixture.append(component(x, prior = self.prior))
+            self.mixture.append(_component(x, prior = self.prior))
             self.N_list.append(1.)
             self.n_cl += 1
         else:
@@ -885,7 +887,7 @@ class DPGMM(_density):
         """
         self.n_pts += 1
         self._assign_to_cluster(np.atleast_2d(x))
-        self.alpha = update_alpha(self.alpha, self.n_pts, self.n_cl)
+        self.alpha = _update_alpha(self.alpha, self.n_pts, self.n_cl)
 
     def build_mixture(self):
         """
@@ -899,13 +901,13 @@ class DPGMM(_density):
         means     = np.zeros((self.n_cl, self.dim))
         variances = np.zeros((self.n_cl, self.dim, self.dim))
         for i, ss in enumerate(self.mixture):
-            k_n, mu_n, nu_n, L_n = compute_hyperpars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.S, ss.N)
+            k_n, mu_n, nu_n, L_n = _compute_hyperpars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.S, ss.N)
             variances[i] = invwishart(df = nu_n, scale = L_n).rvs()
             means[i]     = mn(mean = mu_n[0], cov = variances[i]/k_n, allow_singular = True).rvs()
         w = dirichlet(self.w*self.n_pts+self.alpha/self.n_cl).rvs()[0]
         return mixture(means, variances, w, self.bounds, self.dim, self.n_cl, self.n_pts, probit = self.probit)
 
-    # Methods to overwrite _density methods
+    # Methods to overwrite density methods
     def _rvs_probit(self, size = 1):
         """
         Draw samples from mixture in probit space
@@ -1043,12 +1045,12 @@ class HDPGMM(DPGMM):
         Update the probability density reconstruction adding a new sample
         
         Arguments:
-            iterable x: set of single-event draws from a DPGMM inference
+            iterable ev: set of single-event draws from a DPGMM inference
         """
         self.n_pts += 1
         x = np.random.choice(ev)
         self._assign_to_cluster(x)
-        self.alpha = update_alpha(self.alpha, self.n_pts, self.n_cl)
+        self.alpha = _update_alpha(self.alpha, self.n_pts, self.n_cl)
 
     def _cluster_assignment_distribution(self, x):
         """
@@ -1095,7 +1097,7 @@ class HDPGMM(DPGMM):
         except ValueError:
             cid = 0
         if cid == 0:
-            self.mixture.append(component_h(x, self.dim, self.prior, logL_N[cid], self.mu_MC, self.sigma_MC, self.b_ones))
+            self.mixture.append(_component_h(x, self.dim, self.prior, logL_N[cid], self.mu_MC, self.sigma_MC, self.b_ones))
             self.N_list.append(1.)
             self.n_cl += 1
         else:
