@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>figaro.load module &mdash; FIGARO 1.1.1 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="figaro.marginal module" href="figaro.marginal.html" />
+    <link rel="prev" title="figaro.likelihood module" href="figaro.likelihood.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            FIGARO
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">figaro</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="figaro.coordinates.html">figaro.coordinates module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.cosmology.html">figaro.cosmology module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.credible_regions.html">figaro.credible_regions module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.cumulative.html">figaro.cumulative module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.decorators.html">figaro.decorators module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.diagnostic.html">figaro.diagnostic module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.exceptions.html">figaro.exceptions module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.likelihood.html">figaro.likelihood module</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">figaro.load module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#figaro.load.available_gw_pars"><code class="docutils literal notranslate"><span class="pre">available_gw_pars()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#figaro.load.load_data"><code class="docutils literal notranslate"><span class="pre">load_data()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#figaro.load.load_density"><code class="docutils literal notranslate"><span class="pre">load_density()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#figaro.load.load_single_event"><code class="docutils literal notranslate"><span class="pre">load_single_event()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#figaro.load.save_density"><code class="docutils literal notranslate"><span class="pre">save_density()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.marginal.html">figaro.marginal module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.mixture.html">figaro.mixture module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.montecarlo.html">figaro.montecarlo module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.plot.html">figaro.plot module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.plot_settings.html">figaro.plot_settings module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.threeDvolume.html">figaro.threeDvolume module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.transform.html">figaro.transform module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.utils.html">figaro.utils module</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">FIGARO</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">figaro</a></li>
+      <li class="breadcrumb-item active">figaro.load module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/figaro.load.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-figaro.load">
+<span id="figaro-load-module"></span><h1>figaro.load module<a class="headerlink" href="#module-figaro.load" title="Permalink to this heading"></a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="figaro.load.available_gw_pars">
+<span class="sig-prename descclassname"><span class="pre">figaro.load.</span></span><span class="sig-name descname"><span class="pre">available_gw_pars</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/figaro/load.html#available_gw_pars"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#figaro.load.available_gw_pars" title="Permalink to this definition"></a></dt>
+<dd><p>Print a list of available GW parameters</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="figaro.load.load_data">
+<span class="sig-prename descclassname"><span class="pre">figaro.load.</span></span><span class="sig-name descname"><span class="pre">load_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">par</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_samples</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">h</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.674</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">om</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.315</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.685</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">volume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">waveform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'combined'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">snr_threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">far_threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/figaro/load.html#load_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#figaro.load.load_data" title="Permalink to this definition"></a></dt>
+<dd><p>Loads the data from .txt files (for simulations) or .h5/.hdf5/.dat files (posteriors from GWTC-x).
+Default cosmological parameters from Planck Collaboration (2021) in a flat Universe (<a class="reference external" href="https://www.aanda.org/articles/aa/pdf/2020/09/aa33910-18.pdf">https://www.aanda.org/articles/aa/pdf/2020/09/aa33910-18.pdf</a>)
+Not all GW parameters are implemented: run figaro.load.available_gw_pars() for a list of available parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>str</em><em> or </em><em>Path</em>) – folder with data files</p></li>
+<li><p><strong>seed</strong> (<em>bool</em>) – fixes the seed to a default value (1) for reproducibility</p></li>
+<li><p><strong>par</strong> (<em>list-of-str</em>) – list with parameter(s) to extract from GW posteriors</p></li>
+<li><p><strong>n_samples</strong> (<em>int</em>) – number of samples for (random) downsampling. Default -1: all samples</p></li>
+<li><p><strong>h</strong> (<em>double</em>) – Hubble constant H0/100 [km/(s*Mpc)]</p></li>
+<li><p><strong>om</strong> (<em>double</em>) – matter density parameter</p></li>
+<li><p><strong>ol</strong> (<em>double</em>) – cosmological constant density parameter</p></li>
+<li><p><strong>waveform</strong> (<em>str</em>) – waveform family to be used (‘combined’, ‘seob’, ‘imr’)</p></li>
+<li><p><strong>snr_threhsold</strong> (<em>double</em>) – SNR threshold for event filtering. For injection analysis only.</p></li>
+<li><p><strong>far_threshold</strong> (<em>double</em>) – FAR threshold for event filtering. For injection analysis only.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>samples
+np.ndarray: names</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="figaro.load.load_density">
+<span class="sig-prename descclassname"><span class="pre">figaro.load.</span></span><span class="sig-name descname"><span class="pre">load_density</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/figaro/load.html#load_density"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#figaro.load.load_density" title="Permalink to this definition"></a></dt>
+<dd><p>Loads a list of figaro.mixture instances from path.
+If the requested file extension (pkl or json) is not available, it tries loading the other.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> (<em>str</em><em> or </em><em>Path</em>) – path with draws (file or folder)</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>Returns</dt><dd><p>list: figaro.mixture object instances</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="figaro.load.load_single_event">
+<span class="sig-prename descclassname"><span class="pre">figaro.load.</span></span><span class="sig-name descname"><span class="pre">load_single_event</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">par</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_samples</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">h</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.674</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">om</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.315</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.685</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">volume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">waveform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'combined'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">snr_threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">far_threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/figaro/load.html#load_single_event"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#figaro.load.load_single_event" title="Permalink to this definition"></a></dt>
+<dd><p>Loads the data from .txt/.dat files (for simulations) or .h5/.hdf5 files (posteriors from GWTC) for a single event.
+Default cosmological parameters from Planck Collaboration (2021) in a flat Universe (<a class="reference external" href="https://www.aanda.org/articles/aa/pdf/2020/09/aa33910-18.pdf">https://www.aanda.org/articles/aa/pdf/2020/09/aa33910-18.pdf</a>)
+Not all GW parameters are implemented: run figaro.load.available_gw_pars() for a list of the available parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>file</strong> (<em>str</em><em> or </em><em>Path</em>) – file with samples</p></li>
+<li><p><strong>seed</strong> (<em>bool</em>) – fixes the seed to a default value (1) for reproducibility</p></li>
+<li><p><strong>par</strong> (<em>list-of-str</em>) – list with parameter(s) to extract from GW posteriors (m1, m2, mc, z, chi_effective)</p></li>
+<li><p><strong>n_samples</strong> (<em>int</em>) – number of samples for (random) downsampling. Default -1: all samples</p></li>
+<li><p><strong>h</strong> (<em>double</em>) – Hubble constant H0/100 [km/(s*Mpc)]</p></li>
+<li><p><strong>om</strong> (<em>double</em>) – matter density parameter</p></li>
+<li><p><strong>ol</strong> (<em>double</em>) – cosmological constant density parameter</p></li>
+<li><p><strong>volume</strong> (<em>bool</em>) – if True, loads RA, dec and Luminosity distance (for skymaps)</p></li>
+<li><p><strong>waveform</strong> (<em>str</em>) – waveform family to be used (‘combined’, ‘seob’, ‘imr’)</p></li>
+<li><p><strong>snr_threhsold</strong> (<em>double</em>) – SNR threshold for event filtering. For injection analysis only.</p></li>
+<li><p><strong>far_threshold</strong> (<em>double</em>) – FAR threshold for event filtering. For injection analysis only.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>samples
+np.ndarray: name</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="figaro.load.save_density">
+<span class="sig-prename descclassname"><span class="pre">figaro.load.</span></span><span class="sig-name descname"><span class="pre">save_density</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">draws</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">folder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'.'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'density'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ext</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pkl'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/figaro/load.html#save_density"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#figaro.load.save_density" title="Permalink to this definition"></a></dt>
+<dd><p>Exports a list of figaro.mixture instances to file</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>draws</strong> (<em>list</em>) – list of mixtures to be saved</p></li>
+<li><p><strong>folder</strong> (<em>str</em><em> or </em><em>Path</em>) – folder in which the output file will be saved</p></li>
+<li><p><strong>name</strong> (<em>str</em>) – name to be given to output file</p></li>
+<li><p><strong>ext</strong> (<em>str</em>) – file extension (pkl or json)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="figaro.likelihood.html" class="btn btn-neutral float-left" title="figaro.likelihood module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="figaro.marginal.html" class="btn btn-neutral float-right" title="figaro.marginal module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Stefano Rinaldi.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

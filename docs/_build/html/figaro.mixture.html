@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>figaro.mixture module &mdash; FIGARO 1.1.1 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="figaro.montecarlo module" href="figaro.montecarlo.html" />
+    <link rel="prev" title="figaro.marginal module" href="figaro.marginal.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            FIGARO
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">figaro</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="figaro.coordinates.html">figaro.coordinates module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.cosmology.html">figaro.cosmology module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.credible_regions.html">figaro.credible_regions module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.cumulative.html">figaro.cumulative module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.decorators.html">figaro.decorators module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.diagnostic.html">figaro.diagnostic module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.exceptions.html">figaro.exceptions module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.likelihood.html">figaro.likelihood module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.load.html">figaro.load module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.marginal.html">figaro.marginal module</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">figaro.mixture module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#figaro.mixture.DPGMM"><code class="docutils literal notranslate"><span class="pre">DPGMM</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#figaro.mixture.DPGMM.add_new_point"><code class="docutils literal notranslate"><span class="pre">DPGMM.add_new_point()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#figaro.mixture.DPGMM.build_mixture"><code class="docutils literal notranslate"><span class="pre">DPGMM.build_mixture()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#figaro.mixture.DPGMM.density_from_samples"><code class="docutils literal notranslate"><span class="pre">DPGMM.density_from_samples()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#figaro.mixture.DPGMM.initialise"><code class="docutils literal notranslate"><span class="pre">DPGMM.initialise()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#figaro.mixture.HDPGMM"><code class="docutils literal notranslate"><span class="pre">HDPGMM</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#figaro.mixture.HDPGMM.add_new_point"><code class="docutils literal notranslate"><span class="pre">HDPGMM.add_new_point()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#figaro.mixture.HDPGMM.build_mixture"><code class="docutils literal notranslate"><span class="pre">HDPGMM.build_mixture()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#figaro.mixture.HDPGMM.density_from_samples"><code class="docutils literal notranslate"><span class="pre">HDPGMM.density_from_samples()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#figaro.mixture.HDPGMM.initialise"><code class="docutils literal notranslate"><span class="pre">HDPGMM.initialise()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#figaro.mixture.density"><code class="docutils literal notranslate"><span class="pre">density</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#figaro.mixture.density.cdf"><code class="docutils literal notranslate"><span class="pre">density.cdf()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#figaro.mixture.density.fast_logpdf"><code class="docutils literal notranslate"><span class="pre">density.fast_logpdf()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#figaro.mixture.density.fast_pdf"><code class="docutils literal notranslate"><span class="pre">density.fast_pdf()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#figaro.mixture.density.gradient"><code class="docutils literal notranslate"><span class="pre">density.gradient()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#figaro.mixture.density.log_gradient"><code class="docutils literal notranslate"><span class="pre">density.log_gradient()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#figaro.mixture.density.logcdf"><code class="docutils literal notranslate"><span class="pre">density.logcdf()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#figaro.mixture.density.logpdf"><code class="docutils literal notranslate"><span class="pre">density.logpdf()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#figaro.mixture.density.pdf"><code class="docutils literal notranslate"><span class="pre">density.pdf()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#figaro.mixture.density.rvs"><code class="docutils literal notranslate"><span class="pre">density.rvs()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#figaro.mixture.mixture"><code class="docutils literal notranslate"><span class="pre">mixture</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#figaro.mixture.mixture.condition"><code class="docutils literal notranslate"><span class="pre">mixture.condition()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#figaro.mixture.mixture.marginalise"><code class="docutils literal notranslate"><span class="pre">mixture.marginalise()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.montecarlo.html">figaro.montecarlo module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.plot.html">figaro.plot module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.plot_settings.html">figaro.plot_settings module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.threeDvolume.html">figaro.threeDvolume module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.transform.html">figaro.transform module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="figaro.utils.html">figaro.utils module</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">FIGARO</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">figaro</a></li>
+      <li class="breadcrumb-item active">figaro.mixture module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/figaro.mixture.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-figaro.mixture">
+<span id="figaro-mixture-module"></span><h1>figaro.mixture module<a class="headerlink" href="#module-figaro.mixture" title="Permalink to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="figaro.mixture.DPGMM">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">figaro.mixture.</span></span><span class="sig-name descname"><span class="pre">DPGMM</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bounds</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prior_pars</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">probit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/figaro/mixture.html#DPGMM"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#figaro.mixture.DPGMM" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#figaro.mixture.density" title="figaro.mixture.density"><code class="xref py py-class docutils literal notranslate"><span class="pre">density</span></code></a></p>
+<p>Class to infer a distribution given a set of samples.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>bounds</strong> (<em>iterable</em>) – boundaries of the rectangle over which the distribution is defined. It should be in the format [[xmin, xmax],[ymin, ymax],…]</p></li>
+<li><p><strong>prior_pars</strong> (<em>iterable</em>) – NIW prior parameters (k, L, nu, mu)</p></li>
+<li><p><strong>alpha0</strong> (<em>double</em>) – initial guess for concentration parameter</p></li>
+<li><p><strong>probit</strong> (<em>bool</em>) – whether to use the probit transformation or not</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>instance of DPGMM class</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#figaro.mixture.DPGMM" title="figaro.mixture.DPGMM">DPGMM</a></p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="figaro.mixture.DPGMM.add_new_point">
+<span class="sig-name descname"><span class="pre">add_new_point</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#figaro.mixture.DPGMM.add_new_point" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="figaro.mixture.DPGMM.build_mixture">
+<span class="sig-name descname"><span class="pre">build_mixture</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/figaro/mixture.html#DPGMM.build_mixture"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#figaro.mixture.DPGMM.build_mixture" title="Permalink to this definition"></a></dt>
+<dd><p>Instances a mixture class representing the inferred distribution</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the inferred distribution</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#figaro.mixture.mixture" title="figaro.mixture.mixture">mixture</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="figaro.mixture.DPGMM.density_from_samples">
+<span class="sig-name descname"><span class="pre">density_from_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">samples</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/figaro/mixture.html#DPGMM.density_from_samples"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#figaro.mixture.DPGMM.density_from_samples" title="Permalink to this definition"></a></dt>
+<dd><p>Reconstruct the probability density from a set of samples.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>samples</strong> (<em>iterable</em>) – samples set</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>the inferred mixture</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#figaro.mixture.mixture" title="figaro.mixture.mixture">mixture</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="figaro.mixture.DPGMM.initialise">
+<span class="sig-name descname"><span class="pre">initialise</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prior_pars</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/figaro/mixture.html#DPGMM.initialise"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#figaro.mixture.DPGMM.initialise" title="Permalink to this definition"></a></dt>
+<dd><p>Initialise the mixture to initial conditions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>prior_pars</strong> (<em>iterable</em>) – NIW prior parameters (k, L, nu, mu). If None, old parameters are kept</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="figaro.mixture.HDPGMM">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">figaro.mixture.</span></span><span class="sig-name descname"><span class="pre">HDPGMM</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bounds</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prior_pars</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">MC_draws</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">probit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/figaro/mixture.html#HDPGMM"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#figaro.mixture.HDPGMM" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#figaro.mixture.DPGMM" title="figaro.mixture.DPGMM"><code class="xref py py-class docutils literal notranslate"><span class="pre">DPGMM</span></code></a></p>
+<p>Class to infer a distribution given a set of observations (each being a set of samples).
+Child of DPGMM class</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>bounds</strong> (<em>iterable</em>) – boundaries of the rectangle over which the distribution is defined. It should be in the format [[xmin, xmax],[ymin, ymax],…]</p></li>
+<li><p><strong>alpha0</strong> (<em>double</em>) – initial guess for concentration parameter</p></li>
+<li><p><strong>MC_draws</strong> (<em>double</em>) – number of MC draws for integral</p></li>
+<li><p><strong>probit</strong> (<em>bool</em>) – whether to use the probit transformation or not</p></li>
+<li><p><strong>sigma_min</strong> (<em>double</em>) – lower bound for Jeffreys’ prior on standard deviation</p></li>
+<li><p><strong>sigma_max</strong> (<em>double</em>) – upper bound for Jeffreys’ prior on standard deviation</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>instance of HDPGMM class</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#figaro.mixture.HDPGMM" title="figaro.mixture.HDPGMM">HDPGMM</a></p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="figaro.mixture.HDPGMM.add_new_point">
+<span class="sig-name descname"><span class="pre">add_new_point</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ev</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/figaro/mixture.html#HDPGMM.add_new_point"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#figaro.mixture.HDPGMM.add_new_point" title="Permalink to this definition"></a></dt>
+<dd><p>Update the probability density reconstruction adding a new sample</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ev</strong> (<em>iterable</em>) – set of single-event draws from a DPGMM inference</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="figaro.mixture.HDPGMM.build_mixture">
+<span class="sig-name descname"><span class="pre">build_mixture</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/figaro/mixture.html#HDPGMM.build_mixture"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#figaro.mixture.HDPGMM.build_mixture" title="Permalink to this definition"></a></dt>
+<dd><p>Instances a mixture class representing the inferred distribution</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the inferred distribution</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#figaro.mixture.mixture" title="figaro.mixture.mixture">mixture</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="figaro.mixture.HDPGMM.density_from_samples">
+<span class="sig-name descname"><span class="pre">density_from_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">events</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/figaro/mixture.html#HDPGMM.density_from_samples"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#figaro.mixture.HDPGMM.density_from_samples" title="Permalink to this definition"></a></dt>
+<dd><p>Reconstruct the probability density from a set of samples.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>samples</strong> (<em>iterable</em>) – set of single-event draws from DPGMM</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>the inferred mixture</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#figaro.mixture.mixture" title="figaro.mixture.mixture">mixture</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="figaro.mixture.HDPGMM.initialise">
+<span class="sig-name descname"><span class="pre">initialise</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/figaro/mixture.html#HDPGMM.initialise"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#figaro.mixture.HDPGMM.initialise" title="Permalink to this definition"></a></dt>
+<dd><p>Initialise the mixture to initial conditions</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="figaro.mixture.density">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">figaro.mixture.</span></span><span class="sig-name descname"><span class="pre">density</span></span><a class="reference internal" href="_modules/figaro/mixture.html#density"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#figaro.mixture.density" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class to initialise a common set of methods for mixture models. Not to be used.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="figaro.mixture.density.cdf">
+<span class="sig-name descname"><span class="pre">cdf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/figaro/mixture.html#density.cdf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#figaro.mixture.density.cdf" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="figaro.mixture.density.fast_logpdf">
+<span class="sig-name descname"><span class="pre">fast_logpdf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/figaro/mixture.html#density.fast_logpdf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#figaro.mixture.density.fast_logpdf" title="Permalink to this definition"></a></dt>
+<dd><p>Fast logpdf evaluation using FIGARO implementation of log_norm (JIT) rather than Numpy’s.
+WARNING: it is meant to be used with MCMC samplers, therefore accepts only one point at a time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<em>np.ndarray</em>) – point to evaluate the mixture at</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>mixture.pdf(x)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="figaro.mixture.density.fast_pdf">
+<span class="sig-name descname"><span class="pre">fast_pdf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/figaro/mixture.html#density.fast_pdf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#figaro.mixture.density.fast_pdf" title="Permalink to this definition"></a></dt>
+<dd><p>Fast pdf evaluation using FIGARO implementation of log_norm (JIT) rather than Numpy’s.
+WARNING: it is meant to be used with MCMC samplers, therefore accepts only one point at a time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<em>np.ndarray</em>) – point to evaluate the mixture at</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>mixture.pdf(x)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="figaro.mixture.density.gradient">
+<span class="sig-name descname"><span class="pre">gradient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/figaro/mixture.html#density.gradient"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#figaro.mixture.density.gradient" title="Permalink to this definition"></a></dt>
+<dd><p>Gradient of the mixture.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<em>np.ndarray</em>) – point to evaluate the gradient at</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>gradient</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="figaro.mixture.density.log_gradient">
+<span class="sig-name descname"><span class="pre">log_gradient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/figaro/mixture.html#density.log_gradient"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#figaro.mixture.density.log_gradient" title="Permalink to this definition"></a></dt>
+<dd><p>Logarithmic gradient of the mixture.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<em>np.ndarray</em>) – point to evaluate the gradient at</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>logarithmic gradient</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="figaro.mixture.density.logcdf">
+<span class="sig-name descname"><span class="pre">logcdf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/figaro/mixture.html#density.logcdf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#figaro.mixture.density.logcdf" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="figaro.mixture.density.logpdf">
+<span class="sig-name descname"><span class="pre">logpdf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/figaro/mixture.html#density.logpdf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#figaro.mixture.density.logpdf" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="figaro.mixture.density.pdf">
+<span class="sig-name descname"><span class="pre">pdf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/figaro/mixture.html#density.pdf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#figaro.mixture.density.pdf" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="figaro.mixture.density.rvs">
+<span class="sig-name descname"><span class="pre">rvs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#figaro.mixture.density.rvs" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="figaro.mixture.mixture">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">figaro.mixture.</span></span><span class="sig-name descname"><span class="pre">mixture</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">means</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">covs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_cl</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_pts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">probit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_w</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/figaro/mixture.html#mixture"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#figaro.mixture.mixture" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#figaro.mixture.density" title="figaro.mixture.density"><code class="xref py py-class docutils literal notranslate"><span class="pre">density</span></code></a></p>
+<p>Class to store a single draw from DPGMM/(H)DPGMM.
+Methods inherited from density class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>means</strong> (<em>iterable</em>) – component means</p></li>
+<li><p><strong>covs</strong> (<em>iterable</em>) – component covariances</p></li>
+<li><p><strong>w</strong> (<em>np.ndarray</em>) – component weights</p></li>
+<li><p><strong>bounds</strong> (<em>np.ndarray</em>) – bounds of probit transformation</p></li>
+<li><p><strong>dim</strong> (<em>int</em>) – number of dimensions</p></li>
+<li><p><strong>n_cl</strong> (<em>int</em>) – number of clusters in the mixture</p></li>
+<li><p><strong>probit</strong> (<em>bool</em>) – whether to use the probit transformation or not</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>instance of mixture class</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#figaro.mixture.mixture" title="figaro.mixture.mixture">mixture</a></p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="figaro.mixture.mixture.condition">
+<span class="sig-name descname"><span class="pre">condition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vals</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dims</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">norm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/figaro/mixture.html#mixture.condition"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#figaro.mixture.mixture.condition" title="Permalink to this definition"></a></dt>
+<dd><p>Mixture conditioned on specific values of a subset of parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>vals</strong> (<em>iterable</em>) – value(s) to condition on</p></li>
+<li><p><strong>dims</strong> (<em>int</em><em> or </em><em>list</em><em> of </em><em>int</em>) – dimension(s) associated with given vals (starting from 0)</p></li>
+<li><p><strong>norm</strong> (<em>bool</em>) – whether to normalize the distribution or not</p></li>
+<li><p><strong>filter</strong> (<em>bool</em>) – filter the components with weight &lt; tol</p></li>
+<li><p><strong>tol</strong> (<em>double</em>) – tolerance on the sum of the weights</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>conditioned mixture</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#figaro.mixture.mixture" title="figaro.mixture.mixture">figaro.mixture.mixture</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="figaro.mixture.mixture.marginalise">
+<span class="sig-name descname"><span class="pre">marginalise</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/figaro/mixture.html#mixture.marginalise"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#figaro.mixture.mixture.marginalise" title="Permalink to this definition"></a></dt>
+<dd><p>Marginalise out one or more dimensions from the mixture.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>axis</strong> (<em>int</em><em> or </em><em>list</em><em> of </em><em>int</em>) – axis to marginalise on. Default: last</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>marginalised mixture</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#figaro.mixture.mixture" title="figaro.mixture.mixture">figaro.mixture.mixture</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="figaro.marginal.html" class="btn btn-neutral float-left" title="figaro.marginal module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="figaro.montecarlo.html" class="btn btn-neutral float-right" title="figaro.montecarlo module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Stefano Rinaldi.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

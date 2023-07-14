@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>figaro.credible_regions &mdash; FIGARO 1.1.1 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            FIGARO
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">figaro</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">FIGARO</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">figaro.credible_regions</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for figaro.credible_regions</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">figaro.cumulative</span> <span class="kn">import</span> <span class="n">fast_log_cumulative</span>
+<span class="kn">from</span> <span class="nn">scipy.special</span> <span class="kn">import</span> <span class="n">logsumexp</span>
+
+<span class="c1"># -----------------------</span>
+<span class="c1"># confidence calculations</span>
+<span class="c1"># -----------------------</span>
+<div class="viewcode-block" id="FindNearest_Volume"><a class="viewcode-back" href="../../figaro.credible_regions.html#figaro.credible_regions.FindNearest_Volume">[docs]</a><span class="k">def</span> <span class="nf">FindNearest_Volume</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">dist</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Find the pixel that contains the triplet (ra&#39;, dec&#39;, D&#39;) stored in value.</span>
+<span class="sd">    </span>
+<span class="sd">    Arguments:</span>
+<span class="sd">        np.ndarray ra:   right ascension values used to build the grid</span>
+<span class="sd">        np.ndarray dec:  declination values used to build the grid</span>
+<span class="sd">        np.ndarray dist: luminosity distance values used to build the grid</span>
+<span class="sd">        iterable value:  triplet to locate (ra&#39;, dec&#39;, D&#39;)</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: grid indices of pixel</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span> <span class="o">=</span> <span class="nb">int</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">([</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">dist</span><span class="p">],</span> <span class="n">value</span><span class="p">)):</span>
+        <span class="n">idx</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">d</span><span class="o">-</span><span class="n">v</span><span class="p">)</span><span class="o">.</span><span class="n">argmin</span><span class="p">())</span>
+    <span class="k">return</span> <span class="n">idx</span></div>
+
+<div class="viewcode-block" id="FindNearest_Grid"><a class="viewcode-back" href="../../figaro.credible_regions.html#figaro.credible_regions.FindNearest_Grid">[docs]</a><span class="k">def</span> <span class="nf">FindNearest_Grid</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Find the closest grid point to value.</span>
+<span class="sd">    </span>
+<span class="sd">    Arguments:</span>
+<span class="sd">        np.ndarray grid: grid points (N_pts, N_dim), as with figaro.utils.recursive_grid</span>
+<span class="sd">        iterable value:  value to locate</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: grid index</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">grid</span> <span class="o">-</span> <span class="n">value</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">argmin</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="FindHeights"><a class="viewcode-back" href="../../figaro.credible_regions.html#figaro.credible_regions.FindHeights">[docs]</a><span class="k">def</span> <span class="nf">FindHeights</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Find height correspinding to a certain credible level given a sorted array of probabilities and the corresponding cumulative</span>
+<span class="sd">    </span>
+<span class="sd">    Arguments:</span>
+<span class="sd">        tuple args: tuple containing the sorted array, the cumulative array and a double corresponding to the credible level</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        double: height corresponding to the credible level</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="p">(</span><span class="n">sortarr</span><span class="p">,</span><span class="n">cumarr</span><span class="p">,</span><span class="n">level</span><span class="p">)</span> <span class="o">=</span> <span class="n">args</span>
+    <span class="k">return</span> <span class="n">sortarr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">cumarr</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">level</span><span class="p">))</span><span class="o">.</span><span class="n">argmin</span><span class="p">()]</span></div>
+
+<div class="viewcode-block" id="FindHeightForLevel"><a class="viewcode-back" href="../../figaro.credible_regions.html#figaro.credible_regions.FindHeightForLevel">[docs]</a><span class="k">def</span> <span class="nf">FindHeightForLevel</span><span class="p">(</span><span class="n">inLogArr</span><span class="p">,</span> <span class="n">adLevels</span><span class="p">,</span> <span class="n">logdd</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given a probability array, computes the heights corresponding to some given credible levels.</span>
+<span class="sd">    </span>
+<span class="sd">    Arguments:</span>
+<span class="sd">        np.ndarray inLogArr: probability array</span>
+<span class="sd">        iterable adLevels:   credible levels</span>
+<span class="sd">        double logdd:        variables log differential (∑ log(dx_i))</span>
+<span class="sd">        </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: heights corresponding to adLevels</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># flatten and create reversed sorted list</span>
+    <span class="n">adSorted</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">inLogArr</span><span class="o">.</span><span class="n">flatten</span><span class="p">())[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="c1"># create a normalized cumulative distribution</span>
+    <span class="n">adCum</span> <span class="o">=</span> <span class="n">fast_log_cumulative</span><span class="p">(</span><span class="n">adSorted</span> <span class="o">+</span> <span class="n">logdd</span><span class="p">)</span>
+    <span class="c1"># find values closest to levels</span>
+    <span class="n">adHeights</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">adLevels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">([</span><span class="n">adLevels</span><span class="p">])</span>
+    <span class="k">for</span> <span class="n">level</span> <span class="ow">in</span> <span class="n">adLevels</span><span class="p">:</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">adCum</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">level</span><span class="p">)))</span><span class="o">.</span><span class="n">argmin</span><span class="p">()</span>
+        <span class="n">adHeights</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">adSorted</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span>
+    <span class="n">adHeights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">adHeights</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">adHeights</span></div>
+
+<div class="viewcode-block" id="FindLevelForHeight"><a class="viewcode-back" href="../../figaro.credible_regions.html#figaro.credible_regions.FindLevelForHeight">[docs]</a><span class="k">def</span> <span class="nf">FindLevelForHeight</span><span class="p">(</span><span class="n">inLogArr</span><span class="p">,</span> <span class="n">logvalue</span><span class="p">,</span> <span class="n">logdd</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given a probability array, computes the credible levels corresponding to a given height.</span>
+<span class="sd">    </span>
+<span class="sd">    Arguments:</span>
+<span class="sd">        np.ndarray inLogArr: log probability array</span>
+<span class="sd">        double logvalue:     height</span>
+<span class="sd">        double logdd:        variables log differential (∑ log(dx_i))</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: credible level corresponding to logvalue</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># flatten and create reversed sorted list</span>
+    <span class="n">adSorted</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">inLogArr</span><span class="o">.</span><span class="n">flatten</span><span class="p">())[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="c1"># create a normalized cumulative distribution</span>
+    <span class="n">adCum</span> <span class="o">=</span> <span class="n">fast_log_cumulative</span><span class="p">(</span><span class="n">adSorted</span> <span class="o">+</span> <span class="n">logdd</span><span class="p">)</span>
+    <span class="c1"># find index closest to value</span>
+    <span class="n">idx</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">adSorted</span><span class="o">-</span><span class="n">logvalue</span><span class="p">))</span><span class="o">.</span><span class="n">argmin</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">adCum</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="ConfidenceVolume"><a class="viewcode-back" href="../../figaro.credible_regions.html#figaro.credible_regions.ConfidenceVolume">[docs]</a><span class="k">def</span> <span class="nf">ConfidenceVolume</span><span class="p">(</span><span class="n">log_volume_map</span><span class="p">,</span> <span class="n">ra_grid</span><span class="p">,</span> <span class="n">dec_grid</span><span class="p">,</span> <span class="n">distance_grid</span><span class="p">,</span> <span class="n">log_measure</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">adLevels</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.50</span><span class="p">,</span> <span class="mf">0.90</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute the credible volume(s) for a 3D probability distribution</span>
+<span class="sd">    </span>
+<span class="sd">    Arguments:</span>
+<span class="sd">        np.ndarray log_volume_map: probability density for each pixel</span>
+<span class="sd">        np.ndarray ra_grid:        right ascension values used to build the grid</span>
+<span class="sd">        np.ndarray dec_grid:       declination values used to build the grid</span>
+<span class="sd">        np.ndarray distance_grid:  luminosity distance values used to build the grid</span>
+<span class="sd">        iterable adLevels:         credible level(s)</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: credible volume(s)</span>
+<span class="sd">        iterable:   indices of pixels within credible volume(s)</span>
+<span class="sd">        np.ndarray: height(s) corresponding to credible volume(s)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">dd</span>  <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">distance_grid</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">ddec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">dec_grid</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">dra</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">ra_grid</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="c1"># create a normalized cumulative distribution</span>
+    <span class="n">log_volume_map_sorted</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">log_volume_map</span><span class="o">.</span><span class="n">flatten</span><span class="p">())[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">log_measure</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">log_measure_sorted</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">log_measure</span><span class="o">.</span><span class="n">flatten</span><span class="p">()[</span><span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">log_volume_map</span><span class="o">.</span><span class="n">flatten</span><span class="p">())][::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">log_measure_sorted</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">log_volume_map_sorted</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">log_norm</span>              <span class="o">=</span> <span class="n">fast_log_cumulative</span><span class="p">(</span><span class="n">log_volume_map_sorted</span> <span class="o">+</span> <span class="n">log_measure_sorted</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">dra</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">ddec</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">dd</span><span class="p">))[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">log_volume_map_sorted</span> <span class="o">=</span> <span class="n">log_volume_map_sorted</span> <span class="o">-</span> <span class="n">log_norm</span>
+    <span class="n">log_volume_map</span>        <span class="o">=</span> <span class="n">log_volume_map</span> <span class="o">-</span> <span class="n">log_norm</span>
+    <span class="n">log_volume_map_cum</span>    <span class="o">=</span> <span class="n">fast_log_cumulative</span><span class="p">(</span><span class="n">log_volume_map_sorted</span> <span class="o">+</span> <span class="n">log_measure_sorted</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">dra</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">ddec</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">dd</span><span class="p">))</span>
+    <span class="c1"># find the indeces  corresponding to the given CLs</span>
+    <span class="n">adLevels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">([</span><span class="n">adLevels</span><span class="p">])</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="p">[(</span><span class="n">log_volume_map_sorted</span><span class="p">,</span> <span class="n">log_volume_map_cum</span><span class="p">,</span> <span class="n">level</span><span class="p">)</span> <span class="k">for</span> <span class="n">level</span> <span class="ow">in</span> <span class="n">adLevels</span><span class="p">]</span>
+    <span class="n">adHeights</span> <span class="o">=</span> <span class="p">[</span><span class="n">FindHeights</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">args</span><span class="p">]</span>
+    <span class="n">volumes</span>         <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">index</span>           <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">height</span> <span class="ow">in</span> <span class="n">adHeights</span><span class="p">:</span>
+        <span class="p">(</span><span class="n">i_ra</span><span class="p">,</span> <span class="n">i_dec</span><span class="p">,</span> <span class="n">i_d</span><span class="p">,)</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">log_volume_map</span><span class="o">&gt;=</span><span class="n">height</span><span class="p">)</span>
+        <span class="n">volumes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">([</span><span class="n">distance_grid</span><span class="p">[</span><span class="n">i_d</span><span class="p">]</span><span class="o">**</span><span class="mf">2.</span> <span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">dec_grid</span><span class="p">[</span><span class="n">i_dec</span><span class="p">])</span> <span class="o">*</span> <span class="n">dd</span> <span class="o">*</span> <span class="n">dra</span> <span class="o">*</span> <span class="n">ddec</span> <span class="k">for</span> <span class="n">i_d</span><span class="p">,</span><span class="n">i_dec</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">i_d</span><span class="p">,</span><span class="n">i_dec</span><span class="p">)]))</span>
+        <span class="n">index</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">i_ra</span><span class="p">,</span> <span class="n">i_dec</span><span class="p">,</span> <span class="n">i_d</span><span class="p">])</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+    <span class="n">volume_confidence</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">volumes</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">volume_confidence</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">adHeights</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ConfidenceArea"><a class="viewcode-back" href="../../figaro.credible_regions.html#figaro.credible_regions.ConfidenceArea">[docs]</a><span class="k">def</span> <span class="nf">ConfidenceArea</span><span class="p">(</span><span class="n">log_skymap</span><span class="p">,</span> <span class="n">ra_grid</span><span class="p">,</span> <span class="n">dec_grid</span><span class="p">,</span> <span class="n">log_measure</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">adLevels</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.50</span><span class="p">,</span> <span class="mf">0.90</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute the credible area(s) for a 2D probability distribution</span>
+<span class="sd">    </span>
+<span class="sd">    Arguments:</span>
+<span class="sd">        np.ndarray log_skymap: probability density for each pixel</span>
+<span class="sd">        np.ndarray ra_grid:    right ascension values used to build the grid</span>
+<span class="sd">        np.ndarray dec_grid:   declination values used to build the grid</span>
+<span class="sd">        iterable adLevels:     credible level(s)</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: credible area(s)</span>
+<span class="sd">        iterable:   indices of pixels within credible area(s)</span>
+<span class="sd">        np.ndarray: height(s) corresponding to credible area(s)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># create a normalized cumulative distribution</span>
+    <span class="n">ddec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">dec_grid</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">dra</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">ra_grid</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">log_skymap_sorted</span>  <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">log_skymap</span><span class="o">.</span><span class="n">flatten</span><span class="p">())[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">log_measure</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">log_measure_sorted</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">log_measure</span><span class="o">.</span><span class="n">flatten</span><span class="p">()[</span><span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">log_skymap</span><span class="o">.</span><span class="n">flatten</span><span class="p">())][::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">log_measure_sorted</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">log_skymap_sorted</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">log_norm</span>           <span class="o">=</span> <span class="n">fast_log_cumulative</span><span class="p">(</span><span class="n">log_skymap_sorted</span> <span class="o">+</span> <span class="n">log_measure_sorted</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">dra</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">ddec</span><span class="p">))[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">log_skymap</span>         <span class="o">=</span> <span class="n">log_skymap</span> <span class="o">-</span> <span class="n">log_norm</span>
+    <span class="n">log_skymap_sorted</span>  <span class="o">=</span> <span class="n">log_skymap_sorted</span> <span class="o">-</span> <span class="n">log_norm</span>
+    <span class="n">log_skymap_cum</span>     <span class="o">=</span> <span class="n">fast_log_cumulative</span><span class="p">(</span><span class="n">log_skymap_sorted</span> <span class="o">+</span> <span class="n">log_measure_sorted</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">dra</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">ddec</span><span class="p">)</span> <span class="o">-</span> <span class="n">log_norm</span><span class="p">)</span>
+    <span class="c1"># find the indeces  corresponding to the given CLs</span>
+    <span class="n">adLevels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">([</span><span class="n">adLevels</span><span class="p">])</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="p">[(</span><span class="n">log_skymap_sorted</span><span class="p">,</span> <span class="n">log_skymap_cum</span><span class="p">,</span> <span class="n">level</span><span class="p">)</span> <span class="k">for</span> <span class="n">level</span> <span class="ow">in</span> <span class="n">adLevels</span><span class="p">]</span>
+    <span class="n">adHeights</span> <span class="o">=</span> <span class="p">[</span><span class="n">FindHeights</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">args</span><span class="p">]</span>
+    <span class="n">areas</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">index</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">height</span> <span class="ow">in</span> <span class="n">adHeights</span><span class="p">:</span>
+        <span class="p">(</span><span class="n">i_ra</span><span class="p">,</span><span class="n">i_dec</span><span class="p">,)</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">log_skymap</span><span class="o">&gt;=</span><span class="n">height</span><span class="p">)</span>
+        <span class="n">areas</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">([</span><span class="n">dra</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">dec_grid</span><span class="p">[</span><span class="n">i_d</span><span class="p">])</span><span class="o">*</span><span class="n">ddec</span> <span class="k">for</span> <span class="n">i_d</span> <span class="ow">in</span> <span class="n">i_dec</span><span class="p">])</span><span class="o">*</span><span class="p">(</span><span class="mf">180.0</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span><span class="o">**</span><span class="mf">2.0</span><span class="p">)</span>
+        <span class="n">index</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">i_ra</span><span class="p">,</span> <span class="n">i_dec</span><span class="p">])</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+    <span class="n">area_confidence</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">areas</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">area_confidence</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">adHeights</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Stefano Rinaldi.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

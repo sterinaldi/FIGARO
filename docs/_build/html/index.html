@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FIGARO - Fast Inference for GW Astronomy, Research &amp; Observations &mdash; FIGARO 1.1.1 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="FIGARO modules documentation" href="figaro.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="#" class="icon icon-home">
+            FIGARO
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="figaro.html">FIGARO modules documentation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">FIGARO</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">FIGARO - Fast Inference for GW Astronomy, Research &amp; Observations</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="id1">
+<h1><a class="reference external" href="https://www.youtube.com/watch?v=uJeJ4YiVFz8">FIGARO - Fast Inference for GW Astronomy, Research &amp; Observations</a><a class="headerlink" href="#id1" title="Permalink to this heading"></a></h1>
+<p>FIGARO is an inference code designed to estimate multivariate probability densities given samples from an unknown distribution using a Dirichlet Process Gaussian Mixture Model (DPGMM) as nonparameteric model.
+It is also possible to perform hierarchical inferences: in this case, the model used is (H)DPGMM, described in <a class="reference external" href="https://ui.adsabs.harvard.edu/abs/2022MNRAS.509.5454R/abstract">Rinaldi &amp; Del Pozzo (2022a)</a>.
+Differently from other DPGMM implementations relying on variational algorithms, FIGARO does not require the user to specify a priori the maximum allowed number of mixture components. The required number of Gaussian distributions to be included in the mixture is inferred from the data.</p>
+<p>An introductive guide on how to use FIGARO can be found in the <code class="docutils literal notranslate"><span class="pre">introductive_guide.ipynb</span></code> notebook, where it is shown how to to reconstruct a probability density with FIGARO and how to use its products.
+We strongly encourage the interested user to go through the whole notebook, since it provides a (hopefully detailed) tutorial on how to properly set and use FIGARO. <span class="raw-html-md"><br /></span>
+To learn how to use FIGARO to reconstruct skymaps, have a look at the <code class="docutils literal notranslate"><span class="pre">skymaps.ipynb</span></code> notebook. In that notebook we show how to obtain the skymaps included in <a class="reference external" href="https://ui.adsabs.harvard.edu/abs/2022arXiv220507252R/abstract">Rinaldi &amp; Del Pozzo (2022b)</a> - please cite this paper if you use FIGARO in your research.</p>
+<p>You can install FIGARO by running <code class="docutils literal notranslate"><span class="pre">source</span> <span class="pre">install.sh</span></code>: this script will go through all the necessary steps to install the code.
+We recommend using one of the following two conda environments:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">figaro_env</span></code> is a dedicated environment already containing all the required packages. It is created by the installer if the option <code class="docutils literal notranslate"><span class="pre">-e</span></code> is provided;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">igwn-py39</span></code>, which includes all the required packages apart from ImageIO, is available <a class="reference external" href="https://computing.docs.ligo.org/conda/environments/igwn-py39">here</a> .</p></li>
+</ul>
+<p>If you prefer install FIGARO by hand, run <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">setup.py</span> <span class="pre">build_ext</span> <span class="pre">--inplace</span></code> and <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">setup.py</span> <span class="pre">install</span></code>. In some cases (like on clusters), it may happen that you do not have the permission to write in the default installation directory. In this case, run <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">setup.py</span> <span class="pre">install</span> <span class="pre">--user</span></code>.</p>
+<p>If you decide not to use one of the default environments, please remember that in order to have access to all the functions, LALSuite is required.
+Without LALSuite, the following FIGARO functions won’t be available:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">figaro.load</span></code> module won’t be able to load GW posterior samples and will raise an exception;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">figaro.threeDvolume.VolumeReconstruction</span></code> will ignore any provided galaxy catalog. The volume reconstruction will be available.</p></li>
+</ul>
+<p>To install LALSuite, follow the instructions provided <a class="reference external" href="https://wiki.ligo.org/Computing/LALSuiteInstall">here</a>. In most cases, <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">install</span> <span class="pre">-c</span> <span class="pre">conda-forge</span> <span class="pre">lalsuite</span></code> will work.
+The parallelized scripts use <a class="reference external" href="https://docs.ray.io/en/latest/">Ray</a> to parallelize. Ray is not included in <code class="docutils literal notranslate"><span class="pre">igwn-py39</span></code> nor is automatically installed with FIGARO (but it is included in <code class="docutils literal notranslate"><span class="pre">figaro_env</span></code>).
+If you wish to use these scripts, please install Ray via <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">ray</span></code> and then (re-)install FIGARO to include also the parallelized scripts.</p>
+<p>FIGARO comes with several plug-and-play console scripts:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">figaro-density</span></code> reconstructs a probability density given a set of samples;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">figaro-hierarchical</span></code> reconstructs a probability density given a set of single-event samples, each of them drawn around a sample from the initial probability density;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">figaro-pp_plot</span></code> produces the so-called <em>pp-plots</em> for a set of single-event posterior samples to assess the validity of a simulated dataset;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">figaro-mockdata</span></code> generates a set of synthetic posterior samples from a given hierarchical distribution;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">figaro-entropy</span></code> reconstruct a probability density and provides an estimate of the entropy as a function of the number of samples.</p></li>
+</ul>
+<p>In addition to these, the parallelized version of the inference scripts are available:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">figaro-par-density</span></code>, parallelized sampling;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">figaro-par-hierarchical</span></code>, parallelized single-event analysis and parallelized sampling.</p></li>
+</ul>
+<p>In order to see the available options, run <code class="docutils literal notranslate"><span class="pre">console_script_name</span> <span class="pre">-h</span></code>.</p>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="figaro.html">FIGARO modules documentation</a></li>
+</ul>
+</div>
+</section>
+<section id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this heading"></a></h1>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="figaro.html" class="btn btn-neutral float-right" title="FIGARO modules documentation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Stefano Rinaldi.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

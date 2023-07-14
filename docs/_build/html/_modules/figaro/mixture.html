@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>figaro.mixture &mdash; FIGARO 1.1.1 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            FIGARO
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">figaro</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">FIGARO</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">figaro.mixture</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for figaro.mixture</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">dill</span>
+
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">Counter</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">from</span> <span class="nn">scipy.special</span> <span class="kn">import</span> <span class="n">gammaln</span><span class="p">,</span> <span class="n">logsumexp</span>
+<span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="kn">import</span> <span class="n">multivariate_normal</span> <span class="k">as</span> <span class="n">mn</span>
+<span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="kn">import</span> <span class="n">invwishart</span><span class="p">,</span> <span class="n">norm</span><span class="p">,</span> <span class="n">invgamma</span><span class="p">,</span> <span class="n">dirichlet</span>
+
+<span class="kn">from</span> <span class="nn">figaro.decorators</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">figaro.transform</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">figaro.likelihood</span> <span class="kn">import</span> <span class="n">evaluate_mixture_MC_draws</span><span class="p">,</span> <span class="n">evaluate_mixture_MC_draws_1d</span><span class="p">,</span> <span class="n">logsumexp_jit</span><span class="p">,</span> <span class="n">log_norm</span><span class="p">,</span> <span class="n">inv_jit</span>
+<span class="kn">from</span> <span class="nn">figaro.exceptions</span> <span class="kn">import</span> <span class="n">except_hook</span><span class="p">,</span> <span class="n">FIGAROException</span>
+<span class="kn">from</span> <span class="nn">figaro.utils</span> <span class="kn">import</span> <span class="n">get_priors</span>
+<span class="kn">from</span> <span class="nn">figaro.marginal</span> <span class="kn">import</span> <span class="n">_condition</span><span class="p">,</span> <span class="n">_marginalise</span>
+
+<span class="kn">from</span> <span class="nn">numba</span> <span class="kn">import</span> <span class="n">njit</span><span class="p">,</span> <span class="n">prange</span>
+<span class="kn">from</span> <span class="nn">numba.extending</span> <span class="kn">import</span> <span class="n">get_cython_function_address</span>
+<span class="kn">import</span> <span class="nn">ctypes</span>
+
+<span class="c1">#-----------#</span>
+<span class="c1"># Utilities #</span>
+<span class="c1">#-----------#</span>
+
+<span class="n">sys</span><span class="o">.</span><span class="n">excepthook</span> <span class="o">=</span> <span class="n">except_hook</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">See https://stackoverflow.com/a/54855769</span>
+<span class="sd">Wrapper (based on https://github.com/numba/numba/issues/3086) for scipy&#39;s cython implementation of gammaln.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">_PTR</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">POINTER</span>
+<span class="n">_dble</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_double</span>
+<span class="n">_ptr_dble</span> <span class="o">=</span> <span class="n">_PTR</span><span class="p">(</span><span class="n">_dble</span><span class="p">)</span>
+
+<span class="n">addr</span> <span class="o">=</span> <span class="n">get_cython_function_address</span><span class="p">(</span><span class="s2">&quot;scipy.special.cython_special&quot;</span><span class="p">,</span> <span class="s2">&quot;gammaln&quot;</span><span class="p">)</span>
+<span class="n">functype</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">CFUNCTYPE</span><span class="p">(</span><span class="n">_dble</span><span class="p">,</span> <span class="n">_dble</span><span class="p">)</span>
+<span class="n">gammaln_float64</span> <span class="o">=</span> <span class="n">functype</span><span class="p">(</span><span class="n">addr</span><span class="p">)</span>
+
+<span class="c1">#-----------#</span>
+<span class="c1"># Functions #</span>
+<span class="c1">#-----------#</span>
+
+<span class="nd">@njit</span>
+<span class="k">def</span> <span class="nf">_numba_gammaln</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">gammaln_float64</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+<span class="nd">@njit</span>
+<span class="k">def</span> <span class="nf">_student_t</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">mu</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">dim</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Multivariate student-t pdf.</span>
+<span class="sd">    As in http://gregorygundersen.com/blog/2020/01/20/multivariate-t/</span>
+<span class="sd">    </span>
+<span class="sd">    Arguments:</span>
+<span class="sd">        float df:         degrees of freedom</span>
+<span class="sd">        float t:          variable (2d array)</span>
+<span class="sd">        np.ndarray mu:    mean (2d array)</span>
+<span class="sd">        np.ndarray sigma: variance</span>
+<span class="sd">        int dim:          number of dimensions</span>
+<span class="sd">        </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        float: student_t(df).logpdf(t)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">vals</span><span class="p">,</span> <span class="n">vecs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">eigh</span><span class="p">(</span><span class="n">sigma</span><span class="p">)</span>
+    <span class="n">logdet</span>     <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">vals</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="n">valsinv</span>    <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.</span><span class="o">/</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">vals</span><span class="p">])</span>
+    <span class="n">U</span>          <span class="o">=</span> <span class="n">vecs</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">valsinv</span><span class="p">)</span>
+    <span class="n">dev</span>        <span class="o">=</span> <span class="n">t</span> <span class="o">-</span> <span class="n">mu</span>
+    <span class="n">maha</span>       <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">dev</span><span class="p">,</span> <span class="n">U</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">df</span> <span class="o">+</span> <span class="n">dim</span><span class="p">)</span>
+    <span class="n">A</span> <span class="o">=</span> <span class="n">_numba_gammaln</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">B</span> <span class="o">=</span> <span class="n">_numba_gammaln</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">df</span><span class="p">)</span>
+    <span class="n">C</span> <span class="o">=</span> <span class="n">dim</span><span class="o">/</span><span class="mf">2.</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">df</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>
+    <span class="n">D</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">logdet</span>
+    <span class="n">E</span> <span class="o">=</span> <span class="o">-</span><span class="n">x</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log1p</span><span class="p">((</span><span class="mf">1.</span><span class="o">/</span><span class="n">df</span><span class="p">)</span> <span class="o">*</span> <span class="n">maha</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">A</span> <span class="o">-</span> <span class="n">B</span> <span class="o">-</span> <span class="n">C</span> <span class="o">-</span> <span class="n">D</span> <span class="o">+</span> <span class="n">E</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="nd">@njit</span>
+<span class="k">def</span> <span class="nf">_update_alpha</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">burnin</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Update concentration parameter using a Metropolis-Hastings sampling scheme.</span>
+<span class="sd">    </span>
+<span class="sd">    Arguments:</span>
+<span class="sd">        double alpha: Initial value for concentration parameter</span>
+<span class="sd">        int n:        Number of samples</span>
+<span class="sd">        int K:        Number of active clusters</span>
+<span class="sd">        int burnin:   MH burnin</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        double: new concentration parameter value</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">a_old</span> <span class="o">=</span> <span class="n">alpha</span>
+    <span class="n">n_draws</span> <span class="o">=</span> <span class="n">burnin</span><span class="o">+</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">prange</span><span class="p">(</span><span class="n">n_draws</span><span class="p">):</span>
+        <span class="n">a_new</span> <span class="o">=</span> <span class="n">a_old</span> <span class="o">+</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">a_new</span> <span class="o">&gt;</span> <span class="mf">0.</span><span class="p">:</span>
+            <span class="n">logP_old</span> <span class="o">=</span> <span class="n">_numba_gammaln</span><span class="p">(</span><span class="n">a_old</span><span class="p">)</span> <span class="o">-</span> <span class="n">_numba_gammaln</span><span class="p">(</span><span class="n">a_old</span> <span class="o">+</span> <span class="n">n</span><span class="p">)</span> <span class="o">+</span> <span class="n">K</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">a_old</span><span class="p">)</span> <span class="o">-</span> <span class="mf">1.</span><span class="o">/</span><span class="n">a_old</span>
+            <span class="n">logP_new</span> <span class="o">=</span> <span class="n">_numba_gammaln</span><span class="p">(</span><span class="n">a_new</span><span class="p">)</span> <span class="o">-</span> <span class="n">_numba_gammaln</span><span class="p">(</span><span class="n">a_new</span> <span class="o">+</span> <span class="n">n</span><span class="p">)</span> <span class="o">+</span> <span class="n">K</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">a_new</span><span class="p">)</span> <span class="o">-</span> <span class="mf">1.</span><span class="o">/</span><span class="n">a_new</span>
+            <span class="k">if</span> <span class="n">logP_new</span> <span class="o">-</span> <span class="n">logP_old</span> <span class="o">&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()):</span>
+                <span class="n">a_old</span> <span class="o">=</span> <span class="n">a_new</span>
+    <span class="k">return</span> <span class="n">a_old</span>
+
+<span class="nd">@njit</span>
+<span class="k">def</span> <span class="nf">_compute_t_pars</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">mu</span><span class="p">,</span> <span class="n">nu</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">mean</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">dim</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute parameters for student-t distribution.</span>
+<span class="sd">    </span>
+<span class="sd">    Arguments:</span>
+<span class="sd">        double k:        Normal std parameter (for NIW)</span>
+<span class="sd">        np.ndarray mu:   Normal mean parameter (for NIW)</span>
+<span class="sd">        int nu:          Inverse-Wishart df parameter (for NIW)</span>
+<span class="sd">        np.ndarray L:    Inverse-Wishart scale matrix (for NIW)</span>
+<span class="sd">        np.ndarray mean: samples mean</span>
+<span class="sd">        np.ndarray S:    samples covariance</span>
+<span class="sd">        int N:           number of samples</span>
+<span class="sd">        int dim:         number of dimensions</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        int:        degrees of fredom for student-t</span>
+<span class="sd">        np.ndarray: scale matrix for student-t</span>
+<span class="sd">        np.ndarray: mean for student-t</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Update hyperparameters</span>
+    <span class="n">k_n</span><span class="p">,</span> <span class="n">mu_n</span><span class="p">,</span> <span class="n">nu_n</span><span class="p">,</span> <span class="n">L_n</span> <span class="o">=</span> <span class="n">_compute_hyperpars</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">mu</span><span class="p">,</span> <span class="n">nu</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">mean</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="n">N</span><span class="p">)</span>
+    <span class="c1"># Update t-parameters</span>
+    <span class="n">t_df</span>    <span class="o">=</span> <span class="n">nu_n</span> <span class="o">-</span> <span class="n">dim</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="n">t_shape</span> <span class="o">=</span> <span class="n">L_n</span><span class="o">*</span><span class="p">(</span><span class="n">k_n</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">k_n</span><span class="o">*</span><span class="n">t_df</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">t_df</span><span class="p">,</span> <span class="n">t_shape</span><span class="p">,</span> <span class="n">mu_n</span>
+
+<span class="nd">@njit</span>
+<span class="k">def</span> <span class="nf">_compute_hyperpars</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">mu</span><span class="p">,</span> <span class="n">nu</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">mean</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="n">N</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Update hyperparameters for Normal Inverse Gamma/Wishart (NIG/NIW).</span>
+<span class="sd">    See https://www.cs.ubc.ca/~murphyk/Papers/bayesGauss.pdf</span>
+<span class="sd">    </span>
+<span class="sd">    Arguments:</span>
+<span class="sd">        double k:        Normal std parameter (for NIG/NIW)</span>
+<span class="sd">        np.ndarray mu:   Normal mean parameter (for NIG/NIW)</span>
+<span class="sd">        int nu:          Gamma df parameter (for NIG/NIW)</span>
+<span class="sd">        np.ndarray L:    Gamma scale matrix (for NIG/NIW)</span>
+<span class="sd">        np.ndarray mean: samples mean</span>
+<span class="sd">        np.ndarray S:    samples covariance</span>
+<span class="sd">        int N:           number of samples</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        double:     updated Normal std parameter (for NIG/NIW)</span>
+<span class="sd">        np.ndarray: updated Normal mean parameter (for NIG/NIW)</span>
+<span class="sd">        int:        updated Gamma df parameter (for NIG/NIW)</span>
+<span class="sd">        np.ndarray: updated Gamma scale matrix (for NIG/NIW)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">k_n</span>  <span class="o">=</span> <span class="n">k</span> <span class="o">+</span> <span class="n">N</span>
+    <span class="n">mu_n</span> <span class="o">=</span> <span class="p">(</span><span class="n">mu</span><span class="o">*</span><span class="n">k</span> <span class="o">+</span> <span class="n">N</span><span class="o">*</span><span class="n">mean</span><span class="p">)</span><span class="o">/</span><span class="n">k_n</span>
+    <span class="n">nu_n</span> <span class="o">=</span> <span class="n">nu</span> <span class="o">+</span> <span class="n">N</span>
+    <span class="n">L_n</span>  <span class="o">=</span> <span class="n">L</span> <span class="o">+</span> <span class="n">S</span> <span class="o">+</span> <span class="n">k</span><span class="o">*</span><span class="n">N</span><span class="o">*</span><span class="p">((</span><span class="n">mean</span> <span class="o">-</span> <span class="n">mu</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="o">@</span><span class="p">(</span><span class="n">mean</span> <span class="o">-</span> <span class="n">mu</span><span class="p">))</span><span class="o">/</span><span class="n">k_n</span>
+    <span class="k">return</span> <span class="n">k_n</span><span class="p">,</span> <span class="n">mu_n</span><span class="p">,</span> <span class="n">nu_n</span><span class="p">,</span> <span class="n">L_n</span>
+
+<span class="nd">@njit</span>
+<span class="k">def</span> <span class="nf">_compute_component_suffstats</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">mean</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">p_mu</span><span class="p">,</span> <span class="n">p_k</span><span class="p">,</span> <span class="n">p_nu</span><span class="p">,</span> <span class="n">p_L</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Update mean, covariance, number of samples and maximum a posteriori for mean and covariance.</span>
+<span class="sd">    </span>
+<span class="sd">    Arguments:</span>
+<span class="sd">        np.ndarray x:    sample to add</span>
+<span class="sd">        np.ndarray mean: mean of samples already in the cluster</span>
+<span class="sd">        np.ndarray cov:  covariance of samples already in the cluster</span>
+<span class="sd">        int N:           number of samples already in the cluster</span>
+<span class="sd">        np.ndarray p_mu: NIG Normal mean parameter</span>
+<span class="sd">        double p_k:      NIG Normal std parameter</span>
+<span class="sd">        int p_nu:        NIG Gamma df parameter</span>
+<span class="sd">        np.ndarray p_L:  NIG Gamma scale matrix</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: updated mean</span>
+<span class="sd">        np.ndarray: updated covariance</span>
+<span class="sd">        int:        updated number of samples</span>
+<span class="sd">        np.ndarray: mean (maximum a posteriori)</span>
+<span class="sd">        np.ndarray: covariance (maximum a posteriori)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">new_mean</span>  <span class="o">=</span> <span class="p">(</span><span class="n">mean</span><span class="o">*</span><span class="n">N</span><span class="o">+</span><span class="n">x</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">N</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">new_S</span>     <span class="o">=</span> <span class="p">(</span><span class="n">S</span> <span class="o">+</span> <span class="n">N</span><span class="o">*</span><span class="n">mean</span><span class="o">.</span><span class="n">T</span><span class="nd">@mean</span> <span class="o">+</span> <span class="n">x</span><span class="o">.</span><span class="n">T</span><span class="nd">@x</span><span class="p">)</span> <span class="o">-</span> <span class="n">new_mean</span><span class="o">.</span><span class="n">T</span><span class="nd">@new_mean</span><span class="o">*</span><span class="p">(</span><span class="n">N</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">new_N</span>     <span class="o">=</span> <span class="n">N</span><span class="o">+</span><span class="mi">1</span>
+    <span class="n">new_mu</span>    <span class="o">=</span> <span class="p">((</span><span class="n">p_mu</span><span class="o">*</span><span class="n">p_k</span> <span class="o">+</span> <span class="n">new_N</span><span class="o">*</span><span class="n">new_mean</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">p_k</span> <span class="o">+</span> <span class="n">new_N</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">new_sigma</span> <span class="o">=</span> <span class="p">(</span><span class="n">p_L</span> <span class="o">+</span> <span class="n">new_S</span> <span class="o">+</span> <span class="n">p_k</span><span class="o">*</span><span class="n">new_N</span><span class="o">*</span><span class="p">((</span><span class="n">new_mean</span> <span class="o">-</span> <span class="n">p_mu</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="o">@</span><span class="p">(</span><span class="n">new_mean</span> <span class="o">-</span> <span class="n">p_mu</span><span class="p">))</span><span class="o">/</span><span class="p">(</span><span class="n">p_k</span> <span class="o">+</span> <span class="n">new_N</span><span class="p">))</span><span class="o">/</span><span class="p">(</span><span class="n">p_nu</span> <span class="o">+</span> <span class="n">new_N</span> <span class="o">-</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">new_mean</span><span class="p">,</span> <span class="n">new_S</span><span class="p">,</span> <span class="n">new_N</span><span class="p">,</span> <span class="n">new_mu</span><span class="p">,</span> <span class="n">new_sigma</span>
+
+<span class="c1">#-------------------#</span>
+<span class="c1"># Auxiliary classes #</span>
+<span class="c1">#-------------------#</span>
+
+<span class="k">class</span> <span class="nc">_prior</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class to store the NIW prior parameters</span>
+<span class="sd">    See https://www.cs.ubc.ca/~murphyk/Papers/bayesGauss.pdf, sec. 9</span>
+<span class="sd">    </span>
+<span class="sd">    Arguments:</span>
+<span class="sd">        double k:        Normal std parameter</span>
+<span class="sd">        np.ndarray mu:   Normal mean parameter</span>
+<span class="sd">        int nu:          Wishart df parameter</span>
+<span class="sd">        np.ndarray L:    Wishart scale matrix</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        prior: instance of prior class</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">nu</span><span class="p">,</span> <span class="n">mu</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">k</span>   <span class="o">=</span> <span class="n">k</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nu</span>  <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">([</span><span class="n">nu</span><span class="p">,</span> <span class="n">mu</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="mi">2</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">L</span>   <span class="o">=</span> <span class="n">L</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nu</span><span class="o">-</span><span class="n">mu</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mu</span>  <span class="o">=</span> <span class="n">mu</span>
+
+<span class="k">class</span> <span class="nc">_component</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class to store the relevant informations for each component in the mixture.</span>
+<span class="sd">    </span>
+<span class="sd">    Arguments:</span>
+<span class="sd">        np.ndarray x: sample added to the new component</span>
+<span class="sd">        prior prior:  instance of the prior class with NIG/NIW prior parameters</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        component: instance of component class</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">prior</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">N</span>     <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mean</span>  <span class="o">=</span> <span class="n">x</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">S</span>     <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">identity</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">*</span><span class="mf">0.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mu</span>    <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">((</span><span class="n">prior</span><span class="o">.</span><span class="n">mu</span><span class="o">*</span><span class="n">prior</span><span class="o">.</span><span class="n">k</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">mean</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">prior</span><span class="o">.</span><span class="n">k</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">identity</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span><span class="o">*</span><span class="n">prior</span><span class="o">.</span><span class="n">L</span><span class="o">/</span><span class="p">(</span><span class="n">prior</span><span class="o">.</span><span class="n">nu</span> <span class="o">-</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">_component_h</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class to store the relevant informations for each component in the mixture.</span>
+<span class="sd">    To be used in hierarchical inference.</span>
+<span class="sd">    </span>
+<span class="sd">    Arguments:</span>
+<span class="sd">        np.ndarray x:  event added to the new component</span>
+<span class="sd">        int dim:       number of dimensions</span>
+<span class="sd">        prior prior:   instance of the prior class with NIG/NIW prior parameters</span>
+<span class="sd">        double logL_D: logLikelihood denominator</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        component_h: instance of component_h class</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">dim</span><span class="p">,</span> <span class="n">prior</span><span class="p">,</span> <span class="n">logL_D</span><span class="p">,</span> <span class="n">mu_MC</span><span class="p">,</span> <span class="n">sigma_MC</span><span class="p">,</span> <span class="n">b_ones</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dim</span>    <span class="o">=</span> <span class="n">dim</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">N</span>      <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">events</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">means</span>  <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">means</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">covs</span>   <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">covs</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_w</span>  <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">log_w</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logL_D</span> <span class="o">=</span> <span class="n">logL_D</span>
+        
+        <span class="n">log_norm_D</span> <span class="o">=</span> <span class="n">logsumexp_jit</span><span class="p">(</span><span class="n">logL_D</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="n">b_ones</span><span class="p">)</span>
+        
+        <span class="n">idx</span>        <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">mu_MC</span><span class="p">),</span> <span class="n">p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">logL_D</span> <span class="o">-</span> <span class="n">log_norm_D</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mu</span>    <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">mu_MC</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">sigma_MC</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">dim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mu</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mu</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sigma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sigma</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+            
+<div class="viewcode-block" id="density"><a class="viewcode-back" href="../../figaro.mixture.html#figaro.mixture.density">[docs]</a><span class="k">class</span> <span class="nc">density</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class to initialise a common set of methods for mixture models. Not to be used.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+        
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">pdf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+<div class="viewcode-block" id="density.pdf"><a class="viewcode-back" href="../../figaro.mixture.html#figaro.mixture.density.pdf">[docs]</a>    <span class="k">def</span> <span class="nf">pdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">FIGAROException</span><span class="p">(</span><span class="s2">&quot;You are trying to evaluate an empty mixture.</span><span class="se">\n</span><span class="s2"> If you are using the density_from_samples() method, you may want to evaluate the output of that method.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">x</span><span class="p">))</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">invalid</span> <span class="o">=</span> <span class="s1">&#39;ignore&#39;</span><span class="p">):</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pdf</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">nan</span> <span class="o">=</span> <span class="mf">0.</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">p</span></div>
+
+<div class="viewcode-block" id="density.logpdf"><a class="viewcode-back" href="../../figaro.mixture.html#figaro.mixture.density.logpdf">[docs]</a>    <span class="k">def</span> <span class="nf">logpdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">FIGAROException</span><span class="p">(</span><span class="s2">&quot;You are trying to evaluate an empty mixture.</span><span class="se">\n</span><span class="s2"> If you are using the density_from_samples() method, you may want to evaluate the output of that method.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">x</span><span class="p">))</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">invalid</span> <span class="o">=</span> <span class="s1">&#39;ignore&#39;</span><span class="p">):</span>
+            <span class="n">logp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_logpdf</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">nan</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">logp</span></div>
+
+    <span class="nd">@probit</span>
+    <span class="k">def</span> <span class="nf">_pdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate mixture at point(s) x</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: point(s) to evaluate the mixture at</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: mixture.pdf(x)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pdf_probit</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">probit_logJ</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">probit</span><span class="p">))</span>
+
+    <span class="nd">@probit</span>
+    <span class="k">def</span> <span class="nf">_logpdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate log mixture at point(s) x</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: point(s) to evaluate the mixture at</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: mixture.logpdf(x)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_logpdf_probit</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">-</span> <span class="n">probit_logJ</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">probit</span><span class="p">)</span>
+
+<div class="viewcode-block" id="density.fast_pdf"><a class="viewcode-back" href="../../figaro.mixture.html#figaro.mixture.density.fast_pdf">[docs]</a>    <span class="k">def</span> <span class="nf">fast_pdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Fast pdf evaluation using FIGARO implementation of log_norm (JIT) rather than Numpy&#39;s.</span>
+<span class="sd">        WARNING: it is meant to be used with MCMC samplers, therefore accepts only one point at a time.</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: point to evaluate the mixture at</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: mixture.pdf(x)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_1d</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fast_pdf</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">elif</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fast_pdf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">FIGAROException</span><span class="p">(</span><span class="s2">&quot;Please provide one point at a time.&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="density.fast_logpdf"><a class="viewcode-back" href="../../figaro.mixture.html#figaro.mixture.density.fast_logpdf">[docs]</a>    <span class="k">def</span> <span class="nf">fast_logpdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Fast logpdf evaluation using FIGARO implementation of log_norm (JIT) rather than Numpy&#39;s.</span>
+<span class="sd">        WARNING: it is meant to be used with MCMC samplers, therefore accepts only one point at a time.</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: point to evaluate the mixture at</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: mixture.pdf(x)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_1d</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fast_logpdf</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">elif</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fast_logpdf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">FIGAROException</span><span class="p">(</span><span class="s2">&quot;Please provide one point at a time.&quot;</span><span class="p">)</span></div>
+
+    <span class="nd">@probit</span>
+    <span class="k">def</span> <span class="nf">_fast_pdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate mixture at point x</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: point to evaluate the mixture at</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: mixture.pdf(x)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fast_pdf_probit</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">probit_logJ</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">probit</span><span class="p">))</span>
+
+    <span class="nd">@probit</span>
+    <span class="k">def</span> <span class="nf">_fast_logpdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate log mixture at point x</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: point to evaluate the mixture at</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: mixture.logpdf(x)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fast_logpdf_probit</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">-</span> <span class="n">probit_logJ</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">probit</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_fast_pdf_probit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate mixture at point x in probit space</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: point to evaluate the mixture at (in probit space)</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: mixture.pdf(x)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">w</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">log_norm</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">mean</span><span class="p">,</span> <span class="n">cov</span><span class="p">))</span> <span class="k">for</span> <span class="n">mean</span><span class="p">,</span> <span class="n">cov</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">means</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">covs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">)]),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_fast_logpdf_probit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate log mixture at point x in probit space</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: point to evaluate the mixture at (in probit space)</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: mixture.logpdf(x)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">logsumexp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">w</span> <span class="o">+</span> <span class="n">log_norm</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">mean</span><span class="p">,</span> <span class="n">cov</span><span class="p">)</span> <span class="k">for</span> <span class="n">mean</span><span class="p">,</span> <span class="n">cov</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">means</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">covs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_w</span><span class="p">)]),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="nd">@probit</span>
+    <span class="k">def</span> <span class="nf">_pdf_no_jacobian</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate mixture at point(s) x without jacobian</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: point(s) to evaluate the mixture at</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: mixture.pdf(x)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pdf_probit</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_pdf_probit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate mixture at point(s) x in probit space</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: point(s) to evaluate the mixture at (in probit space)</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: mixture.pdf(x)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">w</span><span class="o">*</span><span class="n">mn</span><span class="p">(</span><span class="n">mean</span><span class="p">,</span> <span class="n">cov</span><span class="p">,</span> <span class="n">allow_singular</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">pdf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">mean</span><span class="p">,</span> <span class="n">cov</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">means</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">covs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">)]),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+    
+    <span class="nd">@probit</span>
+    <span class="k">def</span> <span class="nf">_pdf_array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate every mixture component at point(s) x.</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: point(s) to evaluate the components at</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: component.pdf(x) for each mixture component</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">_pdf_array_probit</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">probit_logJ</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">probit</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_pdf_array_probit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate every mixture component at point(s) x.</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: point(s) to evaluate the components at (in probit space)</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: component.pdf(x) for each mixture component</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">w</span><span class="o">*</span><span class="n">mn</span><span class="p">(</span><span class="n">mean</span><span class="p">,</span> <span class="n">cov</span><span class="p">,</span> <span class="n">allow_singular</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">pdf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">mean</span><span class="p">,</span> <span class="n">cov</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">means</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">covs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">)])</span>
+
+    <span class="nd">@probit</span>
+    <span class="k">def</span> <span class="nf">_fast_pdf_array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate every mixture component at point(s) x.</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: point(s) to evaluate the components at</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: component.pdf(x) for each mixture component</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">_fast_pdf_array_probit</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">probit_logJ</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">probit</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_fast_pdf_array_probit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate every mixture component at point(s) x.</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: point(s) to evaluate the components at (in probit space)</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: component.pdf(x) for each mixture component</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">w</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">log_norm</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">mean</span><span class="p">,</span> <span class="n">cov</span><span class="p">))</span> <span class="k">for</span> <span class="n">mean</span><span class="p">,</span> <span class="n">cov</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">means</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">covs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">)])</span>
+
+    <span class="nd">@probit</span>
+    <span class="k">def</span> <span class="nf">_logpdf_no_jacobian</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate log mixture at point(s) x without jacobian</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: point(s) to evaluate the mixture at</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: mixture.logpdf(x)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_logpdf_probit</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_logpdf_probit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate log mixture at point(s) x in probit space</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: point(s) to evaluate the mixture at (in probit space)</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: mixture.logpdf(x)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">logsumexp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">w</span> <span class="o">+</span> <span class="n">mn</span><span class="p">(</span><span class="n">mean</span><span class="p">,</span> <span class="n">cov</span><span class="p">,</span> <span class="n">allow_singular</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">logpdf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">mean</span><span class="p">,</span> <span class="n">cov</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">means</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">covs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_w</span><span class="p">)]),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+
+<div class="viewcode-block" id="density.cdf"><a class="viewcode-back" href="../../figaro.mixture.html#figaro.mixture.density.cdf">[docs]</a>    <span class="k">def</span> <span class="nf">cdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">FIGAROException</span><span class="p">(</span><span class="s2">&quot;cdf is provided only for 1-dimensional distributions&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">x</span><span class="p">))</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cdf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="density.logcdf"><a class="viewcode-back" href="../../figaro.mixture.html#figaro.mixture.density.logcdf">[docs]</a>    <span class="k">def</span> <span class="nf">logcdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">FIGAROException</span><span class="p">(</span><span class="s2">&quot;cdf is provided only for 1-dimensional distributions&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">x</span><span class="p">))</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_logcdf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span></div>
+
+    <span class="nd">@probit</span>
+    <span class="k">def</span> <span class="nf">_cdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate mixture cdf at point(s) x</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: point(s) to evaluate the mixture at</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: mixture.cdf(x)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">w</span><span class="o">*</span><span class="n">norm</span><span class="p">(</span><span class="n">mean</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cov</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">cdf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">mean</span><span class="p">,</span> <span class="n">cov</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">means</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">covs</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">)]),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="nd">@probit</span>
+    <span class="k">def</span> <span class="nf">_logcdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate mixture log cdf at point(s) x</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: point(s) to evaluate the mixture at</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: mixture.logcdf(x)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">logsumexp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">w</span> <span class="o">+</span> <span class="n">norm</span><span class="p">(</span><span class="n">mean</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cov</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">logcdf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">mean</span><span class="p">,</span> <span class="n">cov</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">means</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">covs</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_w</span><span class="p">)]),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="nd">@from_probit</span>
+    <span class="k">def</span> <span class="nf">rvs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span> <span class="o">=</span> <span class="mi">1</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Draw samples from mixture</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            int size: number of samples to draw</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: samples</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">FIGAROException</span><span class="p">(</span><span class="s2">&quot;You are trying to draw samples from an empty mixture.</span><span class="se">\n</span><span class="s2"> If you are using the density_from_samples() method, you may want to draw samples from the output of that method.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rvs_probit</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+        
+    <span class="k">def</span> <span class="nf">_rvs_probit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span> <span class="o">=</span> <span class="mi">1</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Draw samples from mixture in probit space</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            int size: number of samples to draw</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: samples in probit space</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span><span class="p">),</span> <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">,</span> <span class="n">size</span> <span class="o">=</span> <span class="n">size</span><span class="p">)</span>
+        <span class="n">ctr</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">samples</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ctr</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="n">ctr</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
+                <span class="n">samples</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">samples</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">mn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">means</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">covs</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">allow_singular</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">rvs</span><span class="p">(</span><span class="n">size</span> <span class="o">=</span> <span class="n">n</span><span class="p">))))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">samples</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">)])</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ctr</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="n">ctr</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
+                <span class="n">samples</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">samples</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">mn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">means</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">covs</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">allow_singular</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">rvs</span><span class="p">(</span><span class="n">size</span> <span class="o">=</span> <span class="n">n</span><span class="p">))</span><span class="o">.</span><span class="n">T</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">samples</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+    
+<div class="viewcode-block" id="density.gradient"><a class="viewcode-back" href="../../figaro.mixture.html#figaro.mixture.density.gradient">[docs]</a>    <span class="k">def</span> <span class="nf">gradient</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Gradient of the mixture.</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: point to evaluate the gradient at</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: gradient</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">FIGAROException</span><span class="p">(</span><span class="s2">&quot;You are trying to evaluate an empty mixture.</span><span class="se">\n</span><span class="s2"> If you are using the density_from_samples() method, you may want to evaluate the output of that method.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">x</span><span class="p">))</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">invalid</span> <span class="o">=</span> <span class="s1">&#39;ignore&#39;</span><span class="p">):</span>
+            <span class="n">g</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">_gradient</span><span class="p">(</span><span class="n">xi</span><span class="p">)</span> <span class="k">for</span> <span class="n">xi</span> <span class="ow">in</span> <span class="n">x</span><span class="p">],</span> <span class="n">nan</span> <span class="o">=</span> <span class="mf">0.</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">g</span></div>
+    
+<div class="viewcode-block" id="density.log_gradient"><a class="viewcode-back" href="../../figaro.mixture.html#figaro.mixture.density.log_gradient">[docs]</a>    <span class="k">def</span> <span class="nf">log_gradient</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Logarithmic gradient of the mixture.</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: point to evaluate the gradient at</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: logarithmic gradient</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">FIGAROException</span><span class="p">(</span><span class="s2">&quot;You are trying to evaluate an empty mixture.</span><span class="se">\n</span><span class="s2"> If you are using the density_from_samples() method, you may want to evaluate the output of that method.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">x</span><span class="p">))</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">invalid</span> <span class="o">=</span> <span class="s1">&#39;ignore&#39;</span><span class="p">):</span>
+            <span class="n">g</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">_log_gradient</span><span class="p">(</span><span class="n">xi</span><span class="p">)</span> <span class="k">for</span> <span class="n">xi</span> <span class="ow">in</span> <span class="n">x</span><span class="p">],</span> <span class="n">nan</span> <span class="o">=</span> <span class="mf">0.</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">g</span></div>
+    
+    <span class="k">def</span> <span class="nf">_gradient</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Gradient of the mixture.</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: point to evaluate the gradient at</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: gradient</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fast_pdf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_log_gradient</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    
+    <span class="nd">@probit</span>
+    <span class="k">def</span> <span class="nf">_log_gradient</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Logarithmic gradient of the mixture.</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: point to evaluate the gradient at</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: logarithmic gradient</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pdf_array_probit</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">B</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">inv_jit</span><span class="p">(</span><span class="n">sigma</span><span class="p">),(</span><span class="n">x</span> <span class="o">-</span> <span class="n">mu</span><span class="p">))</span> <span class="k">for</span> <span class="n">mu</span><span class="p">,</span> <span class="n">sigma</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">means</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">covs</span><span class="p">)])</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">weights</span> <span class="o">=</span> <span class="n">p</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">log_gradient_inv_jacobian</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">probit</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ZeroDivisionError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="mixture"><a class="viewcode-back" href="../../figaro.mixture.html#figaro.mixture.mixture">[docs]</a><span class="k">class</span> <span class="nc">mixture</span><span class="p">(</span><span class="n">density</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class to store a single draw from DPGMM/(H)DPGMM.</span>
+<span class="sd">    Methods inherited from density class.</span>
+<span class="sd">    </span>
+<span class="sd">    Arguments:</span>
+<span class="sd">        iterable means:    component means</span>
+<span class="sd">        iterable covs:     component covariances</span>
+<span class="sd">        np.ndarray w:      component weights</span>
+<span class="sd">        np.ndarray bounds: bounds of probit transformation</span>
+<span class="sd">        int dim:           number of dimensions</span>
+<span class="sd">        int n_cl:          number of clusters in the mixture</span>
+<span class="sd">        bool probit:       whether to use the probit transformation or not</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        mixture: instance of mixture class</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">means</span><span class="p">,</span> <span class="n">covs</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">bounds</span><span class="p">,</span> <span class="n">dim</span><span class="p">,</span> <span class="n">n_cl</span><span class="p">,</span> <span class="n">n_pts</span><span class="p">,</span> <span class="n">probit</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">log_w</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">means</span>  <span class="o">=</span> <span class="n">means</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">covs</span>   <span class="o">=</span> <span class="n">covs</span>
+        <span class="k">if</span> <span class="n">log_w</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">w</span>      <span class="o">=</span> <span class="n">w</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log_w</span>  <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log_w</span>  <span class="o">=</span> <span class="n">log_w</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">w</span>      <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">log_w</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span> <span class="o">=</span> <span class="n">bounds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dim</span>    <span class="o">=</span> <span class="n">dim</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span>   <span class="o">=</span> <span class="n">n_cl</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_pts</span>  <span class="o">=</span> <span class="n">n_pts</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">probit</span> <span class="o">=</span> <span class="n">probit</span>
+    
+<div class="viewcode-block" id="mixture.marginalise"><a class="viewcode-back" href="../../figaro.mixture.html#figaro.mixture.mixture.marginalise">[docs]</a>    <span class="k">def</span> <span class="nf">marginalise</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Marginalise out one or more dimensions from the mixture.</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            int or list of int axis: axis to marginalise on. Default: last</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            figaro.mixture.mixture: marginalised mixture</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">_marginalise</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">axis</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="mixture.condition"><a class="viewcode-back" href="../../figaro.mixture.html#figaro.mixture.mixture.condition">[docs]</a>    <span class="k">def</span> <span class="nf">condition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vals</span><span class="p">,</span> <span class="n">dims</span><span class="p">,</span> <span class="n">norm</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="nb">filter</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">tol</span> <span class="o">=</span> <span class="mf">1e-3</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Mixture conditioned on specific values of a subset of parameters.</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            iterable vals:           value(s) to condition on</span>
+<span class="sd">            int or list of int dims: dimension(s) associated with given vals (starting from 0)</span>
+<span class="sd">            bool norm:               whether to normalize the distribution or not</span>
+<span class="sd">            bool filter:             filter the components with weight &lt; tol</span>
+<span class="sd">            double tol:              tolerance on the sum of the weights</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            figaro.mixture.mixture: conditioned mixture</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">v</span>       <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">v</span><span class="p">[</span><span class="n">dims</span><span class="p">]</span> <span class="o">=</span> <span class="n">vals</span>
+        <span class="k">return</span> <span class="n">_condition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">dims</span><span class="p">,</span> <span class="n">norm</span><span class="p">,</span> <span class="nb">filter</span><span class="p">,</span> <span class="n">tol</span> <span class="o">=</span> <span class="mf">1e-3</span><span class="p">)</span></div></div>
+    
+<span class="c1">#-------------------#</span>
+<span class="c1"># Inference classes #</span>
+<span class="c1">#-------------------#</span>
+
+<div class="viewcode-block" id="DPGMM"><a class="viewcode-back" href="../../figaro.mixture.html#figaro.mixture.DPGMM">[docs]</a><span class="k">class</span> <span class="nc">DPGMM</span><span class="p">(</span><span class="n">density</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class to infer a distribution given a set of samples.</span>
+<span class="sd">    </span>
+<span class="sd">    Arguments:</span>
+<span class="sd">        iterable bounds:     boundaries of the rectangle over which the distribution is defined. It should be in the format [[xmin, xmax],[ymin, ymax],...]</span>
+<span class="sd">        iterable prior_pars: NIW prior parameters (k, L, nu, mu)</span>
+<span class="sd">        double alpha0:       initial guess for concentration parameter</span>
+<span class="sd">        bool probit:         whether to use the probit transformation or not</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        DPGMM: instance of DPGMM class</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bounds</span><span class="p">,</span>
+                       <span class="n">prior_pars</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                       <span class="n">alpha0</span>     <span class="o">=</span> <span class="mf">1.</span><span class="p">,</span>
+                       <span class="n">probit</span>     <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+                       <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">probit</span> <span class="o">=</span> <span class="n">probit</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">bounds</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dim</span>    <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">prior_pars</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">prior</span> <span class="o">=</span> <span class="n">_prior</span><span class="p">(</span><span class="o">*</span><span class="n">prior_pars</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">prior</span> <span class="o">=</span> <span class="n">_prior</span><span class="p">(</span><span class="o">*</span><span class="n">get_priors</span><span class="p">(</span><span class="n">bounds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">,</span> <span class="n">probit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">probit</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span>      <span class="o">=</span> <span class="n">alpha0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha_0</span>    <span class="o">=</span> <span class="n">alpha0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mixture</span>    <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">w</span>          <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_w</span>      <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">N_list</span>     <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span>       <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_pts</span>      <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">pdf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DPGMM.initialise"><a class="viewcode-back" href="../../figaro.mixture.html#figaro.mixture.DPGMM.initialise">[docs]</a>    <span class="k">def</span> <span class="nf">initialise</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prior_pars</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialise the mixture to initial conditions.</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            iterable prior_pars: NIW prior parameters (k, L, nu, mu). If None, old parameters are kept</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha_0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mixture</span>  <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">w</span>        <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_w</span>    <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">N_list</span>   <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span>     <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_pts</span>    <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="n">prior_pars</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">prior</span> <span class="o">=</span> <span class="n">_prior</span><span class="p">(</span><span class="o">*</span><span class="n">prior_pars</span><span class="p">)</span></div>
+        
+    <span class="k">def</span> <span class="nf">_add_datapoint_to_component</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">ss</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update component parameters after assigning a sample to a component</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: sample</span>
+<span class="sd">            component ss: component to update</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            component: updated component</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">new_mean</span><span class="p">,</span> <span class="n">new_S</span><span class="p">,</span> <span class="n">new_N</span><span class="p">,</span> <span class="n">new_mu</span><span class="p">,</span> <span class="n">new_sigma</span> <span class="o">=</span> <span class="n">_compute_component_suffstats</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">ss</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span> <span class="n">ss</span><span class="o">.</span><span class="n">S</span><span class="p">,</span> <span class="n">ss</span><span class="o">.</span><span class="n">N</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">mu</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">k</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">nu</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">L</span><span class="p">)</span>
+        <span class="n">ss</span><span class="o">.</span><span class="n">mean</span>  <span class="o">=</span> <span class="n">new_mean</span>
+        <span class="n">ss</span><span class="o">.</span><span class="n">S</span>     <span class="o">=</span> <span class="n">new_S</span>
+        <span class="n">ss</span><span class="o">.</span><span class="n">N</span>     <span class="o">=</span> <span class="n">new_N</span>
+        <span class="n">ss</span><span class="o">.</span><span class="n">mu</span>    <span class="o">=</span> <span class="n">new_mu</span>
+        <span class="n">ss</span><span class="o">.</span><span class="n">sigma</span> <span class="o">=</span> <span class="n">new_sigma</span>
+        <span class="k">return</span> <span class="n">ss</span>
+    
+    <span class="k">def</span> <span class="nf">_log_predictive_likelihood</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">ss</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute log likelihood of drawing sample x from component ss given the samples that are already assigned to that component.</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: sample</span>
+<span class="sd">            component ss: component to update</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            double: log Likelihood</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">ss</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ss</span> <span class="o">=</span> <span class="n">_component</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">),</span> <span class="n">prior</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="p">)</span>
+            <span class="n">ss</span><span class="o">.</span><span class="n">N</span> <span class="o">=</span> <span class="mf">0.</span>
+        <span class="n">t_df</span><span class="p">,</span> <span class="n">t_shape</span><span class="p">,</span> <span class="n">mu_n</span> <span class="o">=</span> <span class="n">_compute_t_pars</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">k</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">mu</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">nu</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">L</span><span class="p">,</span> <span class="n">ss</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span> <span class="n">ss</span><span class="o">.</span><span class="n">S</span><span class="p">,</span> <span class="n">ss</span><span class="o">.</span><span class="n">N</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">_student_t</span><span class="p">(</span><span class="n">df</span> <span class="o">=</span> <span class="n">t_df</span><span class="p">,</span> <span class="n">t</span> <span class="o">=</span> <span class="n">x</span><span class="p">,</span> <span class="n">mu</span> <span class="o">=</span> <span class="n">mu_n</span><span class="p">,</span> <span class="n">sigma</span> <span class="o">=</span> <span class="n">t_shape</span><span class="p">,</span> <span class="n">dim</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_cluster_assignment_distribution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute the marginal distribution of cluster assignment for each cluster.</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: sample</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            dict: p_i for each component</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">scores</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">ss</span>        <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">scores</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">ss</span>        <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mixture</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="n">scores</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">ss</span><span class="o">.</span><span class="n">N</span><span class="p">)</span>
+            <span class="n">scores</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_log_predictive_likelihood</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">ss</span><span class="p">)</span>
+        <span class="n">norm</span> <span class="o">=</span> <span class="n">logsumexp_jit</span><span class="p">(</span><span class="n">scores</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">scores</span> <span class="o">-</span> <span class="n">norm</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_assign_to_cluster</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Assign the new sample x to an existing cluster or to a new cluster according to the marginal distribution of cluster assignment.</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: sample</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">scores</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cluster_assignment_distribution</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">cid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="n">scores</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mixture</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_component</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">prior</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">N_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mf">1.</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mixture</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">cid</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_datapoint_to_component</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mixture</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">cid</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">N_list</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">cid</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="c1"># Update weights</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">N_list</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">)</span>
+        <span class="k">return</span>
+    
+<div class="viewcode-block" id="DPGMM.density_from_samples"><a class="viewcode-back" href="../../figaro.mixture.html#figaro.mixture.DPGMM.density_from_samples">[docs]</a>    <span class="k">def</span> <span class="nf">density_from_samples</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">samples</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Reconstruct the probability density from a set of samples.</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            iterable samples: samples set</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            mixture: the inferred mixture</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span>
+        <span class="n">samples</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">samples</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_new_point</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_mixture</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">initialise</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">d</span></div>
+    
+    <span class="nd">@probit</span>
+    <span class="k">def</span> <span class="nf">add_new_point</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update the probability density reconstruction adding a new sample</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: sample</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_pts</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_assign_to_cluster</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">_update_alpha</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_pts</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DPGMM.build_mixture"><a class="viewcode-back" href="../../figaro.mixture.html#figaro.mixture.DPGMM.build_mixture">[docs]</a>    <span class="k">def</span> <span class="nf">build_mixture</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Instances a mixture class representing the inferred distribution</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            mixture: the inferred distribution</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">FIGAROException</span><span class="p">(</span><span class="s2">&quot;You are trying to build an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, the inferred mixture is returned by that method as an instance of mixture class.&quot;</span><span class="p">)</span>
+        <span class="n">means</span>     <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">))</span>
+        <span class="n">variances</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">ss</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mixture</span><span class="p">):</span>
+            <span class="n">k_n</span><span class="p">,</span> <span class="n">mu_n</span><span class="p">,</span> <span class="n">nu_n</span><span class="p">,</span> <span class="n">L_n</span> <span class="o">=</span> <span class="n">_compute_hyperpars</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">k</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">mu</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">nu</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">L</span><span class="p">,</span> <span class="n">ss</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span> <span class="n">ss</span><span class="o">.</span><span class="n">S</span><span class="p">,</span> <span class="n">ss</span><span class="o">.</span><span class="n">N</span><span class="p">)</span>
+            <span class="n">variances</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">invwishart</span><span class="p">(</span><span class="n">df</span> <span class="o">=</span> <span class="n">nu_n</span><span class="p">,</span> <span class="n">scale</span> <span class="o">=</span> <span class="n">L_n</span><span class="p">)</span><span class="o">.</span><span class="n">rvs</span><span class="p">()</span>
+            <span class="n">means</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>     <span class="o">=</span> <span class="n">mn</span><span class="p">(</span><span class="n">mean</span> <span class="o">=</span> <span class="n">mu_n</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cov</span> <span class="o">=</span> <span class="n">variances</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">/</span><span class="n">k_n</span><span class="p">,</span> <span class="n">allow_singular</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">rvs</span><span class="p">()</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="n">dirichlet</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">n_pts</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span><span class="p">)</span><span class="o">.</span><span class="n">rvs</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">mixture</span><span class="p">(</span><span class="n">means</span><span class="p">,</span> <span class="n">variances</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_pts</span><span class="p">,</span> <span class="n">probit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">probit</span><span class="p">)</span></div>
+
+    <span class="c1"># Methods to overwrite density methods</span>
+    <span class="k">def</span> <span class="nf">_rvs_probit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span> <span class="o">=</span> <span class="mi">1</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Draw samples from mixture in probit space</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            int size: number of samples to draw</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: samples in probit space</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span><span class="p">),</span> <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">,</span> <span class="n">size</span> <span class="o">=</span> <span class="n">size</span><span class="p">)</span>
+        <span class="n">ctr</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">samples</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ctr</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="n">ctr</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
+                <span class="n">samples</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">samples</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">mn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mixture</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">mu</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mixture</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">sigma</span><span class="p">,</span> <span class="n">allow_singular</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">rvs</span><span class="p">(</span><span class="n">size</span> <span class="o">=</span> <span class="n">n</span><span class="p">))))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">samples</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">)])</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ctr</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="n">ctr</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
+                <span class="n">samples</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">samples</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">mn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mixture</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">mu</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mixture</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">sigma</span><span class="p">,</span> <span class="n">allow_singular</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">rvs</span><span class="p">(</span><span class="n">size</span> <span class="o">=</span> <span class="n">n</span><span class="p">))</span><span class="o">.</span><span class="n">T</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">samples</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+
+    <span class="k">def</span> <span class="nf">_pdf_probit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate mixture at point(s) x in probit space</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: point(s) to evaluate the mixture at (in probit space)</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: mixture.pdf(x)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">w</span><span class="o">*</span><span class="n">mn</span><span class="p">(</span><span class="n">comp</span><span class="o">.</span><span class="n">mu</span><span class="p">,</span> <span class="n">comp</span><span class="o">.</span><span class="n">sigma</span><span class="p">,</span> <span class="n">allow_singular</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">pdf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">comp</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mixture</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">)]),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_logpdf_probit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate log mixture at point(s) x in probit space</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: point(s) to evaluate the mixture at (in probit space)</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: mixture.logpdf(x)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">logsumexp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">w</span> <span class="o">+</span> <span class="n">mn</span><span class="p">(</span><span class="n">comp</span><span class="o">.</span><span class="n">mu</span><span class="p">,</span> <span class="n">comp</span><span class="o">.</span><span class="n">sigma</span><span class="p">,</span> <span class="n">allow_singular</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">logpdf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">comp</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mixture</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_w</span><span class="p">)]),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_fast_pdf_probit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate mixture at point x in probit space</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: point to evaluate the mixture at (in probit space)</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: mixture.pdf(x)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">w</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">log_norm</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">comp</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span> <span class="n">comp</span><span class="o">.</span><span class="n">cov</span><span class="p">))</span> <span class="k">for</span> <span class="n">comp</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mixture</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">)]),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_fast_logpdf_probit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate log mixture at point x in probit space</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: point to evaluate the mixture at (in probit space)</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: mixture.logpdf(x)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">logsumexp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">w</span> <span class="o">+</span> <span class="n">log_norm</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">comp</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span> <span class="n">comp</span><span class="o">.</span><span class="n">cov</span><span class="p">)</span> <span class="k">for</span> <span class="n">comp</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mixture</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_w</span><span class="p">)]),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="HDPGMM"><a class="viewcode-back" href="../../figaro.mixture.html#figaro.mixture.HDPGMM">[docs]</a><span class="k">class</span> <span class="nc">HDPGMM</span><span class="p">(</span><span class="n">DPGMM</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class to infer a distribution given a set of observations (each being a set of samples).</span>
+<span class="sd">    Child of DPGMM class</span>
+<span class="sd">    </span>
+<span class="sd">    Arguments:</span>
+<span class="sd">        iterable bounds:  boundaries of the rectangle over which the distribution is defined. It should be in the format [[xmin, xmax],[ymin, ymax],...]</span>
+<span class="sd">        double alpha0:    initial guess for concentration parameter</span>
+<span class="sd">        double MC_draws:  number of MC draws for integral</span>
+<span class="sd">        bool probit:      whether to use the probit transformation or not</span>
+<span class="sd">        double sigma_min: lower bound for Jeffreys&#39; prior on standard deviation</span>
+<span class="sd">        double sigma_max: upper bound for Jeffreys&#39; prior on standard deviation</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        HDPGMM: instance of HDPGMM class</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bounds</span><span class="p">,</span>
+                       <span class="n">alpha0</span>     <span class="o">=</span> <span class="mf">1.</span><span class="p">,</span>
+                       <span class="n">prior_pars</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                       <span class="n">MC_draws</span>   <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                       <span class="n">probit</span>     <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+                       <span class="p">):</span>
+        <span class="n">bounds</span>   <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">bounds</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">bounds</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">bounds</span> <span class="o">=</span> <span class="n">bounds</span><span class="p">,</span> <span class="n">alpha0</span> <span class="o">=</span> <span class="n">alpha0</span><span class="p">,</span> <span class="n">probit</span> <span class="o">=</span> <span class="n">probit</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">prior_pars</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">exp_sigma</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="n">prior_pars</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">exp_sigma</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="n">get_priors</span><span class="p">(</span><span class="n">bounds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">,</span> <span class="n">probit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">probit</span><span class="p">,</span> <span class="n">hierarchical</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">invgamma</span> <span class="o">=</span> <span class="n">invgamma</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">a</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">MC_draws</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">MC_draws</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="mf">1e3</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">MC_draws</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">MC_draws</span><span class="p">)</span>
+        <span class="c1"># For logsumexp_jit</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">b_ones</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">MC_draws</span><span class="p">)</span>
+        <span class="c1"># MC samples</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_draw_MC_samples</span><span class="p">()</span>
+        
+<div class="viewcode-block" id="HDPGMM.initialise"><a class="viewcode-back" href="../../figaro.mixture.html#figaro.mixture.HDPGMM.initialise">[docs]</a>    <span class="k">def</span> <span class="nf">initialise</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialise the mixture to initial conditions</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">initialise</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_draw_MC_samples</span><span class="p">()</span></div>
+    
+    <span class="k">def</span> <span class="nf">_draw_MC_samples</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Draws MC samples for mu and sigma</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_MC</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">invgamma</span><span class="o">.</span><span class="n">rvs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">MC_draws</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">exp_sigma</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">a</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">)])</span><span class="o">.</span><span class="n">T</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mu_MC</span>    <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">low</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span> <span class="n">high</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">[:,</span><span class="mi">1</span><span class="p">],</span> <span class="n">size</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">MC_draws</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">probit</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mu_MC</span> <span class="o">=</span> <span class="n">transform_to_probit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mu_MC</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sigma_MC</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_MC</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mu_MC</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mu_MC</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">rhos</span> <span class="o">=</span> <span class="n">invwishart</span><span class="p">(</span><span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="o">+</span><span class="mi">2</span><span class="p">,</span> <span class="n">scale</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">identity</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">))</span><span class="o">.</span><span class="n">rvs</span><span class="p">(</span><span class="n">size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">MC_draws</span><span class="p">)</span>
+            <span class="n">rhos</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">r</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">r</span><span class="p">)),</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">r</span><span class="p">)))</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">rhos</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sigma_MC</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">r</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">rhos</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sigma_MC</span><span class="p">))])</span>
+            
+<div class="viewcode-block" id="HDPGMM.add_new_point"><a class="viewcode-back" href="../../figaro.mixture.html#figaro.mixture.HDPGMM.add_new_point">[docs]</a>    <span class="k">def</span> <span class="nf">add_new_point</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ev</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update the probability density reconstruction adding a new sample</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            iterable ev: set of single-event draws from a DPGMM inference</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_pts</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">ev</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_assign_to_cluster</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">_update_alpha</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_pts</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_cluster_assignment_distribution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute the marginal distribution of cluster assignment for each cluster.</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: sample</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            dict: p_i for each component</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">scores</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">logL_N</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">MC_draws</span><span class="p">))</span>
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">logL_x</span> <span class="o">=</span> <span class="n">evaluate_mixture_MC_draws_1d</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mu_MC</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_MC</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">means</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">covs</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">w</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logL_x</span> <span class="o">=</span> <span class="n">evaluate_mixture_MC_draws</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mu_MC</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_MC</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">means</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">covs</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">w</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">ss</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">logL_D</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">MC_draws</span><span class="p">)</span>
+                <span class="n">scores</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">ss</span>        <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mixture</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="n">logL_D</span>    <span class="o">=</span> <span class="n">ss</span><span class="o">.</span><span class="n">logL_D</span>
+                <span class="n">scores</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">ss</span><span class="o">.</span><span class="n">N</span><span class="p">)</span>
+            <span class="n">scores</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="n">logsumexp_jit</span><span class="p">(</span><span class="n">logL_D</span> <span class="o">+</span> <span class="n">logL_x</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">b_ones</span><span class="p">)</span> <span class="o">-</span> <span class="n">logsumexp_jit</span><span class="p">(</span><span class="n">logL_D</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">b_ones</span><span class="p">)</span>
+            <span class="n">logL_N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>  <span class="o">=</span> <span class="n">logL_D</span> <span class="o">+</span> <span class="n">logL_x</span>
+        <span class="n">norm</span>   <span class="o">=</span> <span class="n">logsumexp_jit</span><span class="p">(</span><span class="n">scores</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+        <span class="n">scores</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">scores</span><span class="o">-</span><span class="n">norm</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">scores</span><span class="p">,</span> <span class="n">logL_N</span>
+
+    <span class="k">def</span> <span class="nf">_assign_to_cluster</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Assign the new sample x to an existing cluster or to a new cluster according to the marginal distribution of cluster assignment.</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: sample</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">scores</span><span class="p">,</span> <span class="n">logL_N</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cluster_assignment_distribution</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">cid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="n">scores</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="n">cid</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="n">cid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mixture</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_component_h</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="p">,</span> <span class="n">logL_N</span><span class="p">[</span><span class="n">cid</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">mu_MC</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_MC</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">b_ones</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">N_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mf">1.</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mixture</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">cid</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_datapoint_to_component</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mixture</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">cid</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">logL_N</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">cid</span><span class="p">)])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">N_list</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">cid</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="c1"># Update weights</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">N_list</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="k">def</span> <span class="nf">_add_datapoint_to_component</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">ss</span><span class="p">,</span> <span class="n">logL_D</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update component parameters after assigning a sample to a component</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            np.ndarray x: sample</span>
+<span class="sd">            component ss: component to update</span>
+<span class="sd">            double logL_D: log Likelihood denominator</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            component: updated component</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ss</span><span class="o">.</span><span class="n">events</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">ss</span><span class="o">.</span><span class="n">means</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">means</span><span class="p">)</span>
+        <span class="n">ss</span><span class="o">.</span><span class="n">covs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">covs</span><span class="p">)</span>
+        <span class="n">ss</span><span class="o">.</span><span class="n">log_w</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">log_w</span><span class="p">)</span>
+        <span class="n">ss</span><span class="o">.</span><span class="n">logL_D</span> <span class="o">=</span> <span class="n">logL_D</span>
+
+        <span class="n">log_norm_D</span> <span class="o">=</span> <span class="n">logsumexp_jit</span><span class="p">(</span><span class="n">logL_D</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">b_ones</span><span class="p">)</span>
+        
+        <span class="n">idx</span>      <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">MC_draws</span><span class="p">,</span> <span class="n">p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">logL_D</span> <span class="o">-</span> <span class="n">log_norm_D</span><span class="p">))</span>
+        <span class="n">ss</span><span class="o">.</span><span class="n">mu</span>    <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mu_MC</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span>
+        <span class="n">ss</span><span class="o">.</span><span class="n">sigma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sigma_MC</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">ss</span><span class="o">.</span><span class="n">mu</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">ss</span><span class="o">.</span><span class="n">mu</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+            <span class="n">ss</span><span class="o">.</span><span class="n">sigma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">ss</span><span class="o">.</span><span class="n">sigma</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+        
+        <span class="n">ss</span><span class="o">.</span><span class="n">N</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">ss</span>
+
+<div class="viewcode-block" id="HDPGMM.build_mixture"><a class="viewcode-back" href="../../figaro.mixture.html#figaro.mixture.HDPGMM.build_mixture">[docs]</a>    <span class="k">def</span> <span class="nf">build_mixture</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Instances a mixture class representing the inferred distribution</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            mixture: the inferred distribution</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">FIGAROException</span><span class="p">(</span><span class="s2">&quot;You are trying to build an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, the inferred mixture is returned by that method as an instance of mixture class.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">mixture</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">comp</span><span class="o">.</span><span class="n">mu</span> <span class="k">for</span> <span class="n">comp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">mixture</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">comp</span><span class="o">.</span><span class="n">sigma</span> <span class="k">for</span> <span class="n">comp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">mixture</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_cl</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_pts</span><span class="p">,</span> <span class="n">probit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">probit</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="HDPGMM.density_from_samples"><a class="viewcode-back" href="../../figaro.mixture.html#figaro.mixture.HDPGMM.density_from_samples">[docs]</a>    <span class="k">def</span> <span class="nf">density_from_samples</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">events</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Reconstruct the probability density from a set of samples.</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            iterable samples: set of single-event draws from DPGMM</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            mixture: the inferred mixture</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">events</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">ev</span> <span class="ow">in</span> <span class="n">events</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_new_point</span><span class="p">(</span><span class="n">ev</span><span class="p">)</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_mixture</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">initialise</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">d</span></div></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Stefano Rinaldi.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
