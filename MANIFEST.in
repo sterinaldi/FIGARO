@@ -1,3 +1,5 @@
 include figaro/cosmology.pyx
 include figaro/cosmology.pxd
 include figaro/cosmology.c
+include figaro/cumulative.pyx
+include figaro/cumulative.c
