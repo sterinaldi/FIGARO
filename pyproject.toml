@@ -2,5 +2,7 @@
 requires = [
     "setuptools",
     "wheel",
-    "cython>=3.0.0a10",
+    "cython>=0.29.33",
+    "numpy",
+    "build",
 ]
