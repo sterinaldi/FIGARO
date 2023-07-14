@@ -5,11 +5,7 @@ import json
 import dill
 from figaro.exceptions import FIGAROException
 from figaro.mixture import mixture
-try:
-    from figaro.cosmology import CosmologicalParameters
-    lal_flag = True
-except ModuleNotFoundError:
-    lal_flag = False
+from figaro.cosmology import CosmologicalParameters
 from pathlib import Path
 from scipy.optimize import newton
 from tqdm import tqdm
