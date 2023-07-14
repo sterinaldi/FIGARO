@@ -119,3 +119,6 @@ cdef class CosmologicalParameters:
     def DestroyCosmologicalParameters(self):
         self._DestroyCosmologicalParameters()
         return
+
+# Planck 2018 [https://arxiv.org/abs/1807.06209]
+Planck18 = CosmologicalParameters(0.674, 0.315, 0.685, -1., 0.)
