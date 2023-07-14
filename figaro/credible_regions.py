@@ -10,13 +10,13 @@ def FindNearest_Volume(ra, dec, dist, value):
     Find the pixel that contains the triplet (ra', dec', D') stored in value.
     
     Arguments:
-        :np.ndarray ra:   right ascension values used to build the grid
-        :np.ndarray dec:  declination values used to build the grid
-        :np.ndarray dist: luminosity distance values used to build the grid
-        :iterable value:  triplet to locate (ra', dec', D')
+        np.ndarray ra:   right ascension values used to build the grid
+        np.ndarray dec:  declination values used to build the grid
+        np.ndarray dist: luminosity distance values used to build the grid
+        iterable value:  triplet to locate (ra', dec', D')
     
     Returns:
-        :np.ndarray: grid indices of pixel
+        np.ndarray: grid indices of pixel
     """
     idx = np.zeros(3, dtype = int)
     for i, (d, v) in enumerate(zip([ra, dec, dist], value)):
@@ -28,11 +28,11 @@ def FindNearest_Grid(grid, value):
     Find the closest grid point to value.
     
     Arguments:
-        :np.ndarray grid: grid points (N_pts, N_dim), as with figaro.utils.recursive_grid
-        :iterable value:  value to locate
+        np.ndarray grid: grid points (N_pts, N_dim), as with figaro.utils.recursive_grid
+        iterable value:  value to locate
     
     Returns:
-        :np.ndarray: grid index
+        np.ndarray: grid index
     """
     return abs(np.sum((grid - value)**2, axis = -1)).argmin()
 
@@ -41,10 +41,10 @@ def FindHeights(args):
     Find height correspinding to a certain credible level given a sorted array of probabilities and the corresponding cumulative
     
     Arguments:
-        :tuple args: tuple containing the sorted array, the cumulative array and a double corresponding to the credible level
+        tuple args: tuple containing the sorted array, the cumulative array and a double corresponding to the credible level
     
     Returns:
-        :double: height corresponding to the credible level
+        double: height corresponding to the credible level
     """
     (sortarr,cumarr,level) = args
     return sortarr[np.abs(cumarr-np.log(level)).argmin()]
@@ -54,12 +54,12 @@ def FindHeightForLevel(inLogArr, adLevels, logdd):
     Given a probability array, computes the heights corresponding to some given credible levels.
     
     Arguments:
-        :np.ndarray inLogArr: probability array
-        :iterable adLevels:   credible levels
-        :double logdd:        variables log differential (∑ log(dx_i))
+        np.ndarray inLogArr: probability array
+        iterable adLevels:   credible levels
+        double logdd:        variables log differential (∑ log(dx_i))
         
     Returns:
-        :np.ndarray: heights corresponding to adLevels
+        np.ndarray: heights corresponding to adLevels
     """
     # flatten and create reversed sorted list
     adSorted = np.ascontiguousarray(np.sort(inLogArr.flatten())[::-1])
@@ -79,12 +79,12 @@ def FindLevelForHeight(inLogArr, logvalue, logdd):
     Given a probability array, computes the credible levels corresponding to a given height.
     
     Arguments:
-        :np.ndarray inLogArr: log probability array
-        :double logvalue:     height
-        :double logdd:        variables log differential (∑ log(dx_i))
+        np.ndarray inLogArr: log probability array
+        double logvalue:     height
+        double logdd:        variables log differential (∑ log(dx_i))
     
     Returns:
-        :np.ndarray: credible level corresponding to logvalue
+        np.ndarray: credible level corresponding to logvalue
     """
     # flatten and create reversed sorted list
     adSorted = np.ascontiguousarray(np.sort(inLogArr.flatten())[::-1])
@@ -99,16 +99,16 @@ def ConfidenceVolume(log_volume_map, ra_grid, dec_grid, distance_grid, log_measu
     Compute the credible volume(s) for a 3D probability distribution
     
     Arguments:
-        :np.ndarray log_volume_map: probability density for each pixel
-        :np.ndarray ra_grid:        right ascension values used to build the grid
-        :np.ndarray dec_grid:       declination values used to build the grid
-        :np.ndarray distance_grid:  luminosity distance values used to build the grid
-        :iterable adLevels:         credible level(s)
+        np.ndarray log_volume_map: probability density for each pixel
+        np.ndarray ra_grid:        right ascension values used to build the grid
+        np.ndarray dec_grid:       declination values used to build the grid
+        np.ndarray distance_grid:  luminosity distance values used to build the grid
+        iterable adLevels:         credible level(s)
     
     Returns:
-        :np.ndarray: credible volume(s)
-        :iterable:   indices of pixels within credible volume(s)
-        :np.ndarray: height(s) corresponding to credible volume(s)
+        np.ndarray: credible volume(s)
+        iterable:   indices of pixels within credible volume(s)
+        np.ndarray: height(s) corresponding to credible volume(s)
     """
     dd  = np.diff(distance_grid)[0]
     ddec = np.diff(dec_grid)[0]
@@ -142,15 +142,15 @@ def ConfidenceArea(log_skymap, ra_grid, dec_grid, log_measure = None, adLevels =
     Compute the credible area(s) for a 2D probability distribution
     
     Arguments:
-        :np.ndarray log_skymap: probability density for each pixel
-        :np.ndarray ra_grid:    right ascension values used to build the grid
-        :np.ndarray dec_grid:   declination values used to build the grid
-        :iterable adLevels:     credible level(s)
+        np.ndarray log_skymap: probability density for each pixel
+        np.ndarray ra_grid:    right ascension values used to build the grid
+        np.ndarray dec_grid:   declination values used to build the grid
+        iterable adLevels:     credible level(s)
     
     Returns:
-        :np.ndarray: credible area(s)
-        :iterable:   indices of pixels within credible area(s)
-        :np.ndarray: height(s) corresponding to credible area(s)
+        np.ndarray: credible area(s)
+        iterable:   indices of pixels within credible area(s)
+        np.ndarray: height(s) corresponding to credible area(s)
     """
     # create a normalized cumulative distribution
     ddec = np.diff(dec_grid)[0]

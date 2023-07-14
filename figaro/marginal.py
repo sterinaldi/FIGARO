@@ -12,16 +12,16 @@ def _cond_mean_cov(vals, mu1, mu2, s11, s22, s12):
     See https://stats.stackexchange.com/questions/348941/general-conditional-distributions-for-multivariate-gaussian-mixtures
     
     Arguments:
-        :np.ndarray vals: values to condition on
-        :np.ndarray mu1:  mean subvector (NOT conditioned)
-        :np.ndarray mu2:  mean subvector (conditioned)
-        :np.ndarray s11:  covariance submatrix (NOT conditioned)
-        :np.ndarray s22:  covariance submatrix (conditioned)
-        :np.ndarray s12:  off-diagonal
+        np.ndarray vals: values to condition on
+        np.ndarray mu1:  mean subvector (NOT conditioned)
+        np.ndarray mu2:  mean subvector (conditioned)
+        np.ndarray s11:  covariance submatrix (NOT conditioned)
+        np.ndarray s22:  covariance submatrix (conditioned)
+        np.ndarray s12:  off-diagonal
     
     Returns:
-        :np.ndarray: mean
-        :np.ndarray: covariance
+        np.ndarray: mean
+        np.ndarray: covariance
     """
     s22_inv = inv_jit(s22)
     mean = mu1 + s12@(s22_inv@(vals - mu2))
@@ -33,11 +33,11 @@ def _marginalise(mix, axis = -1):
     Marginalise out one or more dimensions from a FIGARO mixture.
     
     Arguments:
-        :figaro.mixture.mixture draws: mixture
-        :int or list of int axis:      axis to marginalise on
+        figaro.mixture.mixture draws: mixture
+        int or list of int axis:      axis to marginalise on
     
     Returns:
-        :figaro.mixture.mixture: the marginalised mixture
+        figaro.mixture.mixture: the marginalised mixture
     """
     # Circular import
     from figaro.mixture import mixture
@@ -56,11 +56,11 @@ def marginalise(draws, axis = -1):
     Marginalise out one or more dimensions from a FIGARO draw.
     
     Arguments:
-        :figaro.mixture.mixture draws: mixture(s)
-        :int or list of int axis:      axis to marginalise on
+        figaro.mixture.mixture draws: mixture(s)
+        int or list of int axis:      axis to marginalise on
     
     Returns:
-        :figaro.mixture.mixture: the marginalised mixture(s)
+        figaro.mixture.mixture: the marginalised mixture(s)
     """
     if axis == []:
         return draws
@@ -78,15 +78,15 @@ def _condition(mix, vals, dims, norm = True, filter = True, tol = 1e-4):
      * https://stats.stackexchange.com/questions/30588/deriving-the-conditional-distributions-of-a-multivariate-normal-distribution
     
     Arguments:
-        :figaro.mixture.mixture mix: mixture
-        :iterable vals:              value(s) to condition on
-        :int or list of int dims:    dimension(s) associated with given vals (starting from 0)
-        :bool norm:                  normalize the distribution
-        :bool filter:                  filter the components with weight < tol
-        :double tol:                   tolerance on the sum of the weights
+        figaro.mixture.mixture mix: mixture
+        iterable vals:              value(s) to condition on
+        int or list of int dims:    dimension(s) associated with given vals (starting from 0)
+        bool norm:                  normalize the distribution
+        bool filter:                  filter the components with weight < tol
+        double tol:                   tolerance on the sum of the weights
     
     Returns:
-        :figaro.mixture.mixture: the conditioned mixture(s)
+        figaro.mixture.mixture: the conditioned mixture(s)
     """
     # Circular import
     from figaro.mixture import mixture
@@ -131,15 +131,15 @@ def condition(draws, vals, dims, norm = True, filter = True, tol = 1e-4):
     Probability density conditioned on specific values of a subset of parameters.
     
     Arguments:
-        :figaro.mixture.mixture draws: mixture(s)
-        :iterable vals:                value(s) to condition on
-        :int or list of int dims:      dimension(s) associated with given vals (starting from 0)
-        :bool norm:                    normalize the distribution
-        :bool filter:                  filter the components with weight < tol
-        :double tol:                   tolerance on the sum of the weights
+        figaro.mixture.mixture draws: mixture(s)
+        iterable vals:                value(s) to condition on
+        int or list of int dims:      dimension(s) associated with given vals (starting from 0)
+        bool norm:                    normalize the distribution
+        bool filter:                  filter the components with weight < tol
+        double tol:                   tolerance on the sum of the weights
     
     Returns:
-        :figaro.mixture.mixture: the conditioned mixture(s)
+        figaro.mixture.mixture: the conditioned mixture(s)
     """
     if np.iterable(draws):
         v       = np.mean(draws[0].bounds, axis = -1)

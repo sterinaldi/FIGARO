@@ -10,14 +10,14 @@ def MC_integral(p, q, n_draws = 1e4, error = True):
     Lists of p and q are also accepted.
     
     Arguments:
-        :list or class instance p: the probability density to evaluate. Must have a pdf() method.
-        :list or class instance q: the probability density to sample from. Must have a rvs() method.
-        :int n_draws:              number of MC draws
-        :bool error:               whether to return the uncertainty on the integral value or not.
+        list or class instance p: the probability density to evaluate. Must have a pdf() method.
+        list or class instance q: the probability density to sample from. Must have a rvs() method.
+        int n_draws:              number of MC draws
+        bool error:               whether to return the uncertainty on the integral value or not.
     
     Return:
-        :double: integral value
-        :double: uncertainty (if error = True)
+        double: integral value
+        double: uncertainty (if error = True)
     """
     # Check that both p and q are iterables or callables:
     if not ((hasattr(p, 'pdf') or np.iterable(p)) and (hasattr(q, 'rvs') or np.iterable(q))):

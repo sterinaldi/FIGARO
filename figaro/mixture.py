@@ -54,14 +54,14 @@ def _student_t(df, t, mu, sigma, dim):
     As in http://gregorygundersen.com/blog/2020/01/20/multivariate-t/
     
     Arguments:
-        :float df:         degrees of freedom
-        :float t:          variable (2d array)
-        :np.ndarray mu:    mean (2d array)
-        :np.ndarray sigma: variance
-        :int dim:          number of dimensions
+        float df:         degrees of freedom
+        float t:          variable (2d array)
+        np.ndarray mu:    mean (2d array)
+        np.ndarray sigma: variance
+        int dim:          number of dimensions
         
     Returns:
-        :float: student_t(df).logpdf(t)
+        float: student_t(df).logpdf(t)
     """
     vals, vecs = np.linalg.eigh(sigma)
     logdet     = np.log(vals).sum()
@@ -85,13 +85,13 @@ def update_alpha(alpha, n, K, burnin = 1000):
     Update concentration parameter using a Metropolis-Hastings sampling scheme.
     
     Arguments:
-        :double alpha: Initial value for concentration parameter
-        :int n:        Number of samples
-        :int K:        Number of active clusters
-        :int burnin:   MH burnin
+        double alpha: Initial value for concentration parameter
+        int n:        Number of samples
+        int K:        Number of active clusters
+        int burnin:   MH burnin
     
     Returns:
-        :double: new concentration parameter value
+        double: new concentration parameter value
     """
     a_old = alpha
     n_draws = burnin+np.random.randint(100)
@@ -110,19 +110,19 @@ def compute_t_pars(k, mu, nu, L, mean, S, N, dim):
     Compute parameters for student-t distribution.
     
     Arguments:
-        :double k:        Normal std parameter (for NIW)
-        :np.ndarray mu:   Normal mean parameter (for NIW)
-        :int nu:          Inverse-Wishart df parameter (for NIW)
-        :np.ndarray L:    Inverse-Wishart scale matrix (for NIW)
-        :np.ndarray mean: samples mean
-        :np.ndarray S:    samples covariance
-        :int N:           number of samples
-        :int dim:         number of dimensions
+        double k:        Normal std parameter (for NIW)
+        np.ndarray mu:   Normal mean parameter (for NIW)
+        int nu:          Inverse-Wishart df parameter (for NIW)
+        np.ndarray L:    Inverse-Wishart scale matrix (for NIW)
+        np.ndarray mean: samples mean
+        np.ndarray S:    samples covariance
+        int N:           number of samples
+        int dim:         number of dimensions
     
     Returns:
-        :int:        degrees of fredom for student-t
-        :np.ndarray: scale matrix for student-t
-        :np.ndarray: mean for student-t
+        int:        degrees of fredom for student-t
+        np.ndarray: scale matrix for student-t
+        np.ndarray: mean for student-t
     """
     # Update hyperparameters
     k_n, mu_n, nu_n, L_n = compute_hyperpars(k, mu, nu, L, mean, S, N)
@@ -138,19 +138,19 @@ def compute_hyperpars(k, mu, nu, L, mean, S, N):
     See https://www.cs.ubc.ca/~murphyk/Papers/bayesGauss.pdf
     
     Arguments:
-        :double k:        Normal std parameter (for NIG/NIW)
-        :np.ndarray mu:   Normal mean parameter (for NIG/NIW)
-        :int nu:          Gamma df parameter (for NIG/NIW)
-        :np.ndarray L:    Gamma scale matrix (for NIG/NIW)
-        :np.ndarray mean: samples mean
-        :np.ndarray S:    samples covariance
-        :int N:           number of samples
+        double k:        Normal std parameter (for NIG/NIW)
+        np.ndarray mu:   Normal mean parameter (for NIG/NIW)
+        int nu:          Gamma df parameter (for NIG/NIW)
+        np.ndarray L:    Gamma scale matrix (for NIG/NIW)
+        np.ndarray mean: samples mean
+        np.ndarray S:    samples covariance
+        int N:           number of samples
     
     Returns:
-        :double:     updated Normal std parameter (for NIG/NIW)
-        :np.ndarray: updated Normal mean parameter (for NIG/NIW)
-        :int:        updated Gamma df parameter (for NIG/NIW)
-        :np.ndarray: updated Gamma scale matrix (for NIG/NIW)
+        double:     updated Normal std parameter (for NIG/NIW)
+        np.ndarray: updated Normal mean parameter (for NIG/NIW)
+        int:        updated Gamma df parameter (for NIG/NIW)
+        np.ndarray: updated Gamma scale matrix (for NIG/NIW)
     """
     k_n  = k + N
     mu_n = (mu*k + N*mean)/k_n
@@ -164,21 +164,21 @@ def compute_component_suffstats(x, mean, S, N, p_mu, p_k, p_nu, p_L):
     Update mean, covariance, number of samples and maximum a posteriori for mean and covariance.
     
     Arguments:
-        :np.ndarray x:    sample to add
-        :np.ndarray mean: mean of samples already in the cluster
-        :np.ndarray cov:  covariance of samples already in the cluster
-        :int N:           number of samples already in the cluster
-        :np.ndarray p_mu: NIG Normal mean parameter
-        :double p_k:      NIG Normal std parameter
-        :int p_nu:        NIG Gamma df parameter
-        :np.ndarray p_L:  NIG Gamma scale matrix
+        np.ndarray x:    sample to add
+        np.ndarray mean: mean of samples already in the cluster
+        np.ndarray cov:  covariance of samples already in the cluster
+        int N:           number of samples already in the cluster
+        np.ndarray p_mu: NIG Normal mean parameter
+        double p_k:      NIG Normal std parameter
+        int p_nu:        NIG Gamma df parameter
+        np.ndarray p_L:  NIG Gamma scale matrix
     
     Returns:
-        :np.ndarray: updated mean
-        :np.ndarray: updated covariance
-        :int:        updated number of samples
-        :np.ndarray: mean (maximum a posteriori)
-        :np.ndarray: covariance (maximum a posteriori)
+        np.ndarray: updated mean
+        np.ndarray: updated covariance
+        int:        updated number of samples
+        np.ndarray: mean (maximum a posteriori)
+        np.ndarray: covariance (maximum a posteriori)
     """
     new_mean  = (mean*N+x)/(N+1)
     new_S     = (S + N*mean.T@mean + x.T@x) - new_mean.T@new_mean*(N+1)
@@ -198,13 +198,13 @@ class prior:
     See https://www.cs.ubc.ca/~murphyk/Papers/bayesGauss.pdf, sec. 9
     
     Arguments:
-        :double k:        Normal std parameter
-        :np.ndarray mu:   Normal mean parameter
-        :int nu:          Wishart df parameter
-        :np.ndarray L:    Wishart scale matrix
+        double k:        Normal std parameter
+        np.ndarray mu:   Normal mean parameter
+        int nu:          Wishart df parameter
+        np.ndarray L:    Wishart scale matrix
     
     Returns:
-        :prior: instance of prior class
+        prior: instance of prior class
     """
     def __init__(self, k, L, nu, mu):
         self.k   = k
@@ -217,11 +217,11 @@ class component:
     Class to store the relevant informations for each component in the mixture.
     
     Arguments:
-        :np.ndarray x: sample added to the new component
-        :prior prior:  instance of the prior class with NIG/NIW prior parameters
+        np.ndarray x: sample added to the new component
+        prior prior:  instance of the prior class with NIG/NIW prior parameters
     
     Returns:
-        :component: instance of component class
+        component: instance of component class
     """
     def __init__(self, x, prior):
         self.N     = 1
@@ -236,13 +236,13 @@ class component_h:
     To be used in hierarchical inference.
     
     Arguments:
-        :np.ndarray x:  event added to the new component
-        :int dim:       number of dimensions
-        :prior prior:   instance of the prior class with NIG/NIW prior parameters
-        :double logL_D: logLikelihood denominator
+        np.ndarray x:  event added to the new component
+        int dim:       number of dimensions
+        prior prior:   instance of the prior class with NIG/NIW prior parameters
+        double logL_D: logLikelihood denominator
     
     Returns:
-        :component_h: instance of component_h class
+        component_h: instance of component_h class
     """
     def __init__(self, x, dim, prior, logL_D, mu_MC, sigma_MC, b_ones):
         self.dim    = dim
@@ -302,10 +302,10 @@ class _density:
         Evaluate mixture at point(s) x
         
         Arguments:
-            :np.ndarray x: point(s) to evaluate the mixture at
+            np.ndarray x: point(s) to evaluate the mixture at
         
         Returns:
-            :np.ndarray: mixture.pdf(x)
+            np.ndarray: mixture.pdf(x)
         """
         return self._pdf_probit(x) * np.exp(-probit_logJ(x, self.bounds, self.probit))
 
@@ -315,10 +315,10 @@ class _density:
         Evaluate log mixture at point(s) x
         
         Arguments:
-            :np.ndarray x: point(s) to evaluate the mixture at
+            np.ndarray x: point(s) to evaluate the mixture at
         
         Returns:
-            :np.ndarray: mixture.logpdf(x)
+            np.ndarray: mixture.logpdf(x)
         """
         return self._logpdf_probit(x) - probit_logJ(x, self.bounds, self.probit)
 
@@ -328,10 +328,10 @@ class _density:
         WARNING: it is meant to be used with MCMC samplers, therefore accepts only one point at a time.
         
         Arguments:
-            :np.ndarray x: point to evaluate the mixture at
+            np.ndarray x: point to evaluate the mixture at
         
         Returns:
-            :np.ndarray: mixture.pdf(x)
+            np.ndarray: mixture.pdf(x)
         """
         x = np.atleast_1d(x)
         if x.shape == (1,self.dim):
@@ -347,10 +347,10 @@ class _density:
         WARNING: it is meant to be used with MCMC samplers, therefore accepts only one point at a time.
         
         Arguments:
-            :np.ndarray x: point to evaluate the mixture at
+            np.ndarray x: point to evaluate the mixture at
         
         Returns:
-            :np.ndarray: mixture.pdf(x)
+            np.ndarray: mixture.pdf(x)
         """
         x = np.atleast_1d(x)
         if x.shape == (1,self.dim):
@@ -366,10 +366,10 @@ class _density:
         Evaluate mixture at point x
         
         Arguments:
-            :np.ndarray x: point to evaluate the mixture at
+            np.ndarray x: point to evaluate the mixture at
         
         Returns:
-            :np.ndarray: mixture.pdf(x)
+            np.ndarray: mixture.pdf(x)
         """
         return self._fast_pdf_probit(x) * np.exp(-probit_logJ(x, self.bounds, self.probit))
 
@@ -379,10 +379,10 @@ class _density:
         Evaluate log mixture at point x
         
         Arguments:
-            :np.ndarray x: point to evaluate the mixture at
+            np.ndarray x: point to evaluate the mixture at
         
         Returns:
-            :np.ndarray: mixture.logpdf(x)
+            np.ndarray: mixture.logpdf(x)
         """
         return self._fast_logpdf_probit(x) - probit_logJ(x, self.bounds, self.probit)
 
@@ -391,10 +391,10 @@ class _density:
         Evaluate mixture at point x in probit space
         
         Arguments:
-            :np.ndarray x: point to evaluate the mixture at (in probit space)
+            np.ndarray x: point to evaluate the mixture at (in probit space)
         
         Returns:
-            :np.ndarray: mixture.pdf(x)
+            np.ndarray: mixture.pdf(x)
         """
         return np.sum(np.array([w*np.exp(log_norm(x[0], mean, cov)) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
 
@@ -403,10 +403,10 @@ class _density:
         Evaluate log mixture at point x in probit space
         
         Arguments:
-            :np.ndarray x: point to evaluate the mixture at (in probit space)
+            np.ndarray x: point to evaluate the mixture at (in probit space)
         
         Returns:
-            :np.ndarray: mixture.logpdf(x)
+            np.ndarray: mixture.logpdf(x)
         """
         return logsumexp(np.array([w + log_norm(x[0], mean, cov) for mean, cov, w in zip(self.means, self.covs, self.log_w)]), axis = 0)
 
@@ -416,10 +416,10 @@ class _density:
         Evaluate mixture at point(s) x without jacobian
         
         Arguments:
-            :np.ndarray x: point(s) to evaluate the mixture at
+            np.ndarray x: point(s) to evaluate the mixture at
         
         Returns:
-            :np.ndarray: mixture.pdf(x)
+            np.ndarray: mixture.pdf(x)
         """
         return self._pdf_probit(x)
 
@@ -428,10 +428,10 @@ class _density:
         Evaluate mixture at point(s) x in probit space
         
         Arguments:
-            :np.ndarray x: point(s) to evaluate the mixture at (in probit space)
+            np.ndarray x: point(s) to evaluate the mixture at (in probit space)
         
         Returns:
-            :np.ndarray: mixture.pdf(x)
+            np.ndarray: mixture.pdf(x)
         """
         return np.sum(np.array([w*mn(mean, cov, allow_singular = True).pdf(x) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
     
@@ -441,10 +441,10 @@ class _density:
         Evaluate every mixture component at point(s) x.
         
         Arguments:
-            :np.ndarray x: point(s) to evaluate the components at
+            np.ndarray x: point(s) to evaluate the components at
         
         Returns:
-            :np.ndarray: component.pdf(x) for each mixture component
+            np.ndarray: component.pdf(x) for each mixture component
         """
         return _pdf_array_probit(x) * np.exp(-probit_logJ(x, self.bounds, self.probit))
 
@@ -453,10 +453,10 @@ class _density:
         Evaluate every mixture component at point(s) x.
         
         Arguments:
-            :np.ndarray x: point(s) to evaluate the components at (in probit space)
+            np.ndarray x: point(s) to evaluate the components at (in probit space)
         
         Returns:
-            :np.ndarray: component.pdf(x) for each mixture component
+            np.ndarray: component.pdf(x) for each mixture component
         """
         return np.array([w*mn(mean, cov, allow_singular = True).pdf(x) for mean, cov, w in zip(self.means, self.covs, self.w)])
 
@@ -466,10 +466,10 @@ class _density:
         Evaluate every mixture component at point(s) x.
         
         Arguments:
-            :np.ndarray x: point(s) to evaluate the components at
+            np.ndarray x: point(s) to evaluate the components at
         
         Returns:
-            :np.ndarray: component.pdf(x) for each mixture component
+            np.ndarray: component.pdf(x) for each mixture component
         """
         return _fast_pdf_array_probit(x) * np.exp(-probit_logJ(x, self.bounds, self.probit))
 
@@ -478,10 +478,10 @@ class _density:
         Evaluate every mixture component at point(s) x.
         
         Arguments:
-            :np.ndarray x: point(s) to evaluate the components at (in probit space)
+            np.ndarray x: point(s) to evaluate the components at (in probit space)
         
         Returns:
-            :np.ndarray: component.pdf(x) for each mixture component
+            np.ndarray: component.pdf(x) for each mixture component
         """
         return np.array([w*np.exp(log_norm(x[0], mean, cov)) for mean, cov, w in zip(self.means, self.covs, self.w)])
 
@@ -491,10 +491,10 @@ class _density:
         Evaluate log mixture at point(s) x without jacobian
         
         Arguments:
-            :np.ndarray x: point(s) to evaluate the mixture at
+            np.ndarray x: point(s) to evaluate the mixture at
         
         Returns:
-            :np.ndarray: mixture.logpdf(x)
+            np.ndarray: mixture.logpdf(x)
         """
         return self._logpdf_probit(x)
 
@@ -503,10 +503,10 @@ class _density:
         Evaluate log mixture at point(s) x in probit space
         
         Arguments:
-            :np.ndarray x: point(s) to evaluate the mixture at (in probit space)
+            np.ndarray x: point(s) to evaluate the mixture at (in probit space)
         
         Returns:
-            :np.ndarray: mixture.logpdf(x)
+            np.ndarray: mixture.logpdf(x)
         """
         return logsumexp(np.array([w + mn(mean, cov, allow_singular = True).logpdf(x) for mean, cov, w in zip(self.means, self.covs, self.log_w)]), axis = 0)
 
@@ -530,10 +530,10 @@ class _density:
         Evaluate mixture cdf at point(s) x
         
         Arguments:
-            :np.ndarray x: point(s) to evaluate the mixture at
+            np.ndarray x: point(s) to evaluate the mixture at
         
         Returns:
-            :np.ndarray: mixture.cdf(x)
+            np.ndarray: mixture.cdf(x)
         """
         return np.sum(np.array([w*norm(mean[0], cov[0,0]).cdf(x) for mean, cov, w in zip(self.means, np.sqrt(self.covs), self.w)]), axis = 0)
 
@@ -543,10 +543,10 @@ class _density:
         Evaluate mixture log cdf at point(s) x
         
         Arguments:
-            :np.ndarray x: point(s) to evaluate the mixture at
+            np.ndarray x: point(s) to evaluate the mixture at
         
         Returns:
-            :np.ndarray: mixture.logcdf(x)
+            np.ndarray: mixture.logcdf(x)
         """
         return logsumexp(np.array([w + norm(mean[0], cov[0,0]).logcdf(x) for mean, cov, w in zip(self.means, np.sqrt(self.covs), self.log_w)]), axis = 0)
 
@@ -556,10 +556,10 @@ class _density:
         Draw samples from mixture
         
         Arguments:
-            :int size: number of samples to draw
+            int size: number of samples to draw
         
         Returns:
-            :np.ndarray: samples
+            np.ndarray: samples
         """
         if self.n_cl == 0:
             raise FIGAROException("You are trying to draw samples from an empty mixture.\n If you are using the density_from_samples() method, you may want to draw samples from the output of that method.")
@@ -570,10 +570,10 @@ class _density:
         Draw samples from mixture in probit space
         
         Arguments:
-            :int size: number of samples to draw
+            int size: number of samples to draw
         
         Returns:
-            :np.ndarray: samples in probit space
+            np.ndarray: samples in probit space
         """
         idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = size)
         ctr = Counter(idx)
@@ -592,10 +592,10 @@ class _density:
         Gradient of the mixture.
         
         Arguments:
-            :np.ndarray x: point to evaluate the gradient at
+            np.ndarray x: point to evaluate the gradient at
         
         Returns:
-            :np.ndarray: gradient
+            np.ndarray: gradient
         """
         if self.n_cl == 0:
             raise FIGAROException("You are trying to evaluate an empty mixture.\n If you are using the density_from_samples() method, you may want to evaluate the output of that method.")
@@ -613,10 +613,10 @@ class _density:
         Logarithmic gradient of the mixture.
         
         Arguments:
-            :np.ndarray x: point to evaluate the gradient at
+            np.ndarray x: point to evaluate the gradient at
         
         Returns:
-            :np.ndarray: logarithmic gradient
+            np.ndarray: logarithmic gradient
         """
         if self.n_cl == 0:
             raise FIGAROException("You are trying to evaluate an empty mixture.\n If you are using the density_from_samples() method, you may want to evaluate the output of that method.")
@@ -634,10 +634,10 @@ class _density:
         Gradient of the mixture.
         
         Arguments:
-            :np.ndarray x: point to evaluate the gradient at
+            np.ndarray x: point to evaluate the gradient at
         
         Returns:
-            :np.ndarray: gradient
+            np.ndarray: gradient
         """
         return self._fast_pdf(x)*self._log_gradient(x)
     
@@ -647,10 +647,10 @@ class _density:
         Logarithmic gradient of the mixture.
         
         Arguments:
-            :np.ndarray x: point to evaluate the gradient at
+            np.ndarray x: point to evaluate the gradient at
         
         Returns:
-            :np.ndarray: logarithmic gradient
+            np.ndarray: logarithmic gradient
         """
         p = self._pdf_array_probit(x)
         B = np.array([-np.dot(inv_jit(sigma),(x - mu)) for mu, sigma in zip(self.means, self.covs)])
@@ -665,16 +665,16 @@ class mixture(_density):
     Methods inherited from _density class.
     
     Arguments:
-        :iterable means:    component means
-        :iterable covs:     component covariances
-        :np.ndarray w:      component weights
-        :np.ndarray bounds: bounds of probit transformation
-        :int dim:           number of dimensions
-        :int n_cl:          number of clusters in the mixture
-        :bool probit:       whether to use the probit transformation or not
+        iterable means:    component means
+        iterable covs:     component covariances
+        np.ndarray w:      component weights
+        np.ndarray bounds: bounds of probit transformation
+        int dim:           number of dimensions
+        int n_cl:          number of clusters in the mixture
+        bool probit:       whether to use the probit transformation or not
     
     Returns:
-        :mixture: instance of mixture class
+        mixture: instance of mixture class
     """
     def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, probit = True, log_w = None):
         self.means  = means
@@ -696,10 +696,10 @@ class mixture(_density):
         Marginalise out one or more dimensions from the mixture.
         
         Arguments:
-            :int or list of int axis: axis to marginalise on. Default: last
+            int or list of int axis: axis to marginalise on. Default: last
         
         Returns:
-            :figaro.mixture.mixture: marginalised mixture
+            figaro.mixture.mixture: marginalised mixture
         """
         return _marginalise(self, axis)
     
@@ -708,12 +708,12 @@ class mixture(_density):
         Mixture conditioned on specific values of a subset of parameters.
         
         Arguments:
-            :iterable vals:           value(s) to condition on
-            :int or list of int dims: dimension(s) associated with given vals (starting from 0)
-            :bool norm:               whether to normalize the distribution or not
+            iterable vals:           value(s) to condition on
+            int or list of int dims: dimension(s) associated with given vals (starting from 0)
+            bool norm:               whether to normalize the distribution or not
         
         Returns:
-            :figaro.mixture.mixture: conditioned mixture
+            figaro.mixture.mixture: conditioned mixture
         """
         v       = np.mean(self.bounds, axis = -1)
         v[dims] = vals
@@ -728,13 +728,13 @@ class DPGMM(_density):
     Class to infer a distribution given a set of samples.
     
     Arguments:
-        :iterable bounds:     boundaries of the rectangle over which the distribution is defined. It should be in the format [[xmin, xmax],[ymin, ymax],...]
-        :iterable prior_pars: NIW prior parameters (k, L, nu, mu)
-        :double alpha0:       initial guess for concentration parameter
-        :bool probit:         whether to use the probit transformation or not
+        iterable bounds:     boundaries of the rectangle over which the distribution is defined. It should be in the format [[xmin, xmax],[ymin, ymax],...]
+        iterable prior_pars: NIW prior parameters (k, L, nu, mu)
+        double alpha0:       initial guess for concentration parameter
+        bool probit:         whether to use the probit transformation or not
     
     Returns:
-        :DPGMM: instance of DPGMM class
+        DPGMM: instance of DPGMM class
     """
     def __init__(self, bounds,
                        prior_pars = None,
@@ -765,7 +765,7 @@ class DPGMM(_density):
         Initialise the mixture to initial conditions.
         
         Arguments:
-            :iterable prior_pars: NIW prior parameters (k, L, nu, mu). If None, old parameters are kept
+            iterable prior_pars: NIW prior parameters (k, L, nu, mu). If None, old parameters are kept
         """
         self.alpha    = self.alpha_0
         self.mixture  = []
@@ -782,11 +782,11 @@ class DPGMM(_density):
         Update component parameters after assigning a sample to a component
         
         Arguments:
-            :np.ndarray x: sample
-            :component ss: component to update
+            np.ndarray x: sample
+            component ss: component to update
         
         Returns:
-            :component: updated component
+            component: updated component
         """
         new_mean, new_S, new_N, new_mu, new_sigma = compute_component_suffstats(x, ss.mean, ss.S, ss.N, self.prior.mu, self.prior.k, self.prior.nu, self.prior.L)
         ss.mean  = new_mean
@@ -801,11 +801,11 @@ class DPGMM(_density):
         Compute log likelihood of drawing sample x from component ss given the samples that are already assigned to that component.
         
         Arguments:
-            :np.ndarray x: sample
-            :component ss: component to update
+            np.ndarray x: sample
+            component ss: component to update
         
         Returns:
-            :double: log Likelihood
+            double: log Likelihood
         """
         if ss is None:
             ss = component(np.zeros(self.dim), prior = self.prior)
@@ -818,10 +818,10 @@ class DPGMM(_density):
         Compute the marginal distribution of cluster assignment for each cluster.
         
         Arguments:
-            :np.ndarray x: sample
+            np.ndarray x: sample
         
         Returns:
-            :dict: p_i for each component
+            dict: p_i for each component
         """
         scores = np.zeros(self.n_cl+1)
         for i in range(self.n_cl+1):
@@ -840,7 +840,7 @@ class DPGMM(_density):
         Assign the new sample x to an existing cluster or to a new cluster according to the marginal distribution of cluster assignment.
         
         Arguments:
-            :np.ndarray x: sample
+            np.ndarray x: sample
         """
         scores = self._cluster_assignment_distribution(x)
         cid = np.random.choice(self.n_cl+1, p=scores)
@@ -862,10 +862,10 @@ class DPGMM(_density):
         Reconstruct the probability density from a set of samples.
         
         Arguments:
-            :iterable samples: samples set
+            iterable samples: samples set
         
         Returns:
-            :mixture: the inferred mixture
+            mixture: the inferred mixture
         """
         np.random.shuffle(samples)
         samples = np.ascontiguousarray(samples)
@@ -881,7 +881,7 @@ class DPGMM(_density):
         Update the probability density reconstruction adding a new sample
         
         Arguments:
-            :np.ndarray x: sample
+            np.ndarray x: sample
         """
         self.n_pts += 1
         self._assign_to_cluster(np.atleast_2d(x))
@@ -892,7 +892,7 @@ class DPGMM(_density):
         Instances a mixture class representing the inferred distribution
         
         Returns:
-            :mixture: the inferred distribution
+            mixture: the inferred distribution
         """
         if self.n_cl == 0:
             raise FIGAROException("You are trying to build an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, the inferred mixture is returned by that method as an instance of mixture class.")
@@ -911,10 +911,10 @@ class DPGMM(_density):
         Draw samples from mixture in probit space
         
         Arguments:
-            :int size: number of samples to draw
+            int size: number of samples to draw
         
         Returns:
-            :np.ndarray: samples in probit space
+            np.ndarray: samples in probit space
         """
         idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = size)
         ctr = Counter(idx)
@@ -933,10 +933,10 @@ class DPGMM(_density):
         Evaluate mixture at point(s) x in probit space
         
         Arguments:
-            :np.ndarray x: point(s) to evaluate the mixture at (in probit space)
+            np.ndarray x: point(s) to evaluate the mixture at (in probit space)
         
         Returns:
-            :np.ndarray: mixture.pdf(x)
+            np.ndarray: mixture.pdf(x)
         """
         return np.sum(np.array([w*mn(comp.mu, comp.sigma, allow_singular = True).pdf(x) for comp, w in zip(self.mixture, self.w)]), axis = 0)
 
@@ -945,10 +945,10 @@ class DPGMM(_density):
         Evaluate log mixture at point(s) x in probit space
         
         Arguments:
-            :np.ndarray x: point(s) to evaluate the mixture at (in probit space)
+            np.ndarray x: point(s) to evaluate the mixture at (in probit space)
         
         Returns:
-            :np.ndarray: mixture.logpdf(x)
+            np.ndarray: mixture.logpdf(x)
         """
         return logsumexp(np.array([w + mn(comp.mu, comp.sigma, allow_singular = True).logpdf(x) for comp, w in zip(self.mixture, self.log_w)]), axis = 0)
 
@@ -957,10 +957,10 @@ class DPGMM(_density):
         Evaluate mixture at point x in probit space
         
         Arguments:
-            :np.ndarray x: point to evaluate the mixture at (in probit space)
+            np.ndarray x: point to evaluate the mixture at (in probit space)
         
         Returns:
-            :np.ndarray: mixture.pdf(x)
+            np.ndarray: mixture.pdf(x)
         """
         return np.sum(np.array([w*np.exp(log_norm(x[0], comp.mean, comp.cov)) for comp, w in zip(self.mixture, self.w)]), axis = 0)
 
@@ -969,10 +969,10 @@ class DPGMM(_density):
         Evaluate log mixture at point x in probit space
         
         Arguments:
-            :np.ndarray x: point to evaluate the mixture at (in probit space)
+            np.ndarray x: point to evaluate the mixture at (in probit space)
         
         Returns:
-            :np.ndarray: mixture.logpdf(x)
+            np.ndarray: mixture.logpdf(x)
         """
         return logsumexp(np.array([w + log_norm(x[0], comp.mean, comp.cov) for comp, w in zip(self.mixture, self.log_w)]), axis = 0)
 
@@ -982,15 +982,15 @@ class HDPGMM(DPGMM):
     Child of DPGMM class
     
     Arguments:
-        :iterable bounds:  boundaries of the rectangle over which the distribution is defined. It should be in the format [[xmin, xmax],[ymin, ymax],...]
-        :double alpha0:    initial guess for concentration parameter
-        :double MC_draws:  number of MC draws for integral
-        :bool probit:      whether to use the probit transformation or not
-        :double sigma_min: lower bound for Jeffreys' prior on standard deviation
-        :double sigma_max: upper bound for Jeffreys' prior on standard deviation
+        iterable bounds:  boundaries of the rectangle over which the distribution is defined. It should be in the format [[xmin, xmax],[ymin, ymax],...]
+        double alpha0:    initial guess for concentration parameter
+        double MC_draws:  number of MC draws for integral
+        bool probit:      whether to use the probit transformation or not
+        double sigma_min: lower bound for Jeffreys' prior on standard deviation
+        double sigma_max: upper bound for Jeffreys' prior on standard deviation
     
     Returns:
-        :HDPGMM: instance of HDPGMM class
+        HDPGMM: instance of HDPGMM class
     """
     def __init__(self, bounds,
                        alpha0     = 1.,
@@ -1043,7 +1043,7 @@ class HDPGMM(DPGMM):
         Update the probability density reconstruction adding a new sample
         
         Arguments:
-            :iterable x: set of single-event draws from a DPGMM inference
+            iterable x: set of single-event draws from a DPGMM inference
         """
         self.n_pts += 1
         x = np.random.choice(ev)
@@ -1055,10 +1055,10 @@ class HDPGMM(DPGMM):
         Compute the marginal distribution of cluster assignment for each cluster.
         
         Arguments:
-            :np.ndarray x: sample
+            np.ndarray x: sample
         
         Returns:
-            :dict: p_i for each component
+            dict: p_i for each component
         """
         scores = np.zeros(self.n_cl+1)
         logL_N = np.zeros((self.n_cl+1, self.MC_draws))
@@ -1087,7 +1087,7 @@ class HDPGMM(DPGMM):
         Assign the new sample x to an existing cluster or to a new cluster according to the marginal distribution of cluster assignment.
         
         Arguments:
-            :np.ndarray x: sample
+            np.ndarray x: sample
         """
         scores, logL_N = self._cluster_assignment_distribution(x)
         try:
@@ -1112,12 +1112,12 @@ class HDPGMM(DPGMM):
         Update component parameters after assigning a sample to a component
         
         Arguments:
-            :np.ndarray x: sample
-            :component ss: component to update
-            :double logL_D: log Likelihood denominator
+            np.ndarray x: sample
+            component ss: component to update
+            double logL_D: log Likelihood denominator
         
         Returns:
-            :component: updated component
+            component: updated component
         """
         ss.events.append(x)
         ss.means.append(x.means)
@@ -1142,7 +1142,7 @@ class HDPGMM(DPGMM):
         Instances a mixture class representing the inferred distribution
         
         Returns:
-            :mixture: the inferred distribution
+            mixture: the inferred distribution
         """
         if self.n_cl == 0:
             raise FIGAROException("You are trying to build an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, the inferred mixture is returned by that method as an instance of mixture class.")
@@ -1153,10 +1153,10 @@ class HDPGMM(DPGMM):
         Reconstruct the probability density from a set of samples.
         
         Arguments:
-            :iterable samples: set of single-event draws from DPGMM
+            iterable samples: set of single-event draws from DPGMM
         
         Returns:
-            :mixture: the inferred mixture
+            mixture: the inferred mixture
         """
         np.random.shuffle(events)
         for ev in events:

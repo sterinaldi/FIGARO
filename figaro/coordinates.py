@@ -6,10 +6,10 @@ def cartesian_to_celestial(vector):
     The parameter r is the radial distance, theta is the polar angle, and phi is the azimuth.
     
     Arguments:
-        :np.ndarray: cartesian vector [x, y, z]
+        np.ndarray: cartesian vector [x, y, z]
         
     Returns:
-        :np.ndarray: spherical coordinate vector [phi, theta, r]
+        np.ndarray: spherical coordinate vector [phi, theta, r]
     """
     vector = np.atleast_2d(vector)
     D = np.linalg.norm(vector, axis = -1)
@@ -26,10 +26,10 @@ def celestial_to_cartesian(vector):
     The parameter r is the radial distance, theta is the polar angle, and phi is the azimuth
     
     Arguments:
-        :np.ndarray vector: celestial coordinate vector [ra, dec, dist]
+        np.ndarray vector: celestial coordinate vector [ra, dec, dist]
         
     Returns:
-        :np.ndarray: cartesian vector [x, y, z]
+        np.ndarray: cartesian vector [x, y, z]
     """
     vector = np.atleast_2d(vector)
     # Trig alias.
@@ -45,10 +45,10 @@ def Jacobian(cartesian_vect):
     Computes the jacobian of celestial transformation for a cartesian vector
     
     Arguments:
-        :np.ndarray cartesian_vect: cartesian vector [x, y, z]
+        np.ndarray cartesian_vect: cartesian vector [x, y, z]
     
     Returns:
-        :np.ndarray: Jacobian of the transformation
+        np.ndarray: Jacobian of the transformation
     """
     return Jacobian_in_celestial(cartesian_to_celestial(np.atleast_2d(cartesian_vect)))
 
@@ -57,10 +57,10 @@ def inv_Jacobian(celestial_vect):
     Computes the inverse jacobian of celestial transformation for a celestial vector
     
     Arguments:
-        :np.ndarray cartesian_vect: cartesian vector [ra, dec, D]
+        np.ndarray cartesian_vect: cartesian vector [ra, dec, D]
     
     Returns:
-        :np.ndarray: inverse Jacobian of the transformation
+        np.ndarray: inverse Jacobian of the transformation
     """
     detJ = Jacobian_in_celestial(np.atleast_2d(celestial_vect))
     return 1/detJ
@@ -70,10 +70,10 @@ def Jacobian_in_celestial(celestial_vect):
     Computes the jacobian of celestial transformation
     
     Arguments:
-        :np.ndarray cartesian_vect: cartesian vector [ra, dec, D]
+        np.ndarray cartesian_vect: cartesian vector [ra, dec, D]
     
     Returns:
-        :np.ndarray: Jacobian of the transformation
+        np.ndarray: Jacobian of the transformation
     """
     d = celestial_vect[:,2]
     theta = celestial_vect[:,1]

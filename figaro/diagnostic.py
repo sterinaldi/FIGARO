@@ -19,11 +19,11 @@ def angular_coefficient(x, y):
     Angular coefficient obtained from linear regression.
     
     Arguments:
-        :np.ndarray x: independent variables
-        :np.ndarray y: dependent variables
+        np.ndarray x: independent variables
+        np.ndarray y: dependent variables
     
     Returns:
-        :double: angular coefficient
+        double: angular coefficient
     """
     return np.sum((x - np.mean(x))*(y - np.mean(y)))/np.sum((x - np.mean(x))**2)
     
@@ -32,11 +32,11 @@ def compute_angular_coefficients(x, L = None):
     Given an array of points x, computes the angular coefficient for each adjacent chunk of length L.
     
     Arguments:
-        :np.ndarray x: array of points
-        :int L:        window length
+        np.ndarray x: array of points
+        int L:        window length
     
     Returns:
-        :np.ndarray: array of angular coefficients
+        np.ndarray: array of angular coefficients
     """
     if L is None:
        L = len(x)//10
@@ -56,17 +56,17 @@ def plot_angular_coefficient(entropy, L = 500, ac_expected = None, out_folder = 
     Compute entropy angular coefficient and produce the relevant plot
     
     Arguments:
-        :iterable entropy:       container of mixture instances
-        :int L:                  window lenght
-        :double ac_expected:     expected angular coefficient
-        :str or Path out_folder: output folder
-        :str name:               name to be given to outputs
-        :int step:               number of draws between entropy samples (if downsampled by some other method, for plotting purposes only)
-        :bool save:              whether to save the plot or not
-        :bool show:              whether to show the plot during the run or not
+        iterable entropy:       container of mixture instances
+        int L:                  window lenght
+        double ac_expected:     expected angular coefficient
+        str or Path out_folder: output folder
+        str name:               name to be given to outputs
+        int step:               number of draws between entropy samples (if downsampled by some other method, for plotting purposes only)
+        bool save:              whether to save the plot or not
+        bool show:              whether to show the plot during the run or not
     
     Returns:
-        :np.ndarray: angular coefficients
+        np.ndarray: angular coefficients
     """
     S = compute_angular_coefficients(entropy, L = L)
     fig, ax = plt.subplots()
@@ -88,13 +88,13 @@ def compute_autocorrelation(draws, mean, dx):
     Computes autocorrelation of subsequent draws as <∫(draw[i]-mean)*(draw[i+t]-mean)*dx/∫(draw[i]-mean)**2*dx>
     
     Arguments:
-        :np.ndarray draws: evaluated mixtures (2d array)
-        :np.ndarray mean:  bin-wise mean of evaluated mixtures (1d array)
-        :double dx:        integration measure
+        np.ndarray draws: evaluated mixtures (2d array)
+        np.ndarray mean:  bin-wise mean of evaluated mixtures (1d array)
+        double dx:        integration measure
     
     Returns:
-        :int: upper bound of autocorrelation length
-        :np.ndarray: autocorrelation function
+        int: upper bound of autocorrelation length
+        np.ndarray: autocorrelation function
     """
     taumax          = draws.shape[0]//2
     n_draws         = draws.shape[0]
@@ -115,16 +115,16 @@ def autocorrelation(draws, bounds = None, out_folder = '.', name = 'event', n_po
     Compute autocorrelation of a set of draws and produce the relevant plot
     
     Arguments:
-        :iterable draws:         container of mixture instances
-        :iterable bounds:        bounds of the interval over which the distributions are evaluated. It has to be passed as [[xmin,xmax]]. If None, draws bounds are used.
-        :str or Path out_folder: output folder
-        :str name:               name to be given to outputs
-        :int n_points:           number of points for linspace
-        :bool save:              whether to save the plot or not
-        :bool show:              whether to show the plot during the run or not
+        iterable draws:         container of mixture instances
+        iterable bounds:        bounds of the interval over which the distributions are evaluated. It has to be passed as [[xmin,xmax]]. If None, draws bounds are used.
+        str or Path out_folder: output folder
+        str name:               name to be given to outputs
+        int n_points:           number of points for linspace
+        bool save:              whether to save the plot or not
+        bool show:              whether to show the plot during the run or not
     
     Returns:
-        :np.ndarray: autocorrelation
+        np.ndarray: autocorrelation
     """
     all_bounds = np.atleast_2d([d.bounds[0] for d in draws])
     x_min = np.max(all_bounds[:,0])
@@ -164,11 +164,11 @@ def compute_entropy_single_draw(mixture, n_draws = 1e3, return_error = False):
     Compute entropy for a single realisation of the DPGMM using Monte Carlo integration
     
     Arguments:
-        :mixture mixture: instance of mixture class (see mixture.py for definition)
-        :double n_draws:  number of MC draws
+        mixture mixture: instance of mixture class (see mixture.py for definition)
+        double n_draws:  number of MC draws
     
     Returns:
-        :double: entropy value
+        double: entropy value
     """
     samples = mixture.rvs(int(n_draws))
     logP    = mixture.logpdf(samples)
@@ -184,11 +184,11 @@ def compute_entropy(draws, n_draws = 1e3, return_error = False):
     Compute entropy for a list of realisations of the DPGMM using Monte Carlo integration
     
     Arguments:
-        :iterable draws: container of mixture class instaces (see mixture.py for definition)
-        :double n_draws: number of MC draws
+        iterable draws: container of mixture class instaces (see mixture.py for definition)
+        double n_draws: number of MC draws
     
     Returns:
-        :np.ndarray: entropy values
+        np.ndarray: entropy values
     """
     S = np.zeros(len(draws))
     if not return_error:
@@ -206,17 +206,17 @@ def entropy(draws, out_folder = '.', exp_entropy = None, name = 'event', n_draws
     Compute entropy of a set of draws and produce the relevant plot
     
     Arguments:
-        :iterable draws:         container of mixture instances
-        :str or Path out_folder: output folder
-        :double exp_entropy:     expected value for entropy, expressed in bits
-        :str name:               name to be given to outputs
-        :int n_draws:            number of MC draws
-        :int step:               number of draws between entropy samples (if downsampled by some other method, for plotting purposes only)
-        :bool save:              whether to save the plot or not
-        :bool show:              whether to show the plot during the run or not
+        iterable draws:         container of mixture instances
+        str or Path out_folder: output folder
+        double exp_entropy:     expected value for entropy, expressed in bits
+        str name:               name to be given to outputs
+        int n_draws:            number of MC draws
+        int step:               number of draws between entropy samples (if downsampled by some other method, for plotting purposes only)
+        bool save:              whether to save the plot or not
+        bool show:              whether to show the plot during the run or not
     
     Return:
-        :np.ndarray: entropy
+        np.ndarray: entropy
     """
     S = compute_entropy(draws, int(n_draws))
     fig, ax = plt.subplots()

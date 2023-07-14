@@ -103,24 +103,24 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
     Plot the recovered 1D distribution along with the injected distribution and samples from the true distribution (both if available).
     
     Arguments:
-        :iterable draws:                  container for mixture instances
-        :callable or np.ndarray injected: injected distribution (if available)
-        :np.ndarray samples:              samples from the true distribution (if available)
-        :callable or np.ndarray selfunc:  selection function (if available)
-        :iterable bounds:                 bounds for the recovered distribution. If None, bounds from mixture instances are used.
-        :str or Path out_folder:          output folder
-        :str name:                        name to be given to outputs
-        :int n_pts:                       number of points for linspace
-        :str label:                       LaTeX-style quantity label, for plotting purposes
-        :str unit:                        LaTeX-style quantity unit, for plotting purposes
-        :bool hierarchical:               hierarchical inference, for plotting purposes
-        :bool save:                       whether to save the plots or not
-        :bool show:                       whether to show the plots during the run or not
-        :bool subfolder:                  whether to save the plots in different subfolders (for multiple events)
-        :float true_value:                true value to infer
-        :str true_value_label:            label to assign to the true value marker
-        :str injected_label:              label to assign to the injected distribution
-        :str median_label:                label to assign to the reconstruction
+        iterable draws:                  container for mixture instances
+        callable or np.ndarray injected: injected distribution (if available)
+        np.ndarray samples:              samples from the true distribution (if available)
+        callable or np.ndarray selfunc:  selection function (if available)
+        iterable bounds:                 bounds for the recovered distribution. If None, bounds from mixture instances are used.
+        str or Path out_folder:          output folder
+        str name:                        name to be given to outputs
+        int n_pts:                       number of points for linspace
+        str label:                       LaTeX-style quantity label, for plotting purposes
+        str unit:                        LaTeX-style quantity unit, for plotting purposes
+        bool hierarchical:               hierarchical inference, for plotting purposes
+        bool save:                       whether to save the plots or not
+        bool show:                       whether to show the plots during the run or not
+        bool subfolder:                  whether to save the plots in different subfolders (for multiple events)
+        float true_value:                true value to infer
+        str true_value_label:            label to assign to the true value marker
+        str injected_label:              label to assign to the injected distribution
+        str median_label:                label to assign to the reconstruction
     """
     if median_label is None:
         if hierarchical:
@@ -301,23 +301,23 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
     Plot the recovered multidimensional distribution along with samples from the true distribution (if available) as corner plot.
     
     Arguments:
-        :iterable draws:         container for mixture instances
-        :int dim:                number of dimensions
-        :np.ndarray samples:     samples from the true distribution (if available)
-        :iterable bounds:        bounds for the recovered distribution. If None, bounds from mixture instances are used.
-        :str or Path out_folder: output folder
-        :str name:               name to be given to outputs
-        :list-of-str labels:     LaTeX-style quantity label, for plotting purposes
-        :list-of-str units:      LaTeX-style quantity unit, for plotting purposes
-        :bool hierarchical:      hierarchical inference, for plotting purposes
-        :bool save:              whether to save the plot or not
-        :bool show:              whether to show the plot during the run or not
-        :bool subfolder:         whether to save in a dedicated subfolder
-        :int n_pts:              number of grid points (same for each dimension)
-        :iterable true_value:    true value to plot
-        :iterable levels:        credible levels to plot
-        :bool scatter_points:    scatter samples on 2d plots
-        :str median_label:       label to assign to the reconstruction
+        iterable draws:         container for mixture instances
+        int dim:                number of dimensions
+        np.ndarray samples:     samples from the true distribution (if available)
+        iterable bounds:        bounds for the recovered distribution. If None, bounds from mixture instances are used.
+        str or Path out_folder: output folder
+        str name:               name to be given to outputs
+        list-of-str labels:     LaTeX-style quantity label, for plotting purposes
+        list-of-str units:      LaTeX-style quantity unit, for plotting purposes
+        bool hierarchical:      hierarchical inference, for plotting purposes
+        bool save:              whether to save the plot or not
+        bool show:              whether to show the plot during the run or not
+        bool subfolder:         whether to save in a dedicated subfolder
+        int n_pts:              number of grid points (same for each dimension)
+        iterable true_value:    true value to plot
+        iterable levels:        credible levels to plot
+        bool scatter_points:    scatter samples on 2d plots
+        str median_label:       label to assign to the reconstruction
     """
     
     dim = draws[0].dim
@@ -522,23 +522,23 @@ def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', na
     For FIGARO mixture instances, please use plot_median_cr.
 
     Arguments:
-        :iterable x:                      values at which realisations are evaluated
-        :iterable draws:                  container for realisations
-        :callable or np.ndarray injected: injected distribution (if available)
-        :np.ndarray samples:              samples from the true distribution (if available)
-        :str or Path out_folder:          output folder
-        :str name:                        name to be given to outputs
-        :str label:                       LaTeX-style quantity label, for plotting purposes
-        :str unit:                        LaTeX-style quantity unit, for plotting purposes
-        :bool save:                       whether to save the plots or not
-        :bool show:                       whether to show the plots during the run or not
-        :bool subfolder:                  whether to save the plots in different subfolders (for multiple events)
-        :float true_value:                true value to infer
-        :str true_value_label:            label to assign to the true value marker
-        :str injected_label:              label to assign to the injected distribution
-        :str median_label:                label to assign to the median distribution
-        :bool logx:                       x log scale
-        :bool logy:                       y log scale
+        iterable x:                      values at which realisations are evaluated
+        iterable draws:                  container for realisations
+        callable or np.ndarray injected: injected distribution (if available)
+        np.ndarray samples:              samples from the true distribution (if available)
+        str or Path out_folder:          output folder
+        str name:                        name to be given to outputs
+        str label:                       LaTeX-style quantity label, for plotting purposes
+        str unit:                        LaTeX-style quantity unit, for plotting purposes
+        bool save:                       whether to save the plots or not
+        bool show:                       whether to show the plots during the run or not
+        bool subfolder:                  whether to save the plots in different subfolders (for multiple events)
+        float true_value:                true value to infer
+        str true_value_label:            label to assign to the true value marker
+        str injected_label:              label to assign to the injected distribution
+        str median_label:                label to assign to the median distribution
+        bool logx:                       x log scale
+        bool logy:                       y log scale
     """
     
     if not np.shape(x)[0] == np.shape(draws)[-1]:
@@ -632,12 +632,12 @@ def plot_n_clusters_alpha(n_cl, alpha, out_folder = '.', name = 'event', show = 
     Plot the number of clusters and the concentration parameter as functions of the number of samples.
     
     Arguments:
-        :np.ndarray n_cl:        number of active clusters
-        :np.ndarray alpha:       concentration parameter
-        :str or Path out_folder: output folder
-        :str name:               name to be given to outputs
-        :bool save:              whether to save the plot or not
-        :bool show:              whether to show the plot during the run or not
+        np.ndarray n_cl:        number of active clusters
+        np.ndarray alpha:       concentration parameter
+        str or Path out_folder: output folder
+        str name:               name to be given to outputs
+        bool save:              whether to save the plot or not
+        bool show:              whether to show the plot during the run or not
     """
     fig, ax = plt.subplots()
     ax1 = ax.twinx()
@@ -657,13 +657,13 @@ def pp_plot_cdf(draws, injection, n_points = 1000, out_folder = '.', name = 'eve
     Make pp-plot comparing draws cdfs and injection cdf
     
     Arguments:
-        :iterable draws:         container of mixture instances
-        :callable injection:     injected density
-        :int n_points:           number of points for linspace
-        :str or Path out_folder: output folder
-        :str name:               name to be given to outputs
-        :bool save:              whether to save the plot or not
-        :bool show:              whether to show the plot during the run or not
+        iterable draws:         container of mixture instances
+        callable injection:     injected density
+        int n_points:           number of points for linspace
+        str or Path out_folder: output folder
+        str name:               name to be given to outputs
+        bool save:              whether to save the plot or not
+        bool show:              whether to show the plot during the run or not
     """
     all_bounds = np.atleast_2d([d.bounds[0] for d in draws])
     x_min = np.max(all_bounds[:,0])
@@ -696,12 +696,12 @@ def pp_plot_levels(CR_levels, median_CR = None, out_folder = '.', name = 'MDC', 
     Make pp-plot.
     
     Arguments:
-        :iterable CR:            2D array with credible levels for each event
-        :iterable median_CR:     credible levels of medians
-        :str or Path out_folder: output folder
-        :str name:               name to be given to outputs
-        :bool save:              whether to save the plot or not
-        :bool show:              whether to show the plot during the run or not
+        iterable CR:            2D array with credible levels for each event
+        iterable median_CR:     credible levels of medians
+        str or Path out_folder: output folder
+        str name:               name to be given to outputs
+        bool save:              whether to save the plot or not
+        bool show:              whether to show the plot during the run or not
     """
     CR_levels = np.atleast_1d(CR_levels)
     if len(CR_levels.shape) > 1:

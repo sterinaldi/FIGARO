@@ -53,11 +53,11 @@ def _find_redshift(omega, dl):
     Find redshift given a luminosity distance and a cosmology using Newton's method
     
     Arguments:
-        :CosmologicalParameters omega: cosmology (see cosmology.pyx for definition)
-        :double dl:                    luminosity distance
+        CosmologicalParameters omega: cosmology (see cosmology.pyx for definition)
+        double dl:                    luminosity distance
     
     Returns:
-        :double: redshift
+        double: redshift
     """
     def objective(z, omega, dl):
         return dl - omega.LuminosityDistance_double(z)
@@ -76,21 +76,21 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674
     Not all GW parameters are implemented: run figaro.load.available_gw_pars() for a list of the available parameters.
     
     Arguments:
-        :str or Path file: file with samples
-        :bool seed:        fixes the seed to a default value (1) for reproducibility
-        :list-of-str par:  list with parameter(s) to extract from GW posteriors (m1, m2, mc, z, chi_effective)
-        :int n_samples:    number of samples for (random) downsampling. Default -1: all samples
-        :double h:         Hubble constant H0/100 [km/(s*Mpc)]
-        :double om:        matter density parameter
-        :double ol:        cosmological constant density parameter
-        :bool volume:      if True, loads RA, dec and Luminosity distance (for skymaps)
-        :str waveform:     waveform family to be used ('combined', 'seob', 'imr')
-        :double snr_threhsold: SNR threshold for event filtering. For injection analysis only.
-        :double far_threshold: FAR threshold for event filtering. For injection analysis only.
+        str or Path file: file with samples
+        bool seed:        fixes the seed to a default value (1) for reproducibility
+        list-of-str par:  list with parameter(s) to extract from GW posteriors (m1, m2, mc, z, chi_effective)
+        int n_samples:    number of samples for (random) downsampling. Default -1: all samples
+        double h:         Hubble constant H0/100 [km/(s*Mpc)]
+        double om:        matter density parameter
+        double ol:        cosmological constant density parameter
+        bool volume:      if True, loads RA, dec and Luminosity distance (for skymaps)
+        str waveform:     waveform family to be used ('combined', 'seob', 'imr')
+        double snr_threhsold: SNR threshold for event filtering. For injection analysis only.
+        double far_threshold: FAR threshold for event filtering. For injection analysis only.
         
     Returns:
-        :np.ndarray: samples
-        :np.ndarray: name
+        np.ndarray: samples
+        np.ndarray: name
     '''
     if seed:
         rdstate = np.random.RandomState(seed = 1)
@@ -140,20 +140,20 @@ def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.
     Not all GW parameters are implemented: run figaro.load.available_gw_pars() for a list of available parameters.
     
     Arguments:
-        :str or Path path: folder with data files
-        :bool seed:        fixes the seed to a default value (1) for reproducibility
-        :list-of-str par:  list with parameter(s) to extract from GW posteriors
-        :int n_samples:    number of samples for (random) downsampling. Default -1: all samples
-        :double h:         Hubble constant H0/100 [km/(s*Mpc)]
-        :double om:        matter density parameter
-        :double ol:        cosmological constant density parameter
-        :str waveform:     waveform family to be used ('combined', 'seob', 'imr')
-        :double snr_threhsold: SNR threshold for event filtering. For injection analysis only.
-        :double far_threshold: FAR threshold for event filtering. For injection analysis only.
+        str or Path path: folder with data files
+        bool seed:        fixes the seed to a default value (1) for reproducibility
+        list-of-str par:  list with parameter(s) to extract from GW posteriors
+        int n_samples:    number of samples for (random) downsampling. Default -1: all samples
+        double h:         Hubble constant H0/100 [km/(s*Mpc)]
+        double om:        matter density parameter
+        double ol:        cosmological constant density parameter
+        str waveform:     waveform family to be used ('combined', 'seob', 'imr')
+        double snr_threhsold: SNR threshold for event filtering. For injection analysis only.
+        double far_threshold: FAR threshold for event filtering. For injection analysis only.
 
     Returns:
-        :np.ndarray: samples
-        :np.ndarray: names
+        np.ndarray: samples
+        np.ndarray: names
     '''
     folder      = Path(path).resolve()
     event_files = [Path(folder,f) for f in folder.glob('[!.]*')] # Ignores hidden files
@@ -232,16 +232,16 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
         * IMRPhenomPv3HM
     
     Arguments:
-        :str event:            file to read
-        :str par:              parameter to extract
-        :tuple cosmology:      cosmological parameters (h, om, ol)
-        :int n_samples:        number of samples for (random) downsampling. Default -1: all samples
-        :str waveform:         waveform family to be used ('combined', 'imr', 'seob')
-        :double snr_threhsold: SNR threshold for event filtering. For injection analysis only.
-        :double far_threshold: FAR threshold for event filtering. For injection analysis only.
+        str event:            file to read
+        str par:              parameter to extract
+        tuple cosmology:      cosmological parameters (h, om, ol)
+        int n_samples:        number of samples for (random) downsampling. Default -1: all samples
+        str waveform:         waveform family to be used ('combined', 'imr', 'seob')
+        double snr_threhsold: SNR threshold for event filtering. For injection analysis only.
+        double far_threshold: FAR threshold for event filtering. For injection analysis only.
     
     Returns:
-        :np.ndarray:    samples
+        np.ndarray:    samples
     '''
     h, om, ol = cosmology
     omega = CosmologicalParameters(h, om, ol, -1, 0)
@@ -475,10 +475,10 @@ def save_density(draws, folder = '.', name = 'density', ext = 'pkl'):
     Exports a list of figaro.mixture instances to file
 
     Arguments:
-        :list draws:         list of mixtures to be saved
-        :str or Path folder: folder in which the output file will be saved
-        :str name:           name to be given to output file
-        :str ext:            file extension (pkl or json)
+        list draws:         list of mixtures to be saved
+        str or Path folder: folder in which the output file will be saved
+        str name:           name to be given to output file
+        str ext:            file extension (pkl or json)
     """
     if ext == 'pkl':
         with open(Path(folder, name+'.pkl'), 'wb') as f:
@@ -508,10 +508,10 @@ def load_density(path):
     If the requested file extension (pkl or json) is not available, it tries loading the other.
 
     Arguments:
-        :str or Path path: path with draws (file or folder)
+        str or Path path: path with draws (file or folder)
 
     Returns
-        :list: figaro.mixture object instances
+        list: figaro.mixture object instances
     """
     path = Path(path)
     if path.is_file():
@@ -525,10 +525,10 @@ def _load_density_file(file):
     If the requested file extension (pkl or json) is not available, it tries loading the other.
 
     Arguments:
-        :str or Path file: file with draws
+        str or Path file: file with draws
 
     Returns
-        :list: figaro.mixture object instances
+        list: figaro.mixture object instances
     """
     file = Path(file)
     ext  = file.suffix
@@ -556,10 +556,10 @@ def _load_pkl(file):
     Loads a list of figaro.mixture instances from pkl file
 
     Arguments:
-        :str or Path file: file with draws
+        str or Path file: file with draws
 
     Returns
-        :list: figaro.mixture object instances
+        list: figaro.mixture object instances
     """
     with open(file, 'rb') as f:
         draws = dill.load(f)
@@ -570,10 +570,10 @@ def _load_json(file):
     Loads a list of figaro.mixture instances from json file
 
     Arguments:
-        :str or Path file: file with draws
+        str or Path file: file with draws
 
     Returns
-        :list: figaro.mixture object instances
+        list: figaro.mixture object instances
     """
     with open(Path(file), 'r') as fjson:
         dictjson = json.loads(json.load(fjson))

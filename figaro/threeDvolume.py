@@ -47,11 +47,11 @@ def log_add(x, y):
     Compute log(np.exp(x) + np.exp(y))
     
     Arguments:
-        :double x: first addend (log)
-        :double y: second addend (log)
+        double x: first addend (log)
+        double y: second addend (log)
     
     Returns:
-        :double: log(np.exp(x) + np.exp(y))
+        double: log(np.exp(x) + np.exp(y))
     """
     if x >= y:
         return x+np.log1p(np.exp(y-x))
@@ -64,11 +64,11 @@ def log_add_array(x,y):
     Compute log(np.exp(x) + np.exp(y)) element-wise
     
     Arguments:
-        :np.ndarray x: first addend (log)
-        :np.ndarray y: second addend (log)
+        np.ndarray x: first addend (log)
+        np.ndarray y: second addend (log)
     
     Returns:
-        :np.ndarray: log(np.exp(x) + np.exp(y)) element-wise
+        np.ndarray: log(np.exp(x) + np.exp(y)) element-wise
     """
     res = np.zeros(len(x), dtype = np.float64)
     for i in prange(len(x)):
@@ -95,30 +95,30 @@ class VolumeReconstruction(DPGMM):
     Child class of DPGMM class (defined in mixture.py)
     
     Arguments:
-        :double max_dist:          maximum distance (in Mpc)
-        :str or Path out_folder:   output folder
-        :tuple prior_pars:         NIW prior parameters (k, L, nu, mu - see https://www.cs.ubc.ca/~murphyk/Papers/bayesGauss.pdf)
-        :double alpha0:            initial guess for concentration parameter
-        :list-of-int n_gridpoints: number of gridpoints for each dimension (ra, dec, dist). Default is set to have a 0.25 deg^2 resolution
-        :str name:                 name to be given to output folders and files
-        :list-of-str labels:       plot labels
-        :list-of-double levels:    credible levels (between 0 and 1)
-        :bool latex:               if True, LaTeX is used for plots (if available)
-        :bool incr_plot:           if True, produce plots at fixed number of samples. Otherwise, skymaps are produced at the end of the inference only
-        :str or Path glade_file:   file containing GLADE+ (hdf5 file created using the create_glade.py pipeline)
-        :dict cosmology:           dictionary containing h = H0/100 km/(s*Mpc), om (matter density parameter) and ol (cosmological constant density). Default from Planck (2021)
-        :int n_gal_to_plot:        number of galaxies to include in galaxy plots
-        :double region_to_plot:    credible region to plot
-        :bool entropy:             use entropy to assess convergence and begin producing skymaps
-        :list-of-double true_host: position of the true host, if known
-        :str host_name:            host name, for plotting purposes
-        :int entropy_step:         interval (expressed as number of draws) between two subsequent entropy evaluations
-        :int entropy_ac_step:      window lenght for entropy angular coefficient
-        :int n_sign_changes:       number of zero-crossings before beginning producing skymaps (requires entropy = True)
-        :bool virtual_observatory: places the virtual observatory fov behind galaxy plots. Warning: under development, might not work
+        double max_dist:          maximum distance (in Mpc)
+        str or Path out_folder:   output folder
+        tuple prior_pars:         NIW prior parameters (k, L, nu, mu - see https://www.cs.ubc.ca/~murphyk/Papers/bayesGauss.pdf)
+        double alpha0:            initial guess for concentration parameter
+        list-of-int n_gridpoints: number of gridpoints for each dimension (ra, dec, dist). Default is set to have a 0.25 deg^2 resolution
+        str name:                 name to be given to output folders and files
+        list-of-str labels:       plot labels
+        list-of-double levels:    credible levels (between 0 and 1)
+        bool latex:               if True, LaTeX is used for plots (if available)
+        bool incr_plot:           if True, produce plots at fixed number of samples. Otherwise, skymaps are produced at the end of the inference only
+        str or Path glade_file:   file containing GLADE+ (hdf5 file created using the create_glade.py pipeline)
+        dict cosmology:           dictionary containing h = H0/100 km/(s*Mpc), om (matter density parameter) and ol (cosmological constant density). Default from Planck (2021)
+        int n_gal_to_plot:        number of galaxies to include in galaxy plots
+        double region_to_plot:    credible region to plot
+        bool entropy:             use entropy to assess convergence and begin producing skymaps
+        list-of-double true_host: position of the true host, if known
+        str host_name:            host name, for plotting purposes
+        int entropy_step:         interval (expressed as number of draws) between two subsequent entropy evaluations
+        int entropy_ac_step:      window lenght for entropy angular coefficient
+        int n_sign_changes:       number of zero-crossings before beginning producing skymaps (requires entropy = True)
+        bool virtual_observatory: places the virtual observatory fov behind galaxy plots. Warning: under development, might not work
     
     Returns:
-        :VolumeReconstruction: instance of VolumeReconstruction class
+        VolumeReconstruction: instance of VolumeReconstruction class
     """
     def __init__(self, max_dist,
                        out_folder          = '.',
@@ -262,8 +262,8 @@ class VolumeReconstruction(DPGMM):
         Initialise the mixture to initial conditions to analyse a new event.
         
         Arguments:
-            :list-of-doubles true_host: true host for a new GW event
-            :str or Path out_folder:    new output folder
+            list-of-doubles true_host: true host for a new GW event
+            str or Path out_folder:    new output folder
         """
         self.volume_already_evaluated = False
         super().initialise()
@@ -303,7 +303,7 @@ class VolumeReconstruction(DPGMM):
         This is tailored to the GLADE+ hdf5 file created by the create_glade.py pipeline.
         
         Arguments:
-            :str or Path glade_file: glade file to be uploaded
+            str or Path glade_file: glade file to be uploaded
         """
         self.glade_header =  ' '.join(['ra', 'dec', 'z', 'm_B', 'm_K', 'm_W1', 'm_bJ', 'logp'])
         with h5py.File(glade_file, 'r') as f:
@@ -356,10 +356,10 @@ class VolumeReconstruction(DPGMM):
         Overwrites parent method to avoid memory issues in 3D grid or catalog evaluation
         
         Arguments:
-            :np.ndarray x: point(s) to evaluate the mixture at (in probit space)
+            np.ndarray x: point(s) to evaluate the mixture at (in probit space)
         
         Returns:
-            :np.ndarray: mixture.pdf(x)
+            np.ndarray: mixture.pdf(x)
         """
         p = np.zeros(len(x))
         for comp, wi in zip(self.mixture, self.w):
@@ -372,10 +372,10 @@ class VolumeReconstruction(DPGMM):
         Overwrites parent method to avoid memory issues in 3D grid or catalog evaluation
         
         Arguments:
-            :np.ndarray x: point(s) to evaluate the mixture at (in probit space)
+            np.ndarray x: point(s) to evaluate the mixture at (in probit space)
         
         Returns:
-            :np.ndarray: mixture.logpdf(x)
+            np.ndarray: mixture.logpdf(x)
         """
         p = -np.ones(len(x))*np.inf
         for comp, wi in zip(self.mixture, self.log_w):
@@ -388,7 +388,7 @@ class VolumeReconstruction(DPGMM):
         Sample must be in celestial coordinate and in the following order: [ra, dec, dist].
         
         Arguments:
-            :np.ndarray x: sample
+            np.ndarray x: sample
         """
         self.volume_already_evaluated = False
         cart_x = celestial_to_cartesian(x)
@@ -404,10 +404,10 @@ class VolumeReconstruction(DPGMM):
         Draw samples from volume
         
         Arguments:
-            :int n_samps: number of samples to draw
+            int n_samps: number of samples to draw
         
         Returns:
-            :np.ndarray: samples in celestial coordinates (ra, dec, D)
+            np.ndarray: samples in celestial coordinates (ra, dec, D)
         """
         samples = self.rvs(n_samps)
         return cartesian_to_celestial(samples)
@@ -417,8 +417,8 @@ class VolumeReconstruction(DPGMM):
         Plot samples from DPGMM reconstruction along with PE samples (if available)
         
         Arguments:
-            :int n_samps:                number of samples to draw
-            :np.ndarray initial_samples: PE samples
+            int n_samps:                number of samples to draw
+            np.ndarray initial_samples: PE samples
         """
         mix_samples = self.sample_from_volume(n_samps)
         if initial_samples is not None:
@@ -510,7 +510,7 @@ class VolumeReconstruction(DPGMM):
         If the inference is finished, save credible areas/volumes.
         
         Arguments:
-            :bool final_map: flag to raise if the inference is finished
+            bool final_map: flag to raise if the inference is finished
         """
         log_p_cat                  = self._logpdf_probit(self.probit_catalog) + self.log_inv_J_cat - self.log_norm_p_vol
         self.log_p_cat_to_plot     = log_p_cat[np.where(log_p_cat > self.volume_heights[np.where(self.levels == self.region)])]
@@ -530,7 +530,7 @@ class VolumeReconstruction(DPGMM):
         Produce skymap.
         
         Arguments:
-            :bool final_map: flag to raise if the inference is finished
+            bool final_map: flag to raise if the inference is finished
         """
         self.evaluate_skymap()
         fig = plt.figure()
@@ -565,8 +565,8 @@ class VolumeReconstruction(DPGMM):
         Produce volume map as 3D and 2D scatter plot of galaxies, if a catalog is provided.
         
         Arguments:
-            :bool final_map: flag to raise if the inference is finished
-            :int n_gals:     number of galaxies to plot
+            bool final_map: flag to raise if the inference is finished
+            int n_gals:     number of galaxies to plot
         """
         self.evaluate_volume_map()
         if self.catalog is None:
@@ -765,7 +765,7 @@ class VolumeReconstruction(DPGMM):
         Samples must be in celestial coordinate and in the following order: [ra, dec, dist].
         
         Arguments:
-            :iterable samples: set of volume samples
+            iterable samples: set of volume samples
         """
         np.random.shuffle(samples)
         # Checking the posteriors are properly ordered:

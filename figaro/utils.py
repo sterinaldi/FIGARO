@@ -21,14 +21,14 @@ def recursive_grid(bounds, n_pts, get_1d = False):
     Recursively generates the n-dimensional grid points (extremes are excluded).
     
     Arguments:
-        :list-of-lists bounds: extremes for each dimension (excluded)
-        :int n_pts:            number of points for each dimension
-        :bool get_1d:          return list of 1d-arrays (one per dimension)
+        list-of-lists bounds: extremes for each dimension (excluded)
+        int n_pts:            number of points for each dimension
+        bool get_1d:          return list of 1d-arrays (one per dimension)
         
     Returns:
-        :np.ndarray: grid
-        :np.ndarray: differential for each grid
-        :np.ndarray: list of 1d-arrays (one per dimension)
+        np.ndarray: grid
+        np.ndarray: differential for each grid
+        np.ndarray: list of 1d-arrays (one per dimension)
     """
     bounds = np.atleast_2d(bounds)
     n_pts  = np.atleast_1d(n_pts)
@@ -59,13 +59,13 @@ def rejection_sampler(n_draws, f, bounds, selfunc = None):
     1D rejection sampler, allows for a selection function
     
     Arguments:
-        :int n_draws:      number of draws
-        :callable f:       probability density to sample from
-        :iterable bounds:  upper and lower bound
-        :callable selfunc: selection function, must support numpy arrays
+        int n_draws:      number of draws
+        callable f:       probability density to sample from
+        iterable bounds:  upper and lower bound
+        callable selfunc: selection function, must support numpy arrays
     
     Returns:
-        :np.ndarray: samples
+        np.ndarray: samples
     """
     n_draws = int(n_draws)
     if selfunc is None:
@@ -85,31 +85,31 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
     This method takes the prior parameters for the Normal-Inverse-Wishart distribution in the natural space and returns them as parameters in the probit space, ordered as required by FIGARO. In the following, D will denote the dimensionality of the inferred distribution.
 
     Four parameters are returned:
-    * df, is the number of degrees of freedom for the Inverse Wishart distribution,. It must be greater than D+1. If this parameter is None or does not satisfy the condition df > D+1, the default value D+2 is used;
-    * k is the scale parameter for the multivariate Normal distribution. Suggested values are  k <~ 1e-1. If None, the default value 1e-2 is used.
-    * mu is the mean of the multivariate Normal distribution. It can be either estimated from the available samples or passed directly as a 1D array with length D (the keyword argument mean overrides the samples). If None, the default value 0 (corresponding to the parameter space center) is used.
-    * L is the expected value for the Inverse Wishart distribution. This parameter can be either (in descending priority order):
-        * passed as 2D array with shape (D,D), the covariance matrix - keyword cov;
-        * passed as 1D array with shape (D,) or double: vector of standard deviations (if double, it assumes that the same std has to be used for all dimensions) - keyword std;
-        * estimated from samples - keyword samples.
+        * df, is the number of degrees of freedom for the Inverse Wishart distribution,. It must be greater than D+1. If this parameter is None or does not satisfy the condition df > D+1, the default value D+2 is used;
+        * k is the scale parameter for the multivariate Normal distribution. Suggested values are  k <~ 1e-1. If None, the default value 1e-2 is used.
+        * mu is the mean of the multivariate Normal distribution. It can be either estimated from the available samples or passed directly as a 1D array with length D (the keyword argument mean overrides the samples). If None, the default value 0 (corresponding to the parameter space center) is used.
+        * L is the expected value for the Inverse Wishart distribution. This parameter can be either (in descending priority order):
+            * passed as 2D array with shape (D,D), the covariance matrix - keyword cov;
+            * passed as 1D array with shape (D,) or double: vector of standard deviations (if double, it assumes that the same std has to be used for all dimensions) - keyword std;
+            * estimated from samples - keyword samples.
        
     The order in which they are returned is (k,L,df,mu).
     
     Arguments:
-        :np.ndarray bounds:              boundaries for probit transformation
-        :np.ndarray samples:             2D [DPGMM] or 3D [(H)DPGMM] array with samples
-        :double or np.ndarray mean:      mean [DPGMM]
-        :double or np.ndarray std:       expected standard deviation (if double, the same std is used for all dimensions, if np.ndarray must match the number of dimensions) [DPGMM and (H)DPGMM]
-        :np.ndarray cov:                 covariance matrix [DPGMM]
-        :int df:                         degrees of freedom for Inverse Wishart distribution [DPGMM]
-        :double k:                       scale parameter for Normal distribution [DPGMM]
-        :double a:                       shape parameter for the Inverse Gamma distribution [(H)DPGMM]
-        :double scale:                   fraction of samples std [DPGMM]
-        :bool probit:                    whether the probit transformation will be applied or not
-        :bool hierarchical:              returns the prior pars for (H)DPGMM rather than for DPGMM
+        np.ndarray bounds:              boundaries for probit transformation
+        np.ndarray samples:             2D [DPGMM] or 3D [(H)DPGMM] array with samples
+        double or np.ndarray mean:      mean [DPGMM]
+        double or np.ndarray std:       expected standard deviation (if double, the same std is used for all dimensions, if np.ndarray must match the number of dimensions) [DPGMM and (H)DPGMM]
+        np.ndarray cov:                 covariance matrix [DPGMM]
+        int df:                         degrees of freedom for Inverse Wishart distribution [DPGMM]
+        double k:                       scale parameter for Normal distribution [DPGMM]
+        double a:                       shape parameter for the Inverse Gamma distribution [(H)DPGMM]
+        double scale:                   fraction of samples std [DPGMM]
+        bool probit:                    whether the probit transformation will be applied or not
+        bool hierarchical:              returns the prior pars for (H)DPGMM rather than for DPGMM
         
     Returns:
-        :tuple: prior parameters ordered as in (H)/DPGMM
+        tuple: prior parameters ordered as in (H)/DPGMM
     """
     bounds = np.atleast_2d(bounds)
     dim = len(bounds)
@@ -223,11 +223,11 @@ def rvs_median(draws, size = 1):
     Generates samples from median distribution of a set of draws.
     
     Arguments:
-        :iterable draws: container for mixture instances
-        :int size:    number of samples
+        iterable draws: container for mixture instances
+        int size:    number of samples
     
     Returns:
-        :np.ndarray: samples
+        np.ndarray: samples
     """
     idx = np.random.choice(np.arange(len(draws)), size = int(size))
     ctr = Counter(idx)
@@ -244,15 +244,15 @@ def make_single_gaussian_mixture(mu, cov, bounds, out_folder = '.', save = False
     In general, a more robust (but slower) approach would be to draw samples from each original Gaussian distribution and to use them to make a hierarchical inference.
     
     Arguments:
-        :np.ndarray mu:     mean for each Gaussian distribution
-        :np.ndarray cov:    covariance matrix for each Gaussian distribution
-        :np.ndarray bounds: boundaries for probit transformation
-        :str out_folder:    output folder
-        :bool save:         whether to save the draws or not
-        :int n_samps:       number of samples to estimate mean and covariance in probit space
+        np.ndarray mu:     mean for each Gaussian distribution
+        np.ndarray cov:    covariance matrix for each Gaussian distribution
+        np.ndarray bounds: boundaries for probit transformation
+        str out_folder:    output folder
+        bool save:         whether to save the draws or not
+        int n_samps:       number of samples to estimate mean and covariance in probit space
     
     Returns:
-        :np.ndarray: mixtures
+        np.ndarray: mixtures
     """
     # Here to avoid circular import
     from figaro.mixture import mixture
@@ -316,8 +316,8 @@ def save_options(options, out_folder, name = None):
     Saves options for the run (reproducibility)
     
     Arguments:
-        :obj options:            options
-        :str or Path out_folder: folder where to save the option file
+        obj options:            options
+        str or Path out_folder: folder where to save the option file
     """
     if name is None:
         filename = 'options_log.ini'
@@ -333,11 +333,11 @@ def load_options(opts, file):
     Loads options for the run (reproducibility)
     
     Arguments:
-        :obj opts:         options object
-        :str or Path file: file with options
+        obj opts:         options object
+        str or Path file: file with options
     
     Returns:
-        :obj: options
+        obj: options
     """
     with open(file, 'r') as logfile:
         config = configparser.RawConfigParser()
