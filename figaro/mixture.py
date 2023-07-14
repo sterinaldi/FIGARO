@@ -176,7 +176,7 @@ def compute_component_suffstats(x, mean, S, N, p_mu, p_k, p_nu, p_L):
     Returns:
         :np.ndarray: updated mean
         :np.ndarray: updated covariance
-        :int N:      updated number of samples
+        :int:        updated number of samples
         :np.ndarray: mean (maximum a posteriori)
         :np.ndarray: covariance (maximum a posteriori)
     """
