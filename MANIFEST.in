@@ -1,4 +1,2 @@
-include figaro/cosmology.pxd
-include requirements.txt
-include install.sh
-include figaro_env.yml
+include figaro/cosmology.pyx
+include figaro/cosmology.c
