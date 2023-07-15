@@ -1,7 +1,4 @@
+include LICENSE README.md MANIFEST.in
 include requirements.txt
-include lal/LALCosmologyCalculator.h
-include figaro/cosmology.pxd
-include figaro/cosmology.pyx
-include figaro/cosmology.c
-include figaro/cumulative.pyx
-include figaro/cumulative.c
+recursive-include figaro *.c *.pxd *.pyx
+recursive-include docs *.rst
