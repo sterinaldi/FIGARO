@@ -10,3 +10,4 @@ numba
 imageio
 h5py
 tqdm
+lalsuite
