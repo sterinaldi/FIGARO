@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 from setuptools import Extension
 from setuptools.command.build_ext import build_ext as _build_ext
 from codecs import open
-from os import path
+from pathlib import Path
 from distutils.extension import Extension
 import os
 import warnings
@@ -37,25 +37,16 @@ ext_modules=[
                        ),
             ]
 
-if "LAL_PREFIX" in os.environ:
-    # Older LAL installations requires this
-    lal_prefix     = os.environ.get("LAL_PREFIX")
-    lal_includes   = lal_prefix+"/include"
-    lal_libs       = lal_prefix+"/lib"
-    ext_modules.append(Extension("figaro.cosmology",
-                      sources=[os.path.join("figaro","cosmology.pyx")],
-                      libraries=["m", "lal"], # Unix-like specific
-                      library_dirs = [lal_libs],
-                      extra_compile_args=["-O3","-ffast-math"],
-                      include_dirs=['figaro', lal_includes, numpy.get_include()]
-                      ))
-else:
-    ext_modules.append(Extension("figaro.cosmology",
-                       sources=[os.path.join("figaro","cosmology.pyx")],
-                       libraries=["m", "lal"], # Unix-like specific
-                       extra_compile_args=["-O3","-ffast-math"],
-                       include_dirs=['figaro', numpy.get_include()]
-                       ))
+# VERY dirty solution to get LAL (but it works, so... Who cares?)
+os.system('conda install -S --channel conda-forge lalsuite')
+lal_folder = os.environ['CONDA_PREFIX']
+ext_modules.append(Extension("figaro.cosmology",
+                   sources=[os.path.join("figaro","cosmology.pyx")],
+                   libraries=["m", "lal"], # Unix-like specific
+                   extra_compile_args=["-O3","-ffast-math"],
+                   library_dirs = [os.path.join(lal_folder, "lib/")],
+                   include_dirs=['figaro', os.path.join(lal_folder, "include/"), numpy.get_include()]
+                   ))
 
 ext_modules = cythonize(ext_modules, compiler_directives={'language_level' : "3"})
 
