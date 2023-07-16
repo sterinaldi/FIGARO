@@ -18,8 +18,6 @@ sys.path.insert(0, os.path.abspath('../../'))
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = []
-
 templates_path = ['_templates']
 exclude_patterns = []
 
@@ -29,6 +27,23 @@ extensions = [
 'sphinx.ext.autosummary',
 'sphinx.ext.viewcode',
 'sphinx.ext.napoleon',
+]
+
+
+autodoc_mock_imports = [
+'numpy',
+'scipy',
+'matplotlib',
+'cython',
+'dill',
+'corner',
+'astropy',
+'pyvo',
+'numba',
+'imageio',
+'h5py',
+'tqdm',
+'lalsuite'
 ]
 
 # -- Options for HTML output -------------------------------------------------
