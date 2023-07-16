@@ -29,23 +29,6 @@ extensions = [
 'sphinx.ext.napoleon',
 ]
 
-
-autodoc_mock_imports = [
-'numpy',
-'scipy',
-'matplotlib',
-'cython',
-'dill',
-'corner',
-'astropy',
-'pyvo',
-'numba',
-'imageio',
-'h5py',
-'tqdm',
-'lalsuite'
-]
-
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
