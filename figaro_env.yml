@@ -20,6 +20,7 @@ dependencies:
       - numba==0.56.4
       - numpy==1.21.6
       - pyvo
+      - h5py
       - ipython==7.31.1
       - myst-parser
 prefix: /opt/anaconda3/envs/figaro_env
