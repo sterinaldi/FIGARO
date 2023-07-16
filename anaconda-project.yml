@@ -1,0 +1,25 @@
+name: figaro_env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - astropy=5.2.1
+  - pip=22.3.1
+  - python=3.9.13
+  - scipy=1.10.0
+  - setuptools=65.6.3
+  - tqdm=4.64.1
+  - wheel=0.37.1
+  - yaml=0.2.5
+  - pip:
+      - corner==2.2.1
+      - cython==0.29.33
+      - dill==0.3.6
+      - imageio==2.25.0
+      - matplotlib!=3.6.3
+      - numba==0.56.4
+      - numpy==1.21.6
+      - pyvo==1.4
+      - ray==2.2.0
+      - ipython==7.31.1
+prefix: /opt/anaconda3/envs/figaro_env
