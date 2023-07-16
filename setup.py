@@ -46,7 +46,7 @@ os.system('conda install -S --channel conda-forge lalsuite')
 try:
     lal_folder = os.environ['CONDA_PREFIX']
 except KeyError:
-    lal_folder = os.environ['VIRTUAL_ENV']
+    lal_folder = os.environ['READTHEDOCS_VIRTUALENV_PATH'] # ReadTheDocs specific
     
 ext_modules.append(Extension("figaro.cosmology",
                    sources=[os.path.join("figaro","cosmology.pyx")],
