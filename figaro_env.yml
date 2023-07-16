@@ -21,4 +21,5 @@ dependencies:
       - numpy==1.21.6
       - pyvo
       - ipython==7.31.1
+      - myst-parser
 prefix: /opt/anaconda3/envs/figaro_env
