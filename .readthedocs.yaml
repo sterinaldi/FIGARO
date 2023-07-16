@@ -5,11 +5,5 @@ version: 2
 sphinx:
   configuration: docs/source/conf.py
 
-# Explicitly set the version of Python and its requirements
-python:
-  version: 3.9
-  install:
-    - requirements: requirements.txt
-
 conda:
   environment: ./figaro_env.yml
