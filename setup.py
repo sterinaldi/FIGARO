@@ -19,9 +19,13 @@ try:
 except ImportError:
     raise ImportError("Cython not found. Please install it via\n\tpip install Cython")
 
-if os.environ['CONDA_DEFAULT_ENV'] == 'igwn-py39':
-    requirements = ['imageio']
-else:
+try:
+    if os.environ['CONDA_DEFAULT_ENV'] == 'igwn-py39':
+        requirements = ['imageio']
+    else:
+        with open("requirements.txt") as requires_file:
+            requirements = requires_file.read().split("\n")
+except KeyError: # virtualenv
     with open("requirements.txt") as requires_file:
         requirements = requires_file.read().split("\n")
 
@@ -39,7 +43,11 @@ ext_modules=[
 
 # VERY dirty solution to get LAL (but it works, so... Who cares?)
 os.system('conda install -S --channel conda-forge lalsuite')
-lal_folder = os.environ['CONDA_PREFIX']
+try:
+    lal_folder = os.environ['CONDA_PREFIX']
+except KeyError:
+    lal_folder = os.environ['VIRTUAL_ENV']
+    
 ext_modules.append(Extension("figaro.cosmology",
                    sources=[os.path.join("figaro","cosmology.pyx")],
                    libraries=["m", "lal"], # Unix-like specific
