@@ -510,7 +510,7 @@ def load_density(path):
     Arguments:
         str or Path path: path with draws (file or folder)
 
-    Returns
+    Returns:
         list: figaro.mixture object instances
     """
     path = Path(path)
