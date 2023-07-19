@@ -6,11 +6,11 @@ from scipy.stats import beta
 from corner import corner
 
 import matplotlib.pyplot as plt
-from matplotlib import axes
+from matplotlib import axes, colormaps
 from matplotlib.projections import projection_registry
-import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
-from matplotlib import rcParams
+from matplotlib.colors import Normalize
+from matplotlib.gridspec import GridSpec
 
 from figaro import plot_settings
 from figaro.marginal import marginalise
@@ -318,6 +318,9 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
         iterable levels:        credible levels to plot
         bool scatter_points:    scatter samples on 2d plots
         str median_label:       label to assign to the reconstruction
+    
+    Returns:
+        matplotlib.figure.Figure: figure with the plot
     """
     
     dim = draws[0].dim
@@ -743,3 +746,151 @@ def pp_plot_levels(CR_levels, median_CR = None, out_folder = '.', name = 'MDC', 
     if save:
         fig.savefig(Path(out_folder, '{0}_ppplot.pdf'.format(name)), bbox_inches = 'tight')
     plt.close()
+
+def joyplot(draws, x_values, y_values, credible_regions = False, fill = True, solid = False, overlap = 1., xlabel = None, ylabel = None, xunit = None, yunit = None, colormap = 'coolwarm', out_folder = '.', name = 'joyplot', subfolder = False, show = False, save = True, joy = False):
+    """
+    Make a joyplot (also known as ridgeline plot) of a set of distributions.
+    Heavily inspired by leotac's JoyPy (https://github.com/leotac/joypy).
+    
+    Arguments:
+        np.ndarray draws:       (n_y, n_x) or (n_y, n_draws, n_x) array containing the distributions to plot
+        np.ndarray x_values:    x values at which the distributions are evaluated
+        np.ndarray y_values:    y values corresponding to the different distributions
+        bool credible_regions:  whether to plot credible regions or not
+        bool fill:              whether to fill the space below the distribution or not (ignored if credible_regions is True)
+        bool solid:             wheter to fill with transparent or solid colour
+        float overlap:          space between different plots
+        str xlabel:             x axis label (LaTeX style)
+        str ylabel:             colorbar label (LaTeX style)
+        str xunit:              x axis units (LaTeX style) - default: no units
+        str yunit:              colorbar units (LaTeX style) - default: no units
+        str colormap:           a valid matplotlib colormap name
+        str or Path out_folder: output folder
+        str name:               name to be given to outputs
+        bool subfolder:         whether to save the plots in different subfolders (for multiple events)
+        bool save:              whether to save the plots or not
+        bool show:              whether to show the plots during the run or not
+        bool joy:               format the plot to look like the cover of Joy Division's "Unknown Pleasures"
+        
+    Returns:
+        matplotlib.figure.Figure: figure with the plot
+    """
+    # Labels
+    if xlabel is None:
+        xlabel = '$x$'
+    else:
+        xlabel = '${0}$'.format(xlabel)
+    if xunit is not None:
+        xlabel = xlabel[:-1]+'\ [{0}]$'.format(xunit)
+    if ylabel is None:
+        ylabel = '$y$'
+    else:
+        ylabel = '${0}$'.format(ylabel)
+    if yunit is not None:
+        ylabel = ylabel[:-1]+'\ [{0}]$'.format(yunit)
+    
+    # Check that we have as many y values as different draws evaluations
+    if not len(y_values) == np.shape(draws)[0]:
+        raise ValueError("y_values and draws must have the same length")
+
+    color = iter(colormaps[colormap](np.linspace(1, 0, len(y_values))))
+    cmappable = plt.cm.ScalarMappable(norm=Normalize(np.min(y_values),np.max(y_values)), cmap=colormap)
+    num_axes = len(y_values)
+
+    # Each plot will have its own axis
+    fig = plt.figure()
+    if joy:
+        fig.patch.set_facecolor('k')
+    gs = GridSpec(len(y_values), 17, figure = fig)
+    _axes = []
+    [_axes.append(fig.add_subplot(gs[i, :-1])) for i in range(len(y_values))]
+    if not joy:
+        _axes.append(fig.add_subplot(gs[:, -1]))
+        # Global colorbar
+        cbar    = fig.colorbar(cmappable, cax = _axes[-1])
+        cbar.set_label(ylabel)
+    if joy:
+        [ax.set_facecolor('k') for ax in _axes]
+    for i, dd in enumerate(draws[::-1]):
+        ax = _axes[i]
+        if not joy:
+            c = next(color)
+        else:
+            c = 'w'
+        percentiles = [50, 16, 84]
+        p = {}
+        if len(np.shape(draws)) == 3:
+            for perc in percentiles:
+                p[perc] = np.percentile(dd, perc, axis = 0)
+            if credible_regions and not joy:
+                ax.fill_between(x_values, p[95], p[5], color = c, alpha = 0.25)
+                ax.fill_between(x_values, p[84], p[16], color = c, alpha = 0.25)
+        else:
+            p[50] = dd
+        if fill and not credible_regions:
+            if solid:
+                alpha = 1
+            else:
+                alpha = 0.25
+            if not joy:
+                ax.fill_between(x_values, p[50], np.zeros(len(x_values)), color = c, alpha = alpha)
+            else:
+                ax.fill_between(x_values, p[50], np.zeros(len(x_values)), color = 'k', alpha = 1)
+        ax.plot(x_values, p[50], clip_on = True, c = c)
+
+        # Setup the current axis: transparency, labels, spines.
+        ax.yaxis.grid(False)
+        ax.patch.set_alpha(0)
+        ax.tick_params(axis='both', which='both', length=0, pad=10)
+        ax.xaxis.set_visible(False)
+        ax.yaxis.set_visible(False)
+        ax.set_frame_on(False)
+
+    # Final adjustments
+    # Compute a final axis, used to apply global settings
+    last_axis = fig.add_subplot(gs[:, :-1])
+    last_axis.set_facecolor('k')
+
+    for side in ['top', 'bottom', 'left', 'right']:
+        last_axis.spines[side].set_visible(False)
+
+    # This looks hacky, but all the axes share the x-axis,
+    # so they have the same lims and ticks
+    last_axis.set_xlim(_axes[0].get_xlim())
+    last_axis.set_xticks(np.array(_axes[0].get_xticks()[1:-1]))
+    for t in last_axis.get_xticklabels():
+        if not joy:
+            t.set_visible(True)
+        else:
+            t.set_visible(False)
+    else:
+        if not joy:
+            last_axis.xaxis.set_visible(True)
+        else:
+            last_axis.xaxis.set_visible(False)
+    last_axis.yaxis.set_visible(False)
+    last_axis.grid(False)
+
+    # Last axis on the back
+    last_axis.zorder = min(a.zorder for a in _axes) - 1
+    _axes = list(_axes) + [last_axis]
+    last_axis.set_xlabel(xlabel)
+
+    # The magic overlap happens here.
+    h_pad = 5 + (-5*(1+overlap))
+    fig.tight_layout(h_pad=h_pad)
+
+    if show:
+        plt.show()
+    if save:
+        if not subfolder:
+            fig.savefig(Path(out_folder, '{0}.pdf'.format(name)), bbox_inches = 'tight')
+        else:
+            if not Path(out_folder, 'density').exists():
+                try:
+                    Path(out_folder, 'density').mkdir()
+                except FileExistsError:
+                    pass
+            fig.savefig(Path(out_folder, 'density', '{0}.pdf'.format(name)), bbox_inches = 'tight')
+    plt.close()
+    return fig
