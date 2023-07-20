@@ -119,9 +119,6 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674
         if not np.all([p in GW_par.keys() for p in par]):
             wrong_pars = [p for p in par if not p in GW_par.keys()]
             raise FIGAROException("The following parameters are not implemented: "+", ".join(wrong_pars)+". Run figaro.load.available_gw_pars() for a list of available parameters.")
-        # Check if lal is installed
-        if not lal_flag:
-            raise FIGAROException("LAL is not installed. GW posterior samples cannot be loaded.")
         # If everything is ok, load the samples
         else:
             out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate, waveform = waveform, snr_threshold = snr_threshold, far_threshold = far_threshold)
@@ -198,9 +195,6 @@ def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.
             if not np.all([p in GW_par.keys() for p in par]):
                 wrong_pars = [p for p in par if not p in GW_par.keys()]
                 raise FIGAROException("The following parameters are not implemented: "+", ".join(wrong_pars)+". Run figaro.load.available_gw_pars() for a list of available parameters.")
-            # Check if lal is installed
-            if not lal_flag:
-                raise FIGAROException("LAL is not installed. GW posterior samples cannot be loaded.")
             # If everything is ok, load the samples
             else:
                 out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate, waveform = waveform, snr_threshold = snr_threshold, far_threshold = far_threshold)
