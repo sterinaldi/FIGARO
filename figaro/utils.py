@@ -168,7 +168,6 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
                 L_out = np.identity(dim)*sigma**2
             else:
                 L_out = np.identity(dim)*(np.diff(bounds, axis = -1).flatten()/scale)**2
-                print(L_out)
         return (L_out, df_out)
 
 def rvs_median(draws, size = 1):
