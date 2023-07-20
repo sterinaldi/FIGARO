@@ -849,7 +849,8 @@ def joyplot(draws, x_values, y_values, credible_regions = False, fill = True, so
     # Final adjustments
     # Compute a final axis, used to apply global settings
     last_axis = fig.add_subplot(gs[:, :-1])
-    last_axis.set_facecolor('k')
+    if joy:
+        last_axis.set_facecolor('k')
 
     for side in ['top', 'bottom', 'left', 'right']:
         last_axis.spines[side].set_visible(False)
