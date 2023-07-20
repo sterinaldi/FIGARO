@@ -82,29 +82,25 @@ def rejection_sampler(n_draws, f, bounds, selfunc = None):
 
 def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df = None, k = None, a = None, scale = None, probit = True, hierarchical = False):
     """
-    This method takes the prior parameters for the Normal-Inverse-Wishart distribution in the natural space and returns them as parameters in the probit space, ordered as required by FIGARO. In the following, D will denote the dimensionality of the inferred distribution.
+    This method takes the prior parameters for the Inverse-Wishart distribution in the natural space and returns them as parameters in the probit space, ordered as required by FIGARO. In the following, D will denote the dimensionality of the inferred distribution.
 
-    Four parameters are returned:
+    Two parameters are returned:
         * df, is the number of degrees of freedom for the Inverse Wishart distribution,. It must be greater than D+1. If this parameter is None or does not satisfy the condition df > D+1, the default value D+2 is used;
-        * k is the scale parameter for the multivariate Normal distribution. Suggested values are  k <~ 1e-1. If None, the default value 1e-2 is used.
-        * mu is the mean of the multivariate Normal distribution. It can be either estimated from the available samples or passed directly as a 1D array with length D (the keyword argument mean overrides the samples). If None, the default value 0 (corresponding to the parameter space center) is used.
         * L is the expected value for the Inverse Wishart distribution. This parameter can be either (in descending priority order):
             * passed as 2D array with shape (D,D), the covariance matrix - keyword cov;
             * passed as 1D array with shape (D,) or double: vector of standard deviations (if double, it assumes that the same std has to be used for all dimensions) - keyword std;
             * estimated from samples - keyword samples.
        
-    The order in which they are returned is (k,L,df,mu).
+    The order in which they are returned is (L,df).
     
     Arguments:
         np.ndarray bounds:              boundaries for probit transformation
         np.ndarray samples:             2D [DPGMM] or 3D [(H)DPGMM] array with samples
-        double or np.ndarray mean:      mean [DPGMM]
         double or np.ndarray std:       expected standard deviation (if double, the same std is used for all dimensions, if np.ndarray must match the number of dimensions) [DPGMM and (H)DPGMM]
         np.ndarray cov:                 covariance matrix [DPGMM]
-        int df:                         degrees of freedom for Inverse Wishart distribution [DPGMM]
-        double k:                       scale parameter for Normal distribution [DPGMM]
+        int df:                         degrees of freedom for Inverse Gamma/Inverse Wishart distribution [DPGMM]
         double a:                       shape parameter for the Inverse Gamma distribution [(H)DPGMM]
-        double scale:                   fraction of samples std [DPGMM]
+        double scale:                   fraction of samples std [DPGMM and (H)DPGMM]
         bool probit:                    whether the probit transformation will be applied or not
         bool hierarchical:              returns the prior pars for (H)DPGMM rather than for DPGMM
         
@@ -155,35 +151,11 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
             df_out = dim+2
             
         draw_flag = False
-        # Mu
-        if mean is not None:
-            mean = np.atleast_1d(mean)
-            if not np.prod(bounds[:,0] < mean) & np.prod(mean < bounds[:,1]):
-                raise ValueError("Mean is outside of the given bounds")
-            if probit:
-                mu_out = transform_to_probit(mean, bounds)
-            else:
-                mu_out = mean
-        elif samples is not None:
-            if probit:
-                mu_out = np.atleast_1d(np.median(probit_samples, axis = 0))
-            else:
-                mu_out = np.atleast_1d(np.median(samples, axis = 0))
-        else:
-            if probit:
-                mu_out = np.zeros(dim)
-            else:
-                mu_out = np.atleast_1d(np.mean(bounds, axis = 1))
         # L
         if cov is not None:
             L_out = cov
-            if probit:
-                draw_flag = True
         elif std is not None:
-            if probit:
-                L_out = np.identity(dim)*np.minimum(np.abs(mu_out - transform_to_probit((transform_from_probit(mu_out, bounds) + std), bounds)), np.abs(mu_out - transform_to_probit((transform_from_probit(mu_out, bounds) - std), bounds)))**2
-            else:
-                L_out = np.identity(dim)*std**2
+            L_out = np.identity(dim)*std**2
         elif samples is not None:
             if probit:
                 cov_samples = np.atleast_2d(np.cov(probit_samples.T))
@@ -196,27 +168,8 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
                 L_out = np.identity(dim)*sigma**2
             else:
                 L_out = np.identity(dim)*(np.diff(bounds, axis = -1).flatten()/scale)**2
-        if draw_flag:
-            ss = mn(np.mean(bounds, axis = -1), L_out, allow_singular = True).rvs(3000)
-            if dim == 1:
-                ss = np.atleast_2d(ss).T
-            # Keeping only samples within bounds
-            ss = ss[np.where((np.prod(bounds[:,0] < ss, axis = 1) & np.prod(ss < bounds[:,1], axis = 1)))]
-            probit_ss = transform_to_probit(ss, bounds)
-            L_out = np.identity(dim)*np.diag(np.atleast_2d(np.cov(probit_ss.T)))
-        # k
-        if k is not None:
-            k_out = k
-        else:
-            if samples is not None:
-                if probit:
-                    cov_samples = np.atleast_2d(np.cov(probit_samples.T))
-                else:
-                    cov_samples = np.atleast_2d(np.cov(samples.T))
-                k_out = np.min(np.diag(L_out)/np.diag(cov_samples))
-            else:
-                k_out = 1./(scale)
-        return (k_out, L_out, df_out, mu_out)
+                print(L_out)
+        return (L_out, df_out)
 
 def rvs_median(draws, size = 1):
     """
