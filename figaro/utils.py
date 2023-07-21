@@ -5,6 +5,7 @@ import configparser
 
 from pathlib import Path
 from tqdm import tqdm
+from numba import njit
 from typing import cast
 from collections import Counter
 from scipy.stats import multivariate_normal as mn
@@ -15,6 +16,12 @@ from figaro.exceptions import FIGAROException
 #-–––––––––-#
 # Utilities #
 #-----------#
+
+@njit
+def _rescale_matrix(S, n):
+    std = np.sqrt(np.diag(S))
+    rho = np.divide(S, np.outer(std,std))
+    return rho * np.outer(std/np.sqrt(n), std/np.sqrt(n))
 
 def recursive_grid(bounds, n_pts, get_1d = False):
     """
@@ -189,7 +196,7 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
                 cov_samples = np.atleast_2d(np.cov(probit_samples.T))
             else:
                 cov_samples = np.atleast_2d(np.cov(samples.T))
-            L_out = np.identity(dim)*np.diag(cov_samples/scale**2)
+            L_out = _rescale_matrix(cov_samples, scale**2)
         else:
             if probit:
                 sigma = transform_to_probit(np.atleast_2d(np.mean(bounds, axis = -1)+np.diff(bounds, axis = -1).flatten()/scale), bounds)[0]
