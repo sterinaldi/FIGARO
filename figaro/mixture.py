@@ -7,13 +7,13 @@ from pathlib import Path
 
 from scipy.special import gammaln, logsumexp
 from scipy.stats import multivariate_normal as mn
-from scipy.stats import invwishart, norm, invgamma, dirichlet
+from scipy.stats import invwishart, norm, invgamma, dirichlet, gamma
 
 from figaro.decorators import *
 from figaro.transform import *
 from figaro.likelihood import evaluate_mixture_MC_draws, evaluate_mixture_MC_draws_1d, logsumexp_jit, log_norm, inv_jit
 from figaro.exceptions import except_hook, FIGAROException
-from figaro.utils import get_priors
+from figaro.utils import get_priors, _rescale_matrix
 from figaro.marginal import _condition, _marginalise
 
 from numba import njit, prange
@@ -79,30 +79,16 @@ def _student_t(df, t, mu, sigma, dim):
 
     return (A - B - C - D + E)[0]
 
-@njit
-def _update_alpha(alpha, n, K, burnin = 1000):
-    """
-    Update concentration parameter using a Metropolis-Hastings sampling scheme.
-    
-    Arguments:
-        double alpha: Initial value for concentration parameter
-        int n:        Number of samples
-        int K:        Number of active clusters
-        int burnin:   MH burnin
-    
-    Returns:
-        double: new concentration parameter value
-    """
-    a_old = alpha
-    n_draws = burnin+np.random.randint(100)
-    for i in prange(n_draws):
-        a_new = a_old + (np.random.random() - 0.5)
-        if a_new > 0.:
-            logP_old = _numba_gammaln(a_old) - _numba_gammaln(a_old + n) + K * np.log(a_old) - 1./a_old
-            logP_new = _numba_gammaln(a_new) - _numba_gammaln(a_new + n) + K * np.log(a_new) - 1./a_new
-            if logP_new - logP_old > np.log(np.random.random()):
-                a_old = a_new
-    return a_old
+alpha_prior = gamma(1, scale = 1/2.) # Same as in Gorur & Rasmussen (2010) but with different values
+ones_jit    = np.ones(2000)
+
+def _update_alpha(n, K):
+    alpha = alpha_prior.rvs(2000)
+    p     = _likelihood_alpha(alpha, n, K)
+    return np.random.choice(alpha, p = np.exp(p - logsumexp_jit(p, ones_jit)))
+
+def _likelihood_alpha(a, n, K):
+    return gammaln(a) - gammaln(a + n) + K*np.log(a)
 
 @njit
 def _compute_t_pars(k, mu, nu, L, mean, S, N, dim):
@@ -128,7 +114,7 @@ def _compute_t_pars(k, mu, nu, L, mean, S, N, dim):
     k_n, mu_n, nu_n, L_n = _compute_hyperpars(k, mu, nu, L, mean, S, N)
     # Update t-parameters
     t_df    = nu_n - dim + 1
-    t_shape = L_n*(k_n+1)/(k_n*t_df)
+    t_shape = _rescale_matrix(L_n, 1./((k_n+1)/(k_n*t_df)))
     return t_df, t_shape, mu_n
 
 @njit
@@ -155,7 +141,9 @@ def _compute_hyperpars(k, mu, nu, L, mean, S, N):
     k_n  = k + N
     mu_n = (mu*k + N*mean)/k_n
     nu_n = nu + N
-    L_n  = L + S + k*N*((mean - mu).T@(mean - mu))/k_n
+    L_n  = L + S
+    if N > 0:
+        L_n += _rescale_matrix(np.outer(mean - mu, mean - mu), 1./(k*N/k_n))
     return k_n, mu_n, nu_n, L_n
 
 @njit
@@ -181,11 +169,11 @@ def _compute_component_suffstats(x, mean, S, N, p_mu, p_k, p_nu, p_L):
         np.ndarray: covariance (maximum a posteriori)
     """
     new_mean  = (mean*N+x)/(N+1)
-    new_S     = (S + N*mean.T@mean + x.T@x) - new_mean.T@new_mean*(N+1)
+    new_S     = (S + _rescale_matrix(np.outer(mean,mean), 1./N) + np.outer(x,x)) - _rescale_matrix(np.outer(new_mean, new_mean), 1./(N+1))
     new_N     = N+1
     new_mu    = ((p_mu*p_k + new_N*new_mean)/(p_k + new_N))[0]
-    new_sigma = (p_L + new_S + p_k*new_N*((new_mean - p_mu).T@(new_mean - p_mu))/(p_k + new_N))/(p_nu + new_N - x.shape[-1] - 1)
-    
+    mean_var  = _rescale_matrix(np.outer(new_mean - p_mu, new_mean - p_mu), 1./(p_k*new_N/(p_k + new_N)))
+    new_sigma = _rescale_matrix(p_L + new_S + mean_var, p_nu + new_N - x.shape[-1] - 1)
     return new_mean, new_S, new_N, new_mu, new_sigma
 
 #-------------------#
@@ -209,7 +197,7 @@ class _prior:
     def __init__(self, k, L, nu, mu):
         self.k   = k
         self.nu  = np.max([nu, mu.shape[-1]+2])
-        self.L   = L*(self.nu-mu.shape[-1]-1)
+        self.L   = _rescale_matrix(L, (self.nu-mu.shape[-1]-1))
         self.mu  = mu
 
 class _component:
@@ -228,7 +216,7 @@ class _component:
         self.mean  = x
         self.S     = np.identity(x.shape[-1])*0.
         self.mu    = np.atleast_2d((prior.mu*prior.k + self.N*self.mean)/(prior.k + self.N)).astype(np.float64)[0]
-        self.sigma = np.identity(x.shape[-1]).astype(np.float64)*prior.L/(prior.nu - x.shape[-1] - 1)
+        self.sigma = _rescale_matrix(prior.L, (prior.nu - x.shape[-1] - 1))
 
 class _component_h:
     """
@@ -813,7 +801,10 @@ class DPGMM(density):
             ss = _component(np.zeros(self.dim), prior = self.prior)
             ss.N = 0.
         t_df, t_shape, mu_n = _compute_t_pars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.S, ss.N, self.dim)
-        return _student_t(df = t_df, t = x, mu = mu_n, sigma = t_shape, dim = self.dim)
+        try:
+            return _student_t(df = t_df, t = x, mu = mu_n, sigma = t_shape, dim = self.dim)
+        except np.linalg.LinAlgError:
+            return -np.inf
 
     def _cluster_assignment_distribution(self, x):
         """
@@ -887,7 +878,7 @@ class DPGMM(density):
         """
         self.n_pts += 1
         self._assign_to_cluster(np.atleast_2d(x))
-        self.alpha = _update_alpha(self.alpha, self.n_pts, self.n_cl)
+        self.alpha = _update_alpha(self.n_pts, self.n_cl)
 
     def build_mixture(self):
         """
@@ -903,7 +894,7 @@ class DPGMM(density):
         for i, ss in enumerate(self.mixture):
             k_n, mu_n, nu_n, L_n = _compute_hyperpars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.S, ss.N)
             variances[i] = invwishart(df = nu_n, scale = L_n).rvs()
-            means[i]     = mn(mean = mu_n[0], cov = variances[i]/k_n, allow_singular = True).rvs()
+            means[i]     = mn(mean = mu_n[0], cov = _rescale_matrix(variances[i], k_n), allow_singular = True).rvs()
         w = dirichlet(self.w*self.n_pts+self.alpha/self.n_cl).rvs()[0]
         return mixture(means, variances, w, self.bounds, self.dim, self.n_cl, self.n_pts, probit = self.probit)
 
