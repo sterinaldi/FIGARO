@@ -98,8 +98,8 @@ def _update_alpha(alpha, n, K, burnin = 1000):
     for i in prange(n_draws):
         a_new = a_old + (np.random.random() - 0.5)*0.1
         if a_new > 0.:
-            logP_old = _numba_gammaln(a_old) - _numba_gammaln(a_old + n) + (K - 0.5) * np.log(a_old) - 0.5*a_old
-            logP_new = _numba_gammaln(a_new) - _numba_gammaln(a_new + n) + (K - 0.5) * np.log(a_new) - 0.5*a_new
+            logP_old = _numba_gammaln(a_old) - _numba_gammaln(a_old + n) + K * np.log(a_old) - a_old
+            logP_new = _numba_gammaln(a_new) - _numba_gammaln(a_new + n) + K * np.log(a_new) - a_new
             if logP_new - logP_old > np.log(np.random.random()):
                 a_old = a_new
     return a_old
