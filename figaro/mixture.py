@@ -79,27 +79,39 @@ def _student_t(df, t, mu, sigma, dim):
 
     return (A - B - C - D + E)[0]
 
-alpha_prior = gamma(1, scale = 1/2.) # Same as in Gorur & Rasmussen (2010) but with different values
-ones_jit    = np.ones(2000)
-
-def _update_alpha(n, K):
-    alpha = alpha_prior.rvs(2000)
-    p     = _likelihood_alpha(alpha, n, K)
-    return np.random.choice(alpha, p = np.exp(p - logsumexp_jit(p, ones_jit)))
-
-def _likelihood_alpha(a, n, K):
-    return gammaln(a) - gammaln(a + n) + K*np.log(a)
+@njit
+def _update_alpha(alpha, n, K, burnin = 1000):
+    """
+    Update concentration parameter using a Metropolis-Hastings sampling scheme.
+    
+    Arguments:
+        double alpha: Initial value for concentration parameter
+        int n:        Number of samples
+        int K:        Number of active clusters
+        int burnin:   MH burnin
+    
+    Returns:
+        double: new concentration parameter value
+    """
+    a_old = alpha
+    n_draws = burnin+np.random.randint(100)
+    for i in prange(n_draws):
+        a_new = a_old + (np.random.random() - 0.5)*0.1
+        if a_new > 0.:
+            logP_old = _numba_gammaln(a_old) - _numba_gammaln(a_old + n) + (K - 0.5) * np.log(a_old) - 0.5*a_old
+            logP_new = _numba_gammaln(a_new) - _numba_gammaln(a_new + n) + (K - 0.5) * np.log(a_new) - 0.5*a_new
+            if logP_new - logP_old > np.log(np.random.random()):
+                a_old = a_new
+    return a_old
 
 @njit
-def _compute_t_pars(k, mu, nu, L, mean, S, N, dim):
+def _compute_t_pars(nu, L, mean, S, N, dim):
     """
     Compute parameters for student-t distribution.
     
     Arguments:
-        double k:        Normal std parameter (for NIW)
-        np.ndarray mu:   Normal mean parameter (for NIW)
-        int nu:          Inverse-Wishart df parameter (for NIW)
-        np.ndarray L:    Inverse-Wishart scale matrix (for NIW)
+        int nu:          df parameter (for IG/IW)
+        np.ndarray L:    scale matrix (for IG/IW)
         np.ndarray mean: samples mean
         np.ndarray S:    samples covariance
         int N:           number of samples
@@ -111,43 +123,35 @@ def _compute_t_pars(k, mu, nu, L, mean, S, N, dim):
         np.ndarray: mean for student-t
     """
     # Update hyperparameters
-    k_n, mu_n, nu_n, L_n = _compute_hyperpars(k, mu, nu, L, mean, S, N)
+    nu_n, L_n = _compute_hyperpars(nu, L, mean, S, N)
     # Update t-parameters
     t_df    = nu_n - dim + 1
-    t_shape = _rescale_matrix(L_n, 1./((k_n+1)/(k_n*t_df)))
-    return t_df, t_shape, mu_n
+    t_shape = _rescale_matrix(L_n, t_df)
+    return t_df, t_shape, mean
 
 @njit
-def _compute_hyperpars(k, mu, nu, L, mean, S, N):
+def _compute_hyperpars(nu, L, mean, S, N):
     """
     Update hyperparameters for Normal Inverse Gamma/Wishart (NIG/NIW).
     See https://www.cs.ubc.ca/~murphyk/Papers/bayesGauss.pdf
     
     Arguments:
-        double k:        Normal std parameter (for NIG/NIW)
-        np.ndarray mu:   Normal mean parameter (for NIG/NIW)
-        int nu:          Gamma df parameter (for NIG/NIW)
-        np.ndarray L:    Gamma scale matrix (for NIG/NIW)
+        int nu:          df parameter (for IG/IW)
+        np.ndarray L:    scale matrix (for IG/IW)
         np.ndarray mean: samples mean
         np.ndarray S:    samples covariance
         int N:           number of samples
     
     Returns:
-        double:     updated Normal std parameter (for NIG/NIW)
-        np.ndarray: updated Normal mean parameter (for NIG/NIW)
-        int:        updated Gamma df parameter (for NIG/NIW)
-        np.ndarray: updated Gamma scale matrix (for NIG/NIW)
+        int:        updated df parameter (for IG/IW)
+        np.ndarray: updated scale matrix (for IG/IW)
     """
-    k_n  = k + N
-    mu_n = (mu*k + N*mean)/k_n
     nu_n = nu + N
     L_n  = L + S
-    if N > 0:
-        L_n += _rescale_matrix(np.outer(mean - mu, mean - mu), 1./(k*N/k_n))
-    return k_n, mu_n, nu_n, L_n
+    return nu_n, L_n
 
 @njit
-def _compute_component_suffstats(x, mean, S, N, p_mu, p_k, p_nu, p_L):
+def _compute_component_suffstats(x, mean, S, N, p_nu, p_L):
     """
     Update mean, covariance, number of samples and maximum a posteriori for mean and covariance.
     
@@ -156,10 +160,8 @@ def _compute_component_suffstats(x, mean, S, N, p_mu, p_k, p_nu, p_L):
         np.ndarray mean: mean of samples already in the cluster
         np.ndarray cov:  covariance of samples already in the cluster
         int N:           number of samples already in the cluster
-        np.ndarray p_mu: NIG Normal mean parameter
-        double p_k:      NIG Normal std parameter
-        int p_nu:        NIG Gamma df parameter
-        np.ndarray p_L:  NIG Gamma scale matrix
+        int p_nu:        IG/IW df parameter
+        np.ndarray p_L:  IG/IW scale matrix
     
     Returns:
         np.ndarray: updated mean
@@ -171,9 +173,9 @@ def _compute_component_suffstats(x, mean, S, N, p_mu, p_k, p_nu, p_L):
     new_mean  = (mean*N+x)/(N+1)
     new_S     = (S + _rescale_matrix(np.outer(mean,mean), 1./N) + np.outer(x,x)) - _rescale_matrix(np.outer(new_mean, new_mean), 1./(N+1))
     new_N     = N+1
-    new_mu    = ((p_mu*p_k + new_N*new_mean)/(p_k + new_N))[0]
-    mean_var  = _rescale_matrix(np.outer(new_mean - p_mu, new_mean - p_mu), 1./(p_k*new_N/(p_k + new_N)))
-    new_sigma = _rescale_matrix(p_L + new_S + mean_var, p_nu + new_N - x.shape[-1] - 1)
+    new_mu    = new_mean
+    new_sigma = _rescale_matrix(p_L + new_S, p_nu + new_N - x.shape[-1] - 1)
+    
     return new_mean, new_S, new_N, new_mu, new_sigma
 
 #-------------------#
@@ -194,11 +196,9 @@ class _prior:
     Returns:
         prior: instance of prior class
     """
-    def __init__(self, k, L, nu, mu):
-        self.k   = k
-        self.nu  = np.max([nu, mu.shape[-1]+2])
-        self.L   = _rescale_matrix(L, (self.nu-mu.shape[-1]-1))
-        self.mu  = mu
+    def __init__(self, L, nu):
+        self.nu  = np.max([nu, L.shape[-1]+2])
+        self.L   = _rescale_matrix(L, (self.nu-L.shape[-1]-1))
 
 class _component:
     """
@@ -215,7 +215,7 @@ class _component:
         self.N     = 1
         self.mean  = x
         self.S     = np.identity(x.shape[-1])*0.
-        self.mu    = np.atleast_2d((prior.mu*prior.k + self.N*self.mean)/(prior.k + self.N)).astype(np.float64)[0]
+        self.mu    = self.mean
         self.sigma = _rescale_matrix(prior.L, (prior.nu - x.shape[-1] - 1))
 
 class _component_h:
@@ -733,6 +733,7 @@ class DPGMM(density):
                        ):
         self.probit = probit
         self.bounds = np.atleast_2d(bounds)
+        self.log_V  = np.sum(np.log(np.diff(self.bounds, axis = -1)))
         self.dim    = len(self.bounds)
         if prior_pars is not None:
             self.prior = _prior(*prior_pars)
@@ -778,7 +779,7 @@ class DPGMM(density):
         Returns:
             component: updated component
         """
-        new_mean, new_S, new_N, new_mu, new_sigma = _compute_component_suffstats(x, ss.mean, ss.S, ss.N, self.prior.mu, self.prior.k, self.prior.nu, self.prior.L)
+        new_mean, new_S, new_N, new_mu, new_sigma = _compute_component_suffstats(x, ss.mean, ss.S, ss.N, self.prior.nu, self.prior.L)
         ss.mean  = new_mean
         ss.S     = new_S
         ss.N     = new_N
@@ -798,9 +799,8 @@ class DPGMM(density):
             double: log Likelihood
         """
         if ss is None:
-            ss = _component(np.zeros(self.dim), prior = self.prior)
-            ss.N = 0.
-        t_df, t_shape, mu_n = _compute_t_pars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.S, ss.N, self.dim)
+            return -self.log_V
+        t_df, t_shape, mu_n = _compute_t_pars(self.prior.nu, self.prior.L, ss.mean, ss.S, ss.N, self.dim)
         try:
             return _student_t(df = t_df, t = x, mu = mu_n, sigma = t_shape, dim = self.dim)
         except np.linalg.LinAlgError:
@@ -878,7 +878,7 @@ class DPGMM(density):
         """
         self.n_pts += 1
         self._assign_to_cluster(np.atleast_2d(x))
-        self.alpha = _update_alpha(self.n_pts, self.n_cl)
+        self.alpha = _update_alpha(self.alpha, self.n_pts, self.n_cl)
 
     def build_mixture(self):
         """
@@ -892,9 +892,9 @@ class DPGMM(density):
         means     = np.zeros((self.n_cl, self.dim))
         variances = np.zeros((self.n_cl, self.dim, self.dim))
         for i, ss in enumerate(self.mixture):
-            k_n, mu_n, nu_n, L_n = _compute_hyperpars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.S, ss.N)
+            nu_n, L_n = _compute_hyperpars(self.prior.nu, self.prior.L, ss.mean, ss.S, ss.N)
             variances[i] = invwishart(df = nu_n, scale = L_n).rvs()
-            means[i]     = mn(mean = mu_n[0], cov = _rescale_matrix(variances[i], k_n), allow_singular = True).rvs()
+            means[i] = mn(mean = ss.mean[0], cov = _rescale_matrix(ss.sigma, ss.N), allow_singular = True).rvs()
         w = dirichlet(self.w*self.n_pts+self.alpha/self.n_cl).rvs()[0]
         return mixture(means, variances, w, self.bounds, self.dim, self.n_cl, self.n_pts, probit = self.probit)
 
