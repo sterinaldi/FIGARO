@@ -93,7 +93,7 @@ setup(
     entry_points = {
         'console_scripts': scripts,
         },
-    version='1.1.3',
+    version='1.2.1',
     long_description=long_description,
     long_description_content_type='text/markdown',
     cmdclass = {
