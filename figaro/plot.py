@@ -823,7 +823,6 @@ def joyplot(draws, x_values, y_values, credible_regions = False, fill = True, so
             for perc in percentiles:
                 p[perc] = np.percentile(dd, perc, axis = 0)
             if credible_regions and not joy:
-                ax.fill_between(x_values, p[95], p[5], color = c, alpha = 0.25)
                 ax.fill_between(x_values, p[84], p[16], color = c, alpha = 0.25)
         else:
             p[50] = dd
