@@ -301,7 +301,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
             ax.autoscale(True)
             plt.show()
         plt.close()
-    
+    return fig
 
 def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False, n_pts = 200, true_value = None, levels = [0.5, 0.68, 0.9], scatter_points = False, median_label = None, fig = None):
     """
