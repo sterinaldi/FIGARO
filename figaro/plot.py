@@ -98,7 +98,7 @@ class PPPlot(axes.Axes):
         
 projection_registry.register(PPPlot)
 
-def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}', median_label = None):
+def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}', median_label = None, fig = None):
     """
     Plot the recovered 1D distribution along with the injected distribution and samples from the true distribution (both if available).
     
@@ -121,6 +121,10 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         str true_value_label:            label to assign to the true value marker
         str injected_label:              label to assign to the injected distribution
         str median_label:                label to assign to the reconstruction
+        matplotlib.figure.Figure fig:    figure to use for plotting. Must have (dim,dim) axes.
+    
+    Returns:
+        matplotlib.figure.Figure: figure with the plot
     """
     if median_label is None:
         if hierarchical:
@@ -144,7 +148,10 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         else:
             x_max = bounds[1]
 
-    fig, ax = plt.subplots()
+    if fig is None:
+        fig, ax = plt.subplots()
+    else:
+        ax = fig.axes[0]
 
     # If samples are available, use them as bounds
     if samples is not None:
@@ -301,23 +308,23 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
     Plot the recovered multidimensional distribution along with samples from the true distribution (if available) as corner plot.
     
     Arguments:
-        iterable draws:         container for mixture instances
-        np.ndarray samples:     samples from the true distribution (if available)
-        iterable bounds:        bounds for the recovered distribution. If None, bounds from mixture instances are used.
-        str or Path out_folder: output folder
-        str name:               name to be given to outputs
-        list-of-str labels:     LaTeX-style quantity label, for plotting purposes
-        list-of-str units:      LaTeX-style quantity unit, for plotting purposes
-        bool hierarchical:      hierarchical inference, for plotting purposes
-        bool save:              whether to save the plot or not
-        bool show:              whether to show the plot during the run or not
-        bool subfolder:         whether to save in a dedicated subfolder
-        int n_pts:              number of grid points (same for each dimension)
-        iterable true_value:    true value to plot
-        iterable levels:        credible levels to plot
-        bool scatter_points:    scatter samples on 2d plots
-        str median_label:       label to assign to the reconstruction
-        matplotlib.figure fig:  figure to use for plotting. Must have (dim,dim) axes.
+        iterable draws:                container for mixture instances
+        np.ndarray samples:            samples from the true distribution (if available)
+        iterable bounds:               bounds for the recovered distribution. If None, bounds from mixture instances are used.
+        str or Path out_folder:        output folder
+        str name:                      name to be given to outputs
+        list-of-str labels:            LaTeX-style quantity label, for plotting purposes
+        list-of-str units:             LaTeX-style quantity unit, for plotting purposes
+        bool hierarchical:             hierarchical inference, for plotting purposes
+        bool save:                     whether to save the plot or not
+        bool show:                     whether to show the plot during the run or not
+        bool subfolder:                whether to save in a dedicated subfolder
+        int n_pts:                     number of grid points (same for each dimension)
+        iterable true_value:           true value to plot
+        iterable levels:               credible levels to plot
+        bool scatter_points:           scatter samples on 2d plots
+        str median_label:              label to assign to the reconstruction
+        matplotlib.figure.Figure fig:  figure to use for plotting. Must have (dim,dim) axes.
     
     Returns:
         matplotlib.figure.Figure: figure with the plot
