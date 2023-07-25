@@ -296,7 +296,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         plt.close()
     
 
-def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False, n_pts = 200, true_value = None, levels = [0.5, 0.68, 0.9], scatter_points = False, median_label = None):
+def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False, n_pts = 200, true_value = None, levels = [0.5, 0.68, 0.9], scatter_points = False, median_label = None, fig = None):
     """
     Plot the recovered multidimensional distribution along with samples from the true distribution (if available) as corner plot.
     
@@ -317,6 +317,7 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
         iterable levels:        credible levels to plot
         bool scatter_points:    scatter samples on 2d plots
         str median_label:       label to assign to the reconstruction
+        matplotlib.figure fig:  figure to use for plotting. Must have (dim,dim) axes.
     
     Returns:
         matplotlib.figure.Figure: figure with the plot
@@ -370,7 +371,10 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
     plotdim = factor * dim + factor * (K - 1.0) * whspace
     dim_plt = lbdim + plotdim + trdim
     
-    fig, axs = plt.subplots(K, K, figsize=(dim_plt, dim_plt))
+    if fig is None:
+        fig, axs = plt.subplots(K, K, figsize=(dim_plt, dim_plt))
+    else:
+        axs = np.array(fig.axes).reshape(dim,dim)
     # Format the figure.
     lb = lbdim / dim_plt
     tr = (lbdim + plotdim) / dim_plt
