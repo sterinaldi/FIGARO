@@ -302,7 +302,6 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
     
     Arguments:
         iterable draws:         container for mixture instances
-        int dim:                number of dimensions
         np.ndarray samples:     samples from the true distribution (if available)
         iterable bounds:        bounds for the recovered distribution. If None, bounds from mixture instances are used.
         str or Path out_folder: output folder
