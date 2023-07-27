@@ -102,7 +102,7 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674
         par = ['ra', 'dec', 'luminosity_distance']
     if not ext in supported_extensions:
         raise TypeError("File {0}.{1} is not supported".format(name, ext))
-    if ext == 'txt' or ext == 'dat':
+    if ext == 'txt' or ext == 'dat' or ext == 'csv':
         if par is not None:
             warnings.warn("Par names (or volume keyword) are ignored for .txt/.dat/.csv files")
         if n_samples > -1:
@@ -170,7 +170,7 @@ def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.
         if not ext in supported_extensions:
             raise TypeError("File {0}.{1} is not supported".format(name, ext))
         
-        if ext == 'txt' or ext == 'dat':
+        if ext == 'txt' or ext == 'dat' or ext == 'csv':
             if par is not None:
                 warnings.warn("Par names (or volume keyword) are ignored for .txt/.dat files")
             if n_samples > -1:
