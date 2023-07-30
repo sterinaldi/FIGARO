@@ -720,7 +720,7 @@ class mixture(density):
         Returns:
             np.ndarray: mixture.logpdf(x)
         """
-        return logsumexp(np.array([w +comp.logpdf(x) for w, comp in zip(self.log_w, self.components)]), axis = 0)
+        return logsumexp(np.array([w+comp.logpdf(x) for w, comp in zip(self.log_w, self.components)]), axis = 0)
 
     def _pdf_probit(self, x):
         """
