@@ -665,8 +665,9 @@ class mixture(density):
         mixture: instance of mixture class
     """
     def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, probit = True, log_w = None):
-        self.means  = means
-        self.covs   = covs
+        self.means      = means
+        self.covs       = covs
+        self.components = [mn(mean, cov, allow_singular = True) for mean, cov in zip(self.means, self.covs)]
         if log_w is None:
             self.w      = w
             self.log_w  = np.log(w)
@@ -708,7 +709,31 @@ class mixture(density):
         v       = np.mean(self.bounds, axis = -1)
         v[dims] = vals
         return _condition(self, v, dims, norm, filter, tol = 1e-3)
-    
+
+    def _logpdf_probit(self, x):
+        """
+        Evaluate log mixture at point(s) x in probit space
+        
+        Arguments:
+            np.ndarray x: point(s) to evaluate the mixture at (in probit space)
+        
+        Returns:
+            np.ndarray: mixture.logpdf(x)
+        """
+        return logsumexp(np.array([w +comp.logpdf(x) for w, comp in zip(self.log_w, self.components)]), axis = 0)
+
+    def _pdf_probit(self, x):
+        """
+        Evaluate mixture at point(s) x in probit space
+        
+        Arguments:
+            np.ndarray x: point(s) to evaluate the mixture at (in probit space)
+        
+        Returns:
+            np.ndarray: mixture.pdf(x)
+        """
+        return np.sum(np.array([w*comp.pdf(x) for w, comp in zip(self.w, self.components)]), axis = 0)
+        
 #-------------------#
 # Inference classes #
 #-------------------#
