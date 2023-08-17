@@ -172,11 +172,11 @@ def compute_entropy_single_draw(mixture, n_draws = 1e3, return_error = False):
     """
     samples = mixture.rvs(int(n_draws))
     logP    = mixture.logpdf(samples)
-    entropy = np.mean(-logP)/log2e
+    entropy = np.mean(-logP)*log2e
     if not return_error:
         return entropy
     else:
-        dentropy = np.std(-logP)/(np.sqrt(n_draws)*log2e)
+        dentropy = np.std(-logP)/(np.sqrt(n_draws)/log2e)
         return entropy, dentropy
 
 def compute_entropy(draws, n_draws = 1e3, return_error = False):
