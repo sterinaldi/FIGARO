@@ -80,7 +80,7 @@ def _student_t(df, t, mu, sigma, dim):
     return (A - B - C - D + E)[0]
 
 @njit
-def _update_alpha(alpha, n, K, burnin = 1000):
+def _update_alpha(alpha, n, K, alpha0, burnin = 1000):
     """
     Update concentration parameter using a Metropolis-Hastings sampling scheme.
     
@@ -98,10 +98,11 @@ def _update_alpha(alpha, n, K, burnin = 1000):
     for i in prange(n_draws):
         a_new = a_old + (np.random.random() - 0.5)*0.1
         if a_new > 0.:
-            logP_old = _numba_gammaln(a_old) - _numba_gammaln(a_old + n) + K * np.log(a_old) - a_old
-            logP_new = _numba_gammaln(a_new) - _numba_gammaln(a_new + n) + K * np.log(a_new) - a_new
+            logP_old = _numba_gammaln(a_old) - _numba_gammaln(a_old + n) + (K+alpha0) * np.log(a_old) - a_old
+            logP_new = _numba_gammaln(a_new) - _numba_gammaln(a_new + n) + (K+alpha0) * np.log(a_new) - a_new
             if logP_new - logP_old > np.log(np.random.random()):
                 a_old = a_new
+#    print(a_old)
     return a_old
 
 @njit
@@ -903,7 +904,7 @@ class DPGMM(density):
         """
         self.n_pts += 1
         self._assign_to_cluster(np.atleast_2d(x))
-        self.alpha = _update_alpha(self.alpha, self.n_pts, self.n_cl)
+        self.alpha = _update_alpha(self.alpha, self.n_pts, self.n_cl, self.alpha_0)
 
     def build_mixture(self):
         """
@@ -1066,7 +1067,7 @@ class HDPGMM(DPGMM):
         self.n_pts += 1
         x = np.random.choice(ev)
         self._assign_to_cluster(x)
-        self.alpha = _update_alpha(self.alpha, self.n_pts, self.n_cl)
+        self.alpha = _update_alpha(self.alpha, self.n_pts, self.n_cl, self.alpha_0)
 
     def _cluster_assignment_distribution(self, x):
         """
