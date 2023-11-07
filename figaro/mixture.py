@@ -761,7 +761,7 @@ class DPGMM(density):
         self.bounds = np.atleast_2d(bounds)
         self.dim    = len(self.bounds)
         if probit:
-            dbounds    = bounds[:,1]-bounds[:,0]
+            dbounds    = self.bounds[:,1]-self.bounds[:,0]
             sigma      = dbounds*0.34
             self.log_V = (self.dim/2.)*np.log(2*np.pi) + np.sum(np.log(sigma))
         else:
