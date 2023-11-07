@@ -940,11 +940,11 @@ class DPGMM(density):
         if self.dim > 1:
             samples = np.empty(shape = (1,self.dim))
             for i, n in zip(ctr.keys(), ctr.values()):
-                samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma, allow_singular = True).rvs(size = n))))
+                samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu[0], self.mixture[i].sigma, allow_singular = True).rvs(size = n))))
         else:
             samples = np.array([np.zeros(1)])
             for i, n in zip(ctr.keys(), ctr.values()):
-                samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu, self.mixture[i].sigma, allow_singular = True).rvs(size = n)).T))
+                samples = np.concatenate((samples, np.atleast_2d(mn(self.mixture[i].mu[0], self.mixture[i].sigma, allow_singular = True).rvs(size = n)).T))
         return samples[1:]
 
     def _pdf_probit(self, x):
