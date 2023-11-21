@@ -37,8 +37,6 @@ ext_modules=[
                        ),
             ]
 
-# VERY dirty solution to get LAL (but it works, so... Who cares?)
-os.system('conda install -S --channel conda-forge lalsuite')
 lal_folder = os.environ['CONDA_PREFIX']
 ext_modules.append(Extension("figaro.cosmology",
                    sources=[os.path.join("figaro","cosmology.pyx")],
