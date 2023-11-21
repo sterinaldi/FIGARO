@@ -146,7 +146,7 @@ def main():
         else:
             # Check if all samples are within bounds
             if options.probit:
-                if not np.alltrue([(samples[:,i] > options.bounds[i,0]).all() and (samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
+                if not np.all([(samples[:,i] > options.bounds[i,0]).all() and (samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
                     raise ValueError("One or more samples are outside the given bounds.")
 
         # Reconstruction

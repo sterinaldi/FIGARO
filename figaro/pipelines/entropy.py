@@ -103,7 +103,7 @@ def main():
             samples = samples[np.where((np.prod(options.bounds[:,0] < samples, axis = 1) & np.prod(samples < options.bounds[:,1], axis = 1)))]
         else:
             # Check if all samples are within bounds
-            if not np.alltrue([(samples[:,i] > options.bounds[i,0]).all() and (samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
+            if not np.all([(samples[:,i] > options.bounds[i,0]).all() and (samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
                 raise ValueError("One or more samples are outside the given bounds.")
     else:
         hier_flag = True
@@ -127,7 +127,7 @@ def main():
         else:
             # Check if all samples are within bounds
             all_samples = np.atleast_2d(np.concatenate(events))
-            if not np.alltrue([(all_samples[:,i] > options.bounds[i,0]).all() and (all_samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
+            if not np.all([(all_samples[:,i] > options.bounds[i,0]).all() and (all_samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
                 raise ValueError("One or more samples are outside the given bounds.")
         output_plots = Path(options.output, 'plots')
         if not output_plots.exists():

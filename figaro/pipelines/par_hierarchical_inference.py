@@ -231,7 +231,7 @@ def main():
         # Check if all samples are within bounds
         all_samples = np.atleast_2d(np.concatenate(events))
         if options.probit:
-            if not np.alltrue([(all_samples[:,i] > options.bounds[i,0]).all() and (all_samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
+            if not np.all([(all_samples[:,i] > options.bounds[i,0]).all() and (all_samples[:,i] < options.bounds[i,1]).all() for i in range(dim)]):
                 raise ValueError("One or more samples are outside the given bounds.")
 
     # Plot labels
