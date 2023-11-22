@@ -760,7 +760,7 @@ class DPGMM(density):
         self.probit = probit
         self.bounds = np.atleast_2d(bounds)
         self.dim    = len(self.bounds)
-        self.log_V = np.sum(np.log(np.diff(self.bounds, axis = -1)))
+        self.log_V  = np.sum(np.log(np.diff(self.bounds, axis = -1)))
         if prior_pars is not None:
             self.prior = _prior(*prior_pars)
         else:
