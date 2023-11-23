@@ -160,6 +160,8 @@ def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.
     removed_snr = False
     if volume:
         par = ['ra', 'dec', 'luminosity_distance']
+    if n_events == 0:
+        raise FIGAROException("Empty folder")
     for event in tqdm(event_files, desc = 'Loading events'):
         if seed:
             rdstate = np.random.RandomState(seed = 1)
@@ -511,7 +513,11 @@ def load_density(path):
     if path.is_file():
         return _load_density_file(path)
     else:
-        return [_load_density_file(file) for file in path.glob('*.[jp][sk][ol]*') if not file.stem == 'posteriors_single_event']
+        files = [_load_density_file(file) for file in path.glob('*.[jp][sk][ol]*') if not file.stem == 'posteriors_single_event']
+        if len(files) > 0:
+            return files
+        else:
+            raise FIGAROException("Density file(s) not found")
 
 def _load_density_file(file):
     """
