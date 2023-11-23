@@ -106,13 +106,15 @@ def _update_alpha(alpha, n, K, alpha0, burnin = 1000):
     return a_old
 
 @njit
-def _compute_t_pars(nu, L, mean, S, N, dim):
+def _compute_t_pars(k, mu, nu, L, mean, S, N, dim):
     """
     Compute parameters for student-t distribution.
     
     Arguments:
-        int nu:          df parameter (for IG/IW)
-        np.ndarray L:    scale matrix (for IG/IW)
+        double k:        Normal std parameter (for NIW)
+        np.ndarray mu:   Normal mean parameter (for NIW)
+        int nu:          Inverse-Wishart df parameter (for NIW)
+        np.ndarray L:    Inverse-Wishart scale matrix (for NIW)
         np.ndarray mean: samples mean
         np.ndarray S:    samples covariance
         int N:           number of samples
@@ -124,35 +126,41 @@ def _compute_t_pars(nu, L, mean, S, N, dim):
         np.ndarray: mean for student-t
     """
     # Update hyperparameters
-    nu_n, L_n = _compute_hyperpars(nu, L, mean, S, N)
+    k_n, mu_n, nu_n, L_n = _compute_hyperpars(k, mu, nu, L, mean, S, N)
     # Update t-parameters
     t_df    = nu_n - dim + 1
-    t_shape = _rescale_matrix(L_n, t_df)
-    return t_df, t_shape, mean
+    t_shape = L_n*(k_n+1)/(k_n*t_df)
+    return t_df, t_shape, mu_n
 
 @njit
-def _compute_hyperpars(nu, L, mean, S, N):
+def _compute_hyperpars(k, mu, nu, L, mean, S, N):
     """
     Update hyperparameters for Normal Inverse Gamma/Wishart (NIG/NIW).
     See https://www.cs.ubc.ca/~murphyk/Papers/bayesGauss.pdf
     
     Arguments:
-        int nu:          df parameter (for IG/IW)
-        np.ndarray L:    scale matrix (for IG/IW)
+        double k:        Normal std parameter (for NIG/NIW)
+        np.ndarray mu:   Normal mean parameter (for NIG/NIW)
+        int nu:          Gamma df parameter (for NIG/NIW)
+        np.ndarray L:    Gamma scale matrix (for NIG/NIW)
         np.ndarray mean: samples mean
         np.ndarray S:    samples covariance
         int N:           number of samples
     
     Returns:
-        int:        updated df parameter (for IG/IW)
-        np.ndarray: updated scale matrix (for IG/IW)
+        double:     updated Normal std parameter (for NIG/NIW)
+        np.ndarray: updated Normal mean parameter (for NIG/NIW)
+        int:        updated Gamma df parameter (for NIG/NIW)
+        np.ndarray: updated Gamma scale matrix (for NIG/NIW)
     """
+    k_n  = k + N
+    mu_n = (mu*k + N*mean)/k_n
     nu_n = nu + N
-    L_n  = L + S
-    return nu_n, L_n
+    L_n  = L + S + k*N*((mean - mu).T@(mean - mu))/k_n
+    return k_n, mu_n, nu_n, L_n
 
 @njit
-def _compute_component_suffstats(x, mean, S, N, p_nu, p_L):
+def _compute_component_suffstats(x, mean, S, N, p_mu, p_k, p_nu, p_L):
     """
     Update mean, covariance, number of samples and maximum a posteriori for mean and covariance.
     
@@ -161,8 +169,10 @@ def _compute_component_suffstats(x, mean, S, N, p_nu, p_L):
         np.ndarray mean: mean of samples already in the cluster
         np.ndarray cov:  covariance of samples already in the cluster
         int N:           number of samples already in the cluster
-        int p_nu:        IG/IW df parameter
-        np.ndarray p_L:  IG/IW scale matrix
+        np.ndarray p_mu: NIG Normal mean parameter
+        double p_k:      NIG Normal std parameter
+        int p_nu:        NIG Gamma df parameter
+        np.ndarray p_L:  NIG Gamma scale matrix
     
     Returns:
         np.ndarray: updated mean
@@ -174,8 +184,8 @@ def _compute_component_suffstats(x, mean, S, N, p_nu, p_L):
     new_mean  = (mean*N+x)/(N+1)
     new_S     = (S + _rescale_matrix(np.outer(mean,mean), 1./N) + np.outer(x,x)) - _rescale_matrix(np.outer(new_mean, new_mean), 1./(N+1))
     new_N     = N+1
-    new_mu    = new_mean
-    new_sigma = _rescale_matrix(p_L + new_S, p_nu + new_N - x.shape[-1] - 1)
+    new_mu    = ((p_mu*p_k + new_N*new_mean)/(p_k + new_N))[0]
+    new_sigma = _rescale_matrix(p_L + new_S + p_k*new_N*((new_mean - p_mu).T@(new_mean - p_mu)), (p_k + new_N)*(p_nu + new_N - x.shape[-1] - 1))
     
     return new_mean, new_S, new_N, new_mu, new_sigma
 
@@ -190,16 +200,18 @@ class _prior:
     
     Arguments:
         double k:        Normal std parameter
-        np.ndarray mu:   Normal mean parameter
-        int nu:          Wishart df parameter
         np.ndarray L:    Wishart scale matrix
+        int nu:          Wishart df parameter
+        np.ndarray mu:   Normal mean parameter
     
     Returns:
         prior: instance of prior class
     """
-    def __init__(self, L, nu):
-        self.nu  = np.max([nu, L.shape[-1]+2])
-        self.L   = _rescale_matrix(L, (self.nu-L.shape[-1]-1))
+    def __init__(self, k, L, nu, mu):
+         self.k   = k
+         self.nu  = np.max([nu, mu.shape[-1]+2])
+         self.L   = _rescale_matrix(L, 1/(self.nu-mu.shape[-1]-1))
+         self.mu  = mu
 
 class _component:
     """
@@ -216,7 +228,7 @@ class _component:
         self.N     = 1
         self.mean  = x
         self.S     = np.identity(x.shape[-1])*0.
-        self.mu    = self.mean
+        self.mu    = np.atleast_2d((prior.mu*prior.k + self.N*self.mean)/(prior.k + self.N)).astype(np.float64)[0]
         self.sigma = _rescale_matrix(prior.L, (prior.nu - x.shape[-1] - 1))
 
 class _component_h:
@@ -660,12 +672,14 @@ class mixture(density):
         np.ndarray bounds: bounds of probit transformation
         int dim:           number of dimensions
         int n_cl:          number of clusters in the mixture
+        int n_pts:         number of points used to infer the mixture
+        double alpha:      concentration parameter
         bool probit:       whether to use the probit transformation or not
     
     Returns:
         mixture: instance of mixture class
     """
-    def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, probit = True, log_w = None):
+    def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, alpha, probit = True, log_w = None):
         self.means      = means
         self.covs       = covs
         self.components = [mn(mean, cov, allow_singular = True) for mean, cov in zip(self.means, self.covs)]
@@ -680,6 +694,7 @@ class mixture(density):
         self.n_cl   = n_cl
         self.n_pts  = n_pts
         self.probit = probit
+        self.alpha  = alpha
     
     def marginalise(self, axis = -1):
         """
@@ -760,7 +775,6 @@ class DPGMM(density):
         self.probit = probit
         self.bounds = np.atleast_2d(bounds)
         self.dim    = len(self.bounds)
-        self.log_V  = np.sum(np.log(np.diff(self.bounds, axis = -1)))
         if prior_pars is not None:
             self.prior = _prior(*prior_pars)
         else:
@@ -805,7 +819,7 @@ class DPGMM(density):
         Returns:
             component: updated component
         """
-        new_mean, new_S, new_N, new_mu, new_sigma = _compute_component_suffstats(x, ss.mean, ss.S, ss.N, self.prior.nu, self.prior.L)
+        new_mean, new_S, new_N, new_mu, new_sigma = _compute_component_suffstats(x, ss.mean, ss.S, ss.N, self.prior.mu, self.prior.k, self.prior.nu, self.prior.L)
         ss.mean  = new_mean
         ss.S     = new_S
         ss.N     = new_N
@@ -825,8 +839,9 @@ class DPGMM(density):
             double: log Likelihood
         """
         if ss is None:
-            return -self.log_V
-        t_df, t_shape, mu_n = _compute_t_pars(self.prior.nu, self.prior.L, ss.mean, ss.S, ss.N, self.dim)
+            ss = _component(np.zeros(self.dim), prior = self.prior)
+            ss.N = 0.
+        t_df, t_shape, mu_n = _compute_t_pars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.S, ss.N, self.dim)
         try:
             return _student_t(df = t_df, t = x, mu = mu_n, sigma = t_shape, dim = self.dim)
         except np.linalg.LinAlgError:
@@ -918,11 +933,11 @@ class DPGMM(density):
         means     = np.zeros((self.n_cl, self.dim))
         variances = np.zeros((self.n_cl, self.dim, self.dim))
         for i, ss in enumerate(self.mixture):
-            nu_n, L_n = _compute_hyperpars(self.prior.nu, self.prior.L, ss.mean, ss.S, ss.N)
+            k_n, mu_n, nu_n, L_n = _compute_hyperpars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.S, ss.N)
             variances[i] = invwishart(df = nu_n, scale = L_n).rvs()
-            means[i] = mn(mean = ss.mean[0], cov = _rescale_matrix(ss.sigma, ss.N), allow_singular = True).rvs()
+            means[i]     = mn(mean = mu_n[0], cov = _rescale_matrix(variances[i], k_n), allow_singular = True).rvs()
         w = dirichlet(self.w*self.n_pts+self.alpha/self.n_cl).rvs()[0]
-        return mixture(means, variances, w, self.bounds, self.dim, self.n_cl, self.n_pts, probit = self.probit)
+        return mixture(means, variances, w, self.bounds, self.dim, self.n_cl, self.n_pts, self.alpha, probit = self.probit)
 
     # Methods to overwrite density methods
     def _rvs_probit(self, size = 1):
@@ -1165,7 +1180,7 @@ class HDPGMM(DPGMM):
         """
         if self.n_cl == 0:
             raise FIGAROException("You are trying to build an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, the inferred mixture is returned by that method as an instance of mixture class.")
-        return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, self.n_pts, probit = self.probit)
+        return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, self.n_pts, self.alpha, probit = self.probit)
 
     def density_from_samples(self, events):
         """

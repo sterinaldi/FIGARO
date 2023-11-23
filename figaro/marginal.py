@@ -49,7 +49,7 @@ def _marginalise(mix, axis = -1):
     covs   = np.delete(np.delete(mix.covs, ax, axis = -1), ax, axis = -2)
     bounds = np.delete(mix.bounds, ax, axis = 0)
     
-    return mixture(means, covs, mix.w, bounds, dim, mix.n_cl, mix.n_pts, probit = mix.probit)
+    return mixture(means, covs, mix.w, bounds, dim, mix.n_cl, mix.n_pts, mix.alpha, probit = mix.probit)
 
 def marginalise(draws, axis = -1):
     """
@@ -124,7 +124,7 @@ def _condition(mix, vals, dims, norm = True, filter = True, tol = 1e-4):
         idx_filt = [i in idx[m:] for i in range(len(ww))]
         if norm:
             log_weights -= logsumexp(log_weights[idx_filt])
-    return mixture(means[idx_filt], covs[idx_filt], np.exp(log_weights[idx_filt]), bounds, dim, len(log_weights[idx_filt]), mix.n_pts, probit = mix.probit, log_w = log_weights[idx_filt])
+    return mixture(means[idx_filt], covs[idx_filt], np.exp(log_weights[idx_filt]), bounds, dim, len(log_weights[idx_filt]), mix.n_pts, mix.alpha, probit = mix.probit, log_w = log_weights[idx_filt])
 
 def condition(draws, vals, dims, norm = True, filter = True, tol = 1e-4):
     """

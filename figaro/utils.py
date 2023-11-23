@@ -160,8 +160,25 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
             df_out = df
         else:
             df_out = dim+2
-            
-        draw_flag = False
+        # Mu
+        if mean is not None:
+            mean = np.atleast_1d(mean)
+            if not np.prod(bounds[:,0] < mean) & np.prod(mean < bounds[:,1]):
+                raise ValueError("Mean is outside of the given bounds")
+            if probit:
+                mu_out = transform_to_probit(mean, bounds)
+            else:
+                mu_out = mean
+        elif samples is not None:
+            if probit:
+                mu_out = np.atleast_1d(np.median(probit_samples, axis = 0))
+            else:
+                mu_out = np.atleast_1d(np.median(samples, axis = 0))
+        else:
+            if probit:
+                mu_out = np.zeros(dim)
+            else:
+                mu_out = np.atleast_1d(np.mean(bounds, axis = 1))
         # L
         if cov is not None:
             L_out = cov
@@ -172,14 +189,20 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
                 cov_samples = np.atleast_2d(np.cov(probit_samples.T))
             else:
                 cov_samples = np.atleast_2d(np.cov(samples.T))
-            L_out = np.identity(dim)*np.diag(cov_samples/scale**2)
+            L_out = _rescale_matrix(cov_samples, scale**2)
         else:
             if probit:
                 sigma = transform_to_probit(np.atleast_2d(np.mean(bounds, axis = -1)+np.diff(bounds, axis = -1).flatten()/scale), bounds)[0]
                 L_out = np.identity(dim)*sigma**2
             else:
                 L_out = np.identity(dim)*(np.diff(bounds, axis = -1).flatten()/scale)**2
-        return (L_out, df_out)
+        # k
+        if k is not None:
+            k_out = k
+        else:
+            k_out = 1./(scale)
+
+        return (k_out, L_out, df_out, mu_out)
 
 def rvs_median(draws, size = 1):
     """
