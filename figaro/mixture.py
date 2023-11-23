@@ -96,13 +96,12 @@ def _update_alpha(alpha, n, K, alpha0, burnin = 1000):
     a_old = alpha
     n_draws = burnin+np.random.randint(100)
     for i in prange(n_draws):
-        a_new = a_old + (np.random.random() - 0.5)*0.1
+        a_new = a_old + (np.random.random() - 0.5)*0.5
         if a_new > 0.:
             logP_old = _numba_gammaln(a_old) - _numba_gammaln(a_old + n) + (K+alpha0) * np.log(a_old) - a_old
             logP_new = _numba_gammaln(a_new) - _numba_gammaln(a_new + n) + (K+alpha0) * np.log(a_new) - a_new
             if logP_new - logP_old > np.log(np.random.random()):
                 a_old = a_new
-#    print(a_old)
     return a_old
 
 @njit
@@ -129,7 +128,7 @@ def _compute_t_pars(k, mu, nu, L, mean, S, N, dim):
     k_n, mu_n, nu_n, L_n = _compute_hyperpars(k, mu, nu, L, mean, S, N)
     # Update t-parameters
     t_df    = nu_n - dim + 1
-    t_shape = L_n*(k_n+1)/(k_n*t_df)
+    t_shape = _rescale_matrix(L_n, 1./((k_n+1.)/(k_n*t_df)))
     return t_df, t_shape, mu_n
 
 @njit
