@@ -200,7 +200,14 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
         if k is not None:
             k_out = k
         else:
-            k_out = 1./(scale)
+            if samples is not None:
+                if probit:
+                    cov_samples = np.atleast_2d(np.cov(probit_samples.T))
+                else:
+                    cov_samples = np.atleast_2d(np.cov(samples.T))
+                k_out = np.min(np.diag(L_out)/np.diag(cov_samples))
+            else:
+                k_out = 1./(scale)
 
         return (k_out, L_out, df_out, mu_out)
 
