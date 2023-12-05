@@ -689,7 +689,7 @@ class mixture(density):
     Returns:
         mixture: instance of mixture class
     """
-    def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, alpha, probit = True, log_w = None):
+    def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, alpha = 1., probit = True, log_w = None):
         self.means      = means
         self.covs       = covs
         self.components = [mn(mean, cov, allow_singular = True) for mean, cov in zip(self.means, self.covs)]
