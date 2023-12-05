@@ -263,6 +263,7 @@ def make_gaussian_mixture(mu, cov, bounds, out_folder = '.', save = False, save_
     # Here to avoid circular import
     from figaro.mixture import mixture
     bounds = np.atleast_2d(bounds)
+    dim    = len(bounds)
     
     out_folder = Path(out_folder)
     if not out_folder.exists():
@@ -278,13 +279,10 @@ def make_gaussian_mixture(mu, cov, bounds, out_folder = '.', save = False, save_
         if not events_folder.exists():
             events_folder.mkdir()
     
-    if len(np.shape(cov)) == 1:
-        cov = np.atleast_2d(cov).T
-    
     mixtures = []
-    mu   = np.atleast_2d(mu)
-    covs = np.atleast_3d(cov)
     for i, (means, covs) in enumerate(zip(mu, cov)):
+        means = np.atleast_2d(means).reshape(-1,dim)
+        covs  = np.atleast_3d(covs).reshape(-1,dim,dim)
         if save_samples:
             samples = np.empty(shape = (1,len(bounds)))
         mm = []
