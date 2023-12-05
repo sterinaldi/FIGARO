@@ -240,11 +240,11 @@ def rvs_median(draws, size = 1):
         samples = np.concatenate((samples, draws[i].rvs(n)))
     return samples[1:]
     
-def make_single_gaussian_mixture(mu, cov, bounds, out_folder = '.', save = False, n_samps = 3000, probit = True):
+def make_gaussian_mixture(mu, cov, bounds, out_folder = '.', save = False, save_samples = False, n_samps = 3000, probit = True):
     """
-    Builds mixtures composed of a single Gaussian distribution.
+    Builds mixtures composed of equally-weighted Gaussian distribution.
     WARNING: due to the probit coordinate change, a Gaussian distribution in the natural space does not correspond to a Gaussian distribution in the probit space.
-    The resulting distributions, therefore, are just an approximation. This approximation holds for distributions which are far from boundaries.
+    The resulting distributions in probit space, therefore, are just an approximation. This approximation holds for distributions which are far from boundaries.
     In general, a more robust (but slower) approach would be to draw samples from each original Gaussian distribution and to use them to make a hierarchical inference.
     
     Arguments:
@@ -253,7 +253,9 @@ def make_single_gaussian_mixture(mu, cov, bounds, out_folder = '.', save = False
         np.ndarray bounds: boundaries for probit transformation
         str out_folder:    output folder
         bool save:         whether to save the draws or not
+        bool save_samples: whether to save the samples or not
         int n_samps:       number of samples to estimate mean and covariance in probit space
+        bool probit        whether to use the probit transformation or not
     
     Returns:
         np.ndarray: mixtures
@@ -266,43 +268,53 @@ def make_single_gaussian_mixture(mu, cov, bounds, out_folder = '.', save = False
     if not out_folder.exists():
         out_folder.mkdir()
     
-    draws_folder = Path(out_folder, 'draws')
-    if not draws_folder.exists():
-        draws_folder.mkdir()
+    if save:
+        draws_folder = Path(out_folder, 'draws')
+        if not draws_folder.exists():
+            draws_folder.mkdir()
     
-    events_folder = Path(out_folder, 'events')
-    if not events_folder.exists():
-        events_folder.mkdir()
+    if save_samples:
+        events_folder = Path(out_folder, 'events')
+        if not events_folder.exists():
+            events_folder.mkdir()
     
     if len(cov.shape) == 1:
         cov = np.atleast_2d(cov).T
     
     mixtures = []
-    for i, (m, c) in enumerate(zip(mu, cov)):
-        if probit:
-            ss = np.atleast_2d(mn(m, c, allow_singular = True).rvs(n_samps))
-            # 1D issue
-            if c.shape == (1,) or c.shape == (1,1):
-                ss = ss.T
-            # Keeping only samples within bounds
-            ss = ss[np.where((np.prod(bounds[:,0] < ss, axis = 1) & np.prod(ss < bounds[:,1], axis = 1)))]
-            if save:
-                np.savetxt(Path(events_folder, 'event_{0}.txt'.format(i+1)), ss)
-            # Probit samples
-            p_ss = transform_to_probit(ss, bounds)
-            mm = np.mean(p_ss, axis = 0)
-            cc = np.atleast_2d(np.cov(p_ss.T))
-        else:
-            mm = m
-            cc = c
-            if save:
+    mu   = np.atleast_2d(mu)
+    covs = np.atleast_3d(cov)
+    for i, (means, covs) in enumerate(zip(mu, cov)):
+        if save_samples:
+            samples = np.empty(shape = (1,len(bounds)))
+        mm = []
+        cc = []
+        for m, c in zip(means, covs):
+            if probit:
                 ss = np.atleast_2d(mn(m, c, allow_singular = True).rvs(n_samps))
-                if c.shape == (1,1):
+                # 1D issue
+                if c.shape == (1,) or c.shape == (1,1):
                     ss = ss.T
-                np.savetxt(Path(events_folder, 'event_{0}.txt'.format(i+1)), ss)
-        mix = mixture(np.atleast_2d([mm]), np.atleast_3d([cc]), np.ones(1), bounds, len(bounds), 1, None, probit = probit)
+                # Keeping only samples within bounds
+                ss = ss[np.where((np.prod(bounds[:,0] < ss, axis = 1) & np.prod(ss < bounds[:,1], axis = 1)))]
+                if save_samples:
+                    samples = np.concatenate((samples, ss))
+                # Probit samples
+                p_ss = transform_to_probit(ss, bounds)
+                mm.append(np.mean(p_ss, axis = 0))
+                cc.append(np.atleast_2d(np.cov(p_ss.T)))
+            else:
+                mm.append(m)
+                cc.append(c)
+                if save:
+                    ss = np.atleast_2d(mn(m, c, allow_singular = True).rvs(n_samps))
+                    if ss.shape[0] == 1:
+                        ss = ss.T
+                    samples = np.concatenate((samples, ss))
+        if save_samples:
+            np.savetxt(Path(events_folder, 'event_{0}.txt'.format(i+1)), samples[1:])
+        mix = mixture(np.atleast_2d(mm), np.atleast_3d(cc), np.ones(len(means))/len(means), bounds, len(bounds), len(means), None, probit = probit, alpha = 1.)
         mixtures.append([mix])
-    
     mixtures = np.array(mixtures)
     
     if save:
