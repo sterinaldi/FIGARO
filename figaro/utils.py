@@ -240,7 +240,7 @@ def rvs_median(draws, size = 1):
         samples = np.concatenate((samples, draws[i].rvs(n)))
     return samples[1:]
     
-def make_gaussian_mixture(mu, cov, bounds, out_folder = '.', save = False, save_samples = False, n_samps = 3000, probit = True):
+def make_gaussian_mixture(mu, cov, bounds, out_folder = '.', names = None, save = False, save_samples = False, n_samps = 3000, probit = True):
     """
     Builds mixtures composed of equally-weighted Gaussian distribution.
     WARNING: due to the probit coordinate change, a Gaussian distribution in the natural space does not correspond to a Gaussian distribution in the probit space.
@@ -310,8 +310,15 @@ def make_gaussian_mixture(mu, cov, bounds, out_folder = '.', save = False, save_
                         ss = ss.T
                     samples = np.concatenate((samples, ss))
         if save_samples:
-            np.savetxt(Path(events_folder, 'event_{0}.txt'.format(i+1)), samples[1:])
+            if names is not None:
+                name = names[i]
+            else:
+                name = 'event_{0}'.format(i+1)
+            np.savetxt(Path(events_folder, name+'.txt'), samples[1:])
         mix = mixture(np.atleast_2d(mm), np.atleast_3d(cc), np.ones(len(means))/len(means), bounds, len(bounds), len(means), None, probit = probit, alpha = 1.)
+        if save:
+            with open(Path(draws_folder, name+'.pkl'), 'wb') as f:
+                dill.dump(np.array([mix]), f)
         mixtures.append([mix])
     mixtures = np.array(mixtures)
     
