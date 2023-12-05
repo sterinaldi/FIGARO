@@ -278,7 +278,7 @@ def make_gaussian_mixture(mu, cov, bounds, out_folder = '.', save = False, save_
         if not events_folder.exists():
             events_folder.mkdir()
     
-    if len(cov.shape) == 1:
+    if len(np.shape(cov)) == 1:
         cov = np.atleast_2d(cov).T
     
     mixtures = []
