@@ -50,14 +50,14 @@ def MC_integral(p, q, n_draws = 1e4, error = True):
     # Integrals
     if iter_p and iter_q:
         shortest = np.min([n_p, n_q])
-        probabilities = np.array([qi.pdf(pi.rvs(n_draws)) for pi, qi in zip(p[:shortest], q[:shortest])])
-    elif iter_p and not iter_q:
-        probabilities = np.array([q.pdf(pi.rvs(n_draws)) for pi in p])
+        probabilities = np.array([pi.pdf(qi.rvs(n_draws)) for pi, qi in zip(p[:shortest], q[:shortest])])
     elif iter_q and not iter_p:
-        samples = p.rvs(n_draws)
-        probabilities = np.array([qi.pdf(samples) for qi in q])
+        probabilities = np.array([p.pdf(qi.rvs(n_draws)) for pi in p])
+    elif iter_p and not iter_q:
+        samples = q.rvs(n_draws)
+        probabilities = np.array([pi.pdf(samples) for pi in p])
     else:
-        probabilities = np.atleast_2d(q.pdf(p.rvs(n_draws)))
+        probabilities = np.atleast_2d(p.pdf(q.rvs(n_draws)))
     
     means = probabilities.mean(axis = 1)
     I = means.mean()
