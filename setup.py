@@ -78,7 +78,7 @@ setup(
     name = 'figaro',
     description = 'FIGARO: Fast Inference for GW Astronomy, Research & Observations',
     author = 'Stefano Rinaldi, Walter Del Pozzo, Daniele Sanfratello',
-    author_email = 'stefano.rinaldi@phd.unipi.it, walter.delpozzo@unipi.it, d.sanfratello@studenti.unipi.it',
+    author_email = 'stefano.rinaldi@uni-heidelberg.de, walter.delpozzo@unipi.it, d.sanfratello@studenti.unipi.it',
     url = 'https://github.com/sterinaldi/figaro',
     python_requires = '>=3.9',
     packages = ['figaro'],
