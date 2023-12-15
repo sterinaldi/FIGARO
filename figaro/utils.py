@@ -182,9 +182,9 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
                 mu_out = mean
         elif samples is not None:
             if probit:
-                mu_out = np.atleast_1d(np.median(probit_samples, axis = 0))
+                mu_out = np.atleast_1d(np.mean(probit_samples, axis = 0))
             else:
-                mu_out = np.atleast_1d(np.median(samples, axis = 0))
+                mu_out = np.atleast_1d(np.mean(samples, axis = 0))
         else:
             if probit:
                 mu_out = np.zeros(dim)
