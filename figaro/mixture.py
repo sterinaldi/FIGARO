@@ -1190,7 +1190,7 @@ class HDPGMM(DPGMM):
         """
         if self.n_cl == 0:
             raise FIGAROException("You are trying to build an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, the inferred mixture is returned by that method as an instance of mixture class.")
-        return mixture(np.array([comp.mu for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, self.n_pts, self.alpha, probit = self.probit)
+        return mixture(np.array([comp.mu[0] for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, self.n_pts, self.alpha, probit = self.probit)
 
     def density_from_samples(self, events):
         """
