@@ -23,6 +23,8 @@ def MC_integral(p, q, n_draws = 1e4, error = True):
     if not ((hasattr(p, 'pdf') or np.iterable(p)) and (hasattr(q, 'rvs') or np.iterable(q))):
         raise FIGAROException("p and q must be list of callables or having pdf/rvs methods")
     # Number of p draws and methods check
+    iter_p = False
+    iter_q = False
     if np.iterable(p):
         if not np.alltrue([hasattr(pi, 'pdf') for pi in p]):
             raise FIGAROException("p must have pdf method")
@@ -32,7 +34,6 @@ def MC_integral(p, q, n_draws = 1e4, error = True):
     else:
         if not hasattr(p, 'pdf'):
             raise FIGAROException("p must have pdf method")
-        iter_p = False
     # Number of q draws and methods check
     if np.iterable(q):
         if not np.alltrue([hasattr(qi, 'rvs') for qi in q]):
@@ -43,22 +44,19 @@ def MC_integral(p, q, n_draws = 1e4, error = True):
     else:
         if not hasattr(q, 'rvs'):
             raise FIGAROException("q must have rvs method")
-        iter_q = False
 
     n_draws = int(n_draws)
-
     # Integrals
     if iter_p and iter_q:
         shortest = np.min([n_p, n_q])
         probabilities = np.array([pi.pdf(qi.rvs(n_draws)) for pi, qi in zip(p[:shortest], q[:shortest])])
     elif iter_q and not iter_p:
-        probabilities = np.array([p.pdf(qi.rvs(n_draws)) for pi in p])
+        probabilities = np.array([p.pdf(qi.rvs(n_draws)) for qi in q])
     elif iter_p and not iter_q:
         samples = q.rvs(n_draws)
         probabilities = np.array([pi.pdf(samples) for pi in p])
     else:
         probabilities = np.atleast_2d(p.pdf(q.rvs(n_draws)))
-    
     means = probabilities.mean(axis = 1)
     I = means.mean()
     if not error:
