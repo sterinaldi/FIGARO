@@ -164,7 +164,7 @@ def _compute_hyperpars(k, mu, nu, L, mean, S, N):
     mu_n = (mu*k + N*mean)/k_n
     nu_n = nu + N
     if N > 0:
-        L_n = L + S + _rescale_matrix(_outer_jit((mean - mu).T, (mean - mu)), k_n/(k*N))#k*N*((mean - mu).T@(mean - mu))/k_n
+        L_n = L + S + _rescale_matrix(_outer_jit((mean - mu).T, (mean - mu)), k_n/(k*N))
     else:
         L_n = L + S
     return k_n, mu_n, nu_n, L_n
@@ -234,8 +234,8 @@ class _component:
     Returns:
         component: instance of component class
     """
-    def __init__(self, x, prior):
-        self.N     = 1
+    def __init__(self, x, prior, N = 1):
+        self.N     = N
         self.mean  = x
         self.S     = np.identity(x.shape[-1])*0.
         self.mu    = np.atleast_2d((prior.mu*prior.k + self.N*self.mean)/(prior.k + self.N)).astype(np.float64)[0]
@@ -849,8 +849,7 @@ class DPGMM(density):
             double: log Likelihood
         """
         if ss is None:
-            ss = _component(np.zeros(self.dim), prior = self.prior)
-            ss.N = 0.
+            ss = _component(self.prior.mu, prior = self.prior, N = 0)
         t_df, t_shape, mu_n = _compute_t_pars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.S, ss.N, self.dim)
         try:
             return _student_t(df = t_df, t = x, mu = mu_n, sigma = t_shape, dim = self.dim)
