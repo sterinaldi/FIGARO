@@ -152,23 +152,24 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674
         out = np.atleast_2d(out).T
     return out, name
 
-def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.315, ol = 0.685, volume = False, waveform = 'combined', snr_threshold = None, far_threshold = None):
+def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.315, ol = 0.685, volume = False, waveform = 'combined', snr_threshold = None, far_threshold = None, verbose = True):
     '''
     Loads the data from .txt files (for simulations) or .h5/.hdf5/.dat files (posteriors from GWTC-x).
     Default cosmological parameters from Planck Collaboration (2021) in a flat Universe (https://www.aanda.org/articles/aa/pdf/2020/09/aa33910-18.pdf)
     Not all GW parameters are implemented: run figaro.load.available_gw_pars() for a list of available parameters.
     
     Arguments:
-        str or Path path: folder with data files
-        bool seed:        fixes the seed to a default value (1) for reproducibility
-        list-of-str par:  list with parameter(s) to extract from GW posteriors
-        int n_samples:    number of samples for (random) downsampling. Default -1: all samples
-        double h:         Hubble constant H0/100 [km/(s*Mpc)]
-        double om:        matter density parameter
-        double ol:        cosmological constant density parameter
-        str waveform:     waveform family to be used ('combined', 'seob', 'imr')
+        str or Path path:     folder with data files
+        bool seed:            fixes the seed to a default value (1) for reproducibility
+        list-of-str par:      list with parameter(s) to extract from GW posteriors
+        int n_samples:        number of samples for (random) downsampling. Default -1: all samples
+        double h:             Hubble constant H0/100 [km/(s*Mpc)]
+        double om:            matter density parameter
+        double ol:            cosmological constant density parameter
+        str waveform:         waveform family to be used ('combined', 'seob', 'imr')
         double snr_threhsold: SNR threshold for event filtering. For injection analysis only.
         double far_threshold: FAR threshold for event filtering. For injection analysis only.
+        bool verbose:         show progress bar
 
     Returns:
         np.ndarray: samples
@@ -184,7 +185,7 @@ def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.
         par = ['ra', 'dec', 'luminosity_distance']
     if n_events == 0:
         raise FIGAROException("Empty folder")
-    for event in tqdm(event_files, desc = 'Loading events'):
+    for event in tqdm(event_files, desc = 'Loading events', disable = not(verbose)):
         if seed:
             rdstate = np.random.RandomState(seed = 1)
         else:
