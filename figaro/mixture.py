@@ -170,7 +170,7 @@ def _compute_hyperpars(k, mu, nu, L, mean, S, N):
     return k_n, mu_n, nu_n, L_n
 
 @njit
-def _compute_component_suffstats(x, mean, S, N, p_mu, p_k, p_nu, p_L):
+def _compute_component_suffstats_add(x, mean, S, N, p_mu, p_k, p_nu, p_L):
     """
     Update mean, covariance, number of samples and maximum a posteriori for mean and covariance.
     
@@ -195,10 +195,51 @@ def _compute_component_suffstats(x, mean, S, N, p_mu, p_k, p_nu, p_L):
     new_S     = (S + _rescale_matrix(_outer_jit(mean,mean), 1./N) + _outer_jit(x,x)) - _rescale_matrix(_outer_jit(new_mean, new_mean), 1./(N+1))
     new_N     = N+1
     new_mu    = ((p_mu*p_k + new_N*new_mean)/(p_k + new_N))[0]
-    new_sigma = _rescale_matrix(p_L + new_S + _rescale_matrix(_outer_jit((new_mean - p_mu).T, (new_mean - p_mu)), 1./(p_k*new_N)), (p_k + new_N)*(p_nu + new_N - x.shape[-1] - 1))
+    new_sigma = _rescale_matrix(p_L + new_S + _rescale_matrix(_outer_jit((new_mean - p_mu).T, (new_mean - p_mu)), (p_k + new_N)/(p_k*new_N)), (p_nu + new_N - x.shape[-1] - 1))
     
     return new_mean, new_S, new_N, new_mu, new_sigma
 
+@njit
+def _compute_component_suffstats_remove(x, mean, S, N, p_mu, p_k, p_nu, p_L):
+    """
+    Update mean, covariance, number of samples and maximum a posteriori for mean and covariance.
+    
+    Arguments:
+        np.ndarray x:    sample to remove
+        np.ndarray mean: mean of samples already in the cluster
+        np.ndarray cov:  covariance of samples already in the cluster
+        int N:           number of samples already in the cluster
+        np.ndarray p_mu: NIG Normal mean parameter
+        double p_k:      NIG Normal std parameter
+        int p_nu:        NIG Gamma df parameter
+        np.ndarray p_L:  NIG Gamma scale matrix
+    
+    Returns:
+        np.ndarray: updated mean
+        np.ndarray: updated covariance
+        int:        updated number of samples
+        np.ndarray: mean (maximum a posteriori)
+        np.ndarray: covariance (maximum a posteriori)
+    """
+    if N > 1:
+        new_mean  = (mean*N-x)/(N-1)
+        if N > 2:
+            new_S = (S + _rescale_matrix(_outer_jit(mean,mean), 1./N) - _outer_jit(x,x)) - _rescale_matrix(_outer_jit(new_mean, new_mean), 1./(N-1))
+        else:
+            new_S = np.zeros(S.shape)
+    else:
+        new_mean  = np.zeros(mean.shape)
+        new_S     = np.zeros(S.shape)
+    if new_S[0][0] < 0:
+        print(N, S, new_S, mean, new_mean, x)
+    new_N     = N-1
+    new_mu    = ((p_mu*p_k + new_N*new_mean)/(p_k + new_N))[0]
+    if N > 2:
+        new_sigma = _rescale_matrix(p_L + new_S + _rescale_matrix(_outer_jit((new_mean - p_mu).T, (new_mean - p_mu)), (p_k + new_N)/(p_k*new_N)), (p_nu + new_N - x.shape[-1] - 1))
+    else:
+        new_sigma = _rescale_matrix(p_L, (p_nu + new_N - x.shape[-1] - 1))
+    return new_mean, new_S, new_N, new_mu, new_sigma
+    
 #-------------------#
 # Auxiliary classes #
 #-------------------#
@@ -291,7 +332,7 @@ class density:
                 x = np.atleast_2d(x).T
             else:
                 x = np.atleast_2d(x)
-        with np.errstate(invalid = 'ignore'):
+        with np.errstate(divide = 'ignore', invalid = 'ignore'):
             p = np.nan_to_num(self._pdf(x), nan = 0.)
         return p
 
@@ -303,7 +344,7 @@ class density:
                 x = np.atleast_2d(x).T
             else:
                 x = np.atleast_2d(x)
-        with np.errstate(invalid = 'ignore'):
+        with np.errstate(divide = 'ignore', invalid = 'ignore'):
             logp = np.nan_to_num(self._logpdf(x), nan = -np.inf)
         return logp
 
@@ -615,7 +656,7 @@ class density:
                 x = np.atleast_2d(x).T
             else:
                 x = np.atleast_2d(x)
-        with np.errstate(invalid = 'ignore'):
+        with np.errstate(divide = 'ignore', invalid = 'ignore'):
             g = np.nan_to_num([self._gradient(xi) for xi in x], nan = 0.)
         return g
     
@@ -636,7 +677,7 @@ class density:
                 x = np.atleast_2d(x).T
             else:
                 x = np.atleast_2d(x)
-        with np.errstate(invalid = 'ignore'):
+        with np.errstate(divide = 'ignore', invalid = 'ignore'):
             g = np.nan_to_num([self._log_gradient(xi) for xi in x], nan = 0.)
         return g
     
@@ -773,14 +814,16 @@ class DPGMM(density):
         iterable prior_pars: NIW prior parameters (k, L, nu, mu)
         double alpha0:       initial guess for concentration parameter
         bool probit:         whether to use the probit transformation or not
+        int n_reassignments: number of reassignments. Default behaviour is not to reassign.
     
     Returns:
         DPGMM: instance of DPGMM class
     """
     def __init__(self, bounds,
-                       prior_pars = None,
-                       alpha0     = 1.,
-                       probit     = True,
+                       prior_pars      = None,
+                       alpha0          = 1.,
+                       probit          = True,
+                       n_reassignments = 1000,
                        ):
         self.probit = probit
         self.bounds = np.atleast_2d(bounds)
@@ -789,14 +832,17 @@ class DPGMM(density):
             self.prior = _prior(*prior_pars)
         else:
             self.prior = _prior(*get_priors(bounds = self.bounds, probit = self.probit))
-        self.alpha      = alpha0
-        self.alpha_0    = alpha0
-        self.mixture    = []
-        self.w          = []
-        self.log_w      = []
-        self.N_list     = []
-        self.n_cl       = 0
-        self.n_pts      = 0
+        self.alpha           = alpha0
+        self.alpha_0         = alpha0
+        self.mixture         = []
+        self.w               = []
+        self.log_w           = []
+        self.N_list          = []
+        self.n_cl            = 0
+        self.n_pts           = 0
+        self.stored_pts      = {}
+        self.assignations    = {}
+        self.n_reassignments = int(n_reassignments)
 
     def __call__(self, x):
         return self.pdf(x)
@@ -808,13 +854,15 @@ class DPGMM(density):
         Arguments:
             iterable prior_pars: NIW prior parameters (k, L, nu, mu). If None, old parameters are kept
         """
-        self.alpha    = self.alpha_0
-        self.mixture  = []
-        self.w        = []
-        self.log_w    = []
-        self.N_list   = []
-        self.n_cl     = 0
-        self.n_pts    = 0
+        self.alpha        = self.alpha_0
+        self.mixture      = []
+        self.w            = []
+        self.log_w        = []
+        self.N_list       = []
+        self.n_cl         = 0
+        self.n_pts        = 0
+        self.stored_pts   = {}
+        self.assignations = {}
         if prior_pars is not None:
             self.prior = _prior(*prior_pars)
         
@@ -829,14 +877,33 @@ class DPGMM(density):
         Returns:
             component: updated component
         """
-        new_mean, new_S, new_N, new_mu, new_sigma = _compute_component_suffstats(x, ss.mean, ss.S, ss.N, self.prior.mu, self.prior.k, self.prior.nu, self.prior.L)
+        new_mean, new_S, new_N, new_mu, new_sigma = _compute_component_suffstats_add(x, ss.mean, ss.S, ss.N, self.prior.mu, self.prior.k, self.prior.nu, self.prior.L)
         ss.mean  = new_mean
         ss.S     = new_S
         ss.N     = new_N
         ss.mu    = new_mu
         ss.sigma = new_sigma
         return ss
-    
+
+    def _remove_datapoint_from_component(self, x, ss):
+        """
+        Update component parameters after removing a sample from the component
+        
+        Arguments:
+            np.ndarray x: sample
+            component ss: component to update
+        
+        Returns:
+            component: updated component
+        """
+        new_mean, new_S, new_N, new_mu, new_sigma = _compute_component_suffstats_remove(x, ss.mean, ss.S, ss.N, self.prior.mu, self.prior.k, self.prior.nu, self.prior.L)
+        ss.mean  = new_mean
+        ss.S     = new_S
+        ss.N     = new_N
+        ss.mu    = new_mu
+        ss.sigma = new_sigma
+        return ss
+
     def _log_predictive_likelihood(self, x, ss):
         """
         Compute log likelihood of drawing sample x from component ss given the samples that are already assigned to that component.
@@ -873,31 +940,58 @@ class DPGMM(density):
                 scores[i] = np.log(self.alpha)
             else:
                 ss        = self.mixture[i-1]
-                scores[i] = np.log(ss.N)
-            scores[i] += self._log_predictive_likelihood(x, ss)
+                with np.errstate(divide = 'ignore', invalid = 'ignore'):
+                    scores[i] = np.log(ss.N)
+            if np.isfinite(scores[i]):
+                scores[i] += self._log_predictive_likelihood(x, ss)
+            else:
+                scores[i] = -np.inf
         norm = logsumexp_jit(scores, b = np.ones(self.n_cl+1))
         return np.exp(scores - norm)
 
-    def _assign_to_cluster(self, x):
+    def _assign_to_cluster(self, x, pt_id = None):
         """
         Assign the new sample x to an existing cluster or to a new cluster according to the marginal distribution of cluster assignment.
         
         Arguments:
             np.ndarray x: sample
+            int pt_id:    point id
         """
+        if pt_id is None:
+            pt_id = self.n_pts-1
         scores = self._cluster_assignment_distribution(x)
         cid = np.random.choice(self.n_cl+1, p=scores)
         if cid == 0:
             self.mixture.append(_component(x, prior = self.prior))
             self.N_list.append(1.)
             self.n_cl += 1
+            self.assignations[pt_id] = int(self.n_cl)-1
         else:
             self.mixture[int(cid)-1] = self._add_datapoint_to_component(x, self.mixture[int(cid)-1])
             self.N_list[int(cid)-1] += 1
+            self.assignations[pt_id] = int(cid)-1
         # Update weights
         self.w = np.array(self.N_list)
         self.w = self.w/self.w.sum()
-        self.log_w = np.log(self.w)
+        with np.errstate(divide = 'ignore', invalid = 'ignore'):
+            self.log_w = np.log(self.w)
+        return
+    
+    def _remove_from_cluster(self, x, cid):
+        """
+        Remove the sample x from its assigned cluster.
+        
+        Arguments:
+            np.ndarray x: sample
+            int cid:      cluster id
+        """
+        self.mixture[int(cid)] = self._remove_datapoint_from_component(x, self.mixture[int(cid)])
+        self.N_list[int(cid)] -= 1
+        # Update weights
+        self.w = np.array(self.N_list)
+        self.w = self.w/self.w.sum()
+        with np.errstate(divide = 'ignore', invalid = 'ignore'):
+            self.log_w = np.log(self.w)
         return
     
     def density_from_samples(self, samples):
@@ -912,8 +1006,12 @@ class DPGMM(density):
         """
         np.random.shuffle(samples)
         samples = np.ascontiguousarray(samples)
+        # Thermalise
         for s in samples:
             self.add_new_point(s)
+        # Random Gibbs walk (if required)
+        for id in np.random.choice(self.n_pts, size = self.n_reassignments, replace = True):
+            self._reassign_point(id)
         d = self.build_mixture()
         self.initialise()
         return d
@@ -927,7 +1025,23 @@ class DPGMM(density):
             np.ndarray x: sample
         """
         self.n_pts += 1
+        self.stored_pts[self.n_pts-1] = np.atleast_2d(x)
         self._assign_to_cluster(np.atleast_2d(x))
+        self.alpha = _update_alpha(self.alpha, self.n_pts, self.n_cl, self.alpha_0)
+    
+    def _reassign_point(self, id):
+        """
+        Update the probability density reconstruction reassigining an existing sample
+        
+        Arguments:
+            id: sample id
+        """
+        x          = self.stored_pts[id]
+        cl_id      = self.assignations[id]
+        self._remove_from_cluster(x, cl_id)
+        self._assign_to_cluster(x, id)
+        # Number of active components (may vary after reassignments)
+        self.n_cl  = (np.array(self.N_list) > 0).sum()
         self.alpha = _update_alpha(self.alpha, self.n_pts, self.n_cl, self.alpha_0)
 
     def build_mixture(self):
@@ -941,11 +1055,14 @@ class DPGMM(density):
             raise FIGAROException("You are trying to build an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, the inferred mixture is returned by that method as an instance of mixture class.")
         means     = np.zeros((self.n_cl, self.dim))
         variances = np.zeros((self.n_cl, self.dim, self.dim))
-        for i, ss in enumerate(self.mixture):
-            k_n, mu_n, nu_n, L_n = _compute_hyperpars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.S, ss.N)
-            variances[i] = invwishart(df = nu_n, scale = L_n).rvs()
-            means[i]     = mn(mean = mu_n[0], cov = _rescale_matrix(variances[i], k_n), allow_singular = True).rvs()
-        w = dirichlet(self.w*self.n_pts+self.alpha/self.n_cl).rvs()[0]
+        i = 0
+        for ss in self.mixture:
+            if ss.N > 0:
+                k_n, mu_n, nu_n, L_n = _compute_hyperpars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.S, ss.N)
+                variances[i] = invwishart(df = nu_n, scale = L_n).rvs()
+                means[i]     = mn(mean = mu_n[0], cov = _rescale_matrix(variances[i], k_n), allow_singular = True).rvs()
+                i += 1
+        w = dirichlet(self.w[self.w > 0]*self.n_pts+self.alpha/self.n_cl).rvs()[0]
         return mixture(means, variances, w, self.bounds, self.dim, self.n_cl, self.n_pts, self.alpha, probit = self.probit)
 
     # Methods to overwrite density methods
