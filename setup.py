@@ -8,12 +8,6 @@ from distutils.extension import Extension
 import os
 import warnings
 
-ray_flag = True
-try:
-    import ray
-except ModuleNotFoundError:
-    ray_flag = False
-
 try:
     from Cython.Build import cythonize, build_ext
 except ImportError:
@@ -22,6 +16,10 @@ except ImportError:
 if not os.environ['CONDA_DEFAULT_ENV'] == 'igwn-py39':
     with open("requirements.txt") as requires_file:
         requirements = requires_file.read().split("\n")
+        
+else:
+    requirements = []
+    ray_flag = False
 
 with open("README.md") as readme_file:
     long_description = readme_file.read()
@@ -48,11 +46,9 @@ ext_modules = cythonize(ext_modules, compiler_directives={'language_level' : "3"
 
 scripts = ['figaro-density=figaro.pipelines.probability_density:main',
            'figaro-hierarchical=figaro.pipelines.hierarchical_inference:main',
-           'figaro-glade=figaro.pipelines.create_glade:main',
            ]
 pymodules = ['figaro/pipelines/probability_density',
              'figaro/pipelines/hierarchical_inference',
-             'figaro/pipelines/create_glade',
              ]
 
 par_scripts = ['figaro-par-hierarchical=figaro.pipelines.par_hierarchical_inference:main',
