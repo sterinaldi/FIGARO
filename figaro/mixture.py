@@ -297,10 +297,6 @@ class _component_h:
     def __init__(self, x, dim, prior, logL_D, mu_MC, sigma_MC, b_ones):
         self.dim    = dim
         self.N      = 1
-        self.events = [x]
-        self.means  = [x.means]
-        self.covs   = [x.covs]
-        self.log_w  = [x.log_w]
         self.logL_D = logL_D
         
         log_norm_D = logsumexp_jit(logL_D, b = b_ones)
@@ -1154,7 +1150,7 @@ class HDPGMM(DPGMM):
                        prior_pars      = None,
                        MC_draws        = None,
                        probit          = True,
-                       n_reassignments = 100,
+                       n_reassignments = 0.,
                        ):
         bounds   = np.atleast_2d(bounds)
         self.dim = len(bounds)
@@ -1270,7 +1266,7 @@ class HDPGMM(DPGMM):
             self.n_cl += 1
             self.assignations[pt_id] = int(self.n_cl)-1
         else:
-            self.mixture[int(cid)] = self._add_datapoint_to_component(x, self.mixture[int(cid)], logL_N[int(cid)+1])
+            self.mixture[int(cid)] = self._add_datapoint_to_component(self.mixture[int(cid)], logL_N[int(cid)+1])
             self.N_list[int(cid)] += 1
             self.assignations[pt_id] = int(cid)
         self.evaluated_logL[pt_id] = logL_x
@@ -1290,7 +1286,7 @@ class HDPGMM(DPGMM):
             int cid:       cluster id
             double logL_x: log likelihood for the point
         """
-        self.mixture[int(cid)] = self._remove_datapoint_from_component(x, self.mixture[int(cid)], self.mixture[int(cid)].logL_D - logL_x)
+        self.mixture[int(cid)] = self._remove_datapoint_from_component(self.mixture[int(cid)], self.mixture[int(cid)].logL_D - logL_x)
         self.N_list[int(cid)] -= 1
         # Update weights
         self.w = np.array(self.N_list)
@@ -1299,24 +1295,18 @@ class HDPGMM(DPGMM):
             self.log_w = np.log(self.w)
         return
     
-    def _add_datapoint_to_component(self, x, ss, logL_D):
+    def _add_datapoint_to_component(self, ss, logL_D):
         """
         Update component parameters after assigning a sample to a component
         
         Arguments:
-            np.ndarray x: sample
             component ss: component to update
             double logL_D: log Likelihood denominator
         
         Returns:
             component: updated component
         """
-        ss.events.append(x)
-        ss.means.append(x.means)
-        ss.covs.append(x.covs)
-        ss.log_w.append(x.log_w)
         ss.logL_D = logL_D
-
         log_norm_D = logsumexp_jit(logL_D, self.b_ones)
         
         idx      = np.random.choice(self.MC_draws, p = np.exp(logL_D - log_norm_D))
@@ -1329,24 +1319,18 @@ class HDPGMM(DPGMM):
         ss.N += 1
         return ss
 
-    def _remove_datapoint_from_component(self, x, ss, logL_D):
+    def _remove_datapoint_from_component(self, ss, logL_D):
         """
         Update component parameters after assigning a sample to a component
         
         Arguments:
-            np.ndarray x: sample
             component ss: component to update
             double logL_D: log Likelihood denominator
         
         Returns:
             component: updated component
         """
-        ss.events.remove(x)
-        ss.means.remove(x.means)
-        ss.covs.remove(x.covs)
-        ss.log_w.remove(x.log_w)
         ss.logL_D = logL_D
-
         log_norm_D = logsumexp_jit(logL_D, self.b_ones)
         
         idx      = np.random.choice(self.MC_draws, p = np.exp(logL_D - log_norm_D))
