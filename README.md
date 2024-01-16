@@ -19,7 +19,7 @@ The basic usage for the serial scripts is:
 In order to see all the available options, run `console_script_name -h`.
 
 If you only wish to reconstruct some probability density or run a vanilla hierarchical analysis, we strongly recommend using these scripts, which are already tested and optimised.
-However, if you wish to include FIGARO in your own scripts, an introductive guide can be found in the `introductive_guide.ipynb` notebook, where it is shown how to to reconstruct a probability density with FIGARO and how to use its products. We strongly encourage the interested user to go through the whole notebook, since it provides a (hopefully detailed) tutorial on how to properly set and use FIGARO.
+However, if you wish to include FIGARO in your own scripts, an introductive guide can be found in the `introductive_guide.ipynb` notebook, where we show how to to reconstruct a probability density with FIGARO and how to use its products. We strongly encourage the interested user to go through the whole notebook, since it provides a (hopefully detailed) tutorial on how to properly set and use FIGARO.
 
 ## Installation guide
 
