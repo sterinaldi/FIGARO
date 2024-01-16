@@ -230,8 +230,6 @@ def _compute_component_suffstats_remove(x, mean, S, N, p_mu, p_k, p_nu, p_L):
     else:
         new_mean  = np.zeros(mean.shape)
         new_S     = np.zeros(S.shape)
-    if new_S[0][0] < 0:
-        print(N, S, new_S, mean, new_mean, x)
     new_N     = N-1
     new_mu    = ((p_mu*p_k + new_N*new_mean)/(p_k + new_N))[0]
     if N > 2:
@@ -814,7 +812,7 @@ class DPGMM(density):
         iterable prior_pars: NIW prior parameters (k, L, nu, mu)
         double alpha0:       initial guess for concentration parameter
         bool probit:         whether to use the probit transformation or not
-        int n_reassignments: number of reassignments. Default behaviour is not to reassign.
+        int n_reassignments: number of reassignments. Default is not to reassign.
     
     Returns:
         DPGMM: instance of DPGMM class
@@ -823,7 +821,7 @@ class DPGMM(density):
                        prior_pars      = None,
                        alpha0          = 1.,
                        probit          = True,
-                       n_reassignments = 1000,
+                       n_reassignments = 0.,
                        ):
         self.probit = probit
         self.bounds = np.atleast_2d(bounds)
@@ -960,16 +958,16 @@ class DPGMM(density):
         if pt_id is None:
             pt_id = self.n_pts-1
         scores = self._cluster_assignment_distribution(x)
-        cid = np.random.choice(self.n_cl+1, p=scores)
-        if cid == 0:
+        cid = np.random.choice(np.arange(-1,self.n_cl), p=scores)
+        if cid == -1:
             self.mixture.append(_component(x, prior = self.prior))
             self.N_list.append(1.)
             self.n_cl += 1
             self.assignations[pt_id] = int(self.n_cl)-1
         else:
-            self.mixture[int(cid)-1] = self._add_datapoint_to_component(x, self.mixture[int(cid)-1])
-            self.N_list[int(cid)-1] += 1
-            self.assignations[pt_id] = int(cid)-1
+            self.mixture[int(cid)] = self._add_datapoint_to_component(x, self.mixture[int(cid)])
+            self.N_list[int(cid)] += 1
+            self.assignations[pt_id] = int(cid)
         # Update weights
         self.w = np.array(self.N_list)
         self.w = self.w/self.w.sum()
@@ -1040,9 +1038,7 @@ class DPGMM(density):
         cl_id      = self.assignations[id]
         self._remove_from_cluster(x, cl_id)
         self._assign_to_cluster(x, id)
-        # Number of active components (may vary after reassignments)
-        self.n_cl  = (np.array(self.N_list) > 0).sum()
-        self.alpha = _update_alpha(self.alpha, self.n_pts, self.n_cl, self.alpha_0)
+        self.alpha = _update_alpha(self.alpha, self.n_pts, (np.array(self.N_list) > 0).sum(), self.alpha_0)
 
     def build_mixture(self):
         """
@@ -1053,8 +1049,10 @@ class DPGMM(density):
         """
         if self.n_cl == 0:
             raise FIGAROException("You are trying to build an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, the inferred mixture is returned by that method as an instance of mixture class.")
-        means     = np.zeros((self.n_cl, self.dim))
-        variances = np.zeros((self.n_cl, self.dim, self.dim))
+        # Number of active clusters
+        n_cl      = (np.array(self.N_list) > 0).sum()
+        means     = np.zeros((n_cl, self.dim))
+        variances = np.zeros((n_cl, self.dim, self.dim))
         i = 0
         for ss in self.mixture:
             if ss.N > 0:
@@ -1063,7 +1061,7 @@ class DPGMM(density):
                 means[i]     = mn(mean = mu_n[0], cov = _rescale_matrix(variances[i], k_n), allow_singular = True).rvs()
                 i += 1
         w = dirichlet(self.w[self.w > 0]*self.n_pts+self.alpha/self.n_cl).rvs()[0]
-        return mixture(means, variances, w, self.bounds, self.dim, self.n_cl, self.n_pts, self.alpha, probit = self.probit)
+        return mixture(means, variances, w, self.bounds, self.dim, n_cl, self.n_pts, self.alpha, probit = self.probit)
 
     # Methods to overwrite density methods
     def _rvs_probit(self, size = 1):
@@ -1146,8 +1144,6 @@ class HDPGMM(DPGMM):
         double alpha0:    initial guess for concentration parameter
         double MC_draws:  number of MC draws for integral
         bool probit:      whether to use the probit transformation or not
-        double sigma_min: lower bound for Jeffreys' prior on standard deviation
-        double sigma_max: upper bound for Jeffreys' prior on standard deviation
     
     Returns:
         HDPGMM: instance of HDPGMM class
