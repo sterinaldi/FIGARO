@@ -19,9 +19,7 @@ try:
 except ImportError:
     raise ImportError("Cython not found. Please install it via\n\tpip install Cython")
 
-if os.environ['CONDA_DEFAULT_ENV'] == 'igwn-py39':
-    requirements = ['imageio']
-else:
+if not os.environ['CONDA_DEFAULT_ENV'] == 'igwn-py39':
     with open("requirements.txt") as requires_file:
         requirements = requires_file.read().split("\n")
 
@@ -51,16 +49,10 @@ ext_modules = cythonize(ext_modules, compiler_directives={'language_level' : "3"
 scripts = ['figaro-density=figaro.pipelines.probability_density:main',
            'figaro-hierarchical=figaro.pipelines.hierarchical_inference:main',
            'figaro-glade=figaro.pipelines.create_glade:main',
-           'figaro-pp_plot=figaro.pipelines.ppplot:main',
-           'figaro-mockdata=figaro.pipelines.gen_mock_data:main',
-           'figaro-entropy=figaro.pipelines.entropy:main',
            ]
 pymodules = ['figaro/pipelines/probability_density',
              'figaro/pipelines/hierarchical_inference',
              'figaro/pipelines/create_glade',
-             'figaro/pipelines/ppplot',
-             'figaro/pipelines/gen_mock_data',
-             'figaro/pipelines/entropy',
              ]
 
 par_scripts = ['figaro-par-hierarchical=figaro.pipelines.par_hierarchical_inference:main',
@@ -80,7 +72,7 @@ setup(
     author = 'Stefano Rinaldi, Walter Del Pozzo, Daniele Sanfratello',
     author_email = 'stefano.rinaldi@uni-heidelberg.de, walter.delpozzo@unipi.it, d.sanfratello@studenti.unipi.it',
     url = 'https://github.com/sterinaldi/figaro',
-    python_requires = '>=3.9',
+    python_requires = '<3.12',
     packages = ['figaro'],
     py_modules = pymodules,
     install_requires=requirements,
@@ -91,7 +83,7 @@ setup(
     entry_points = {
         'console_scripts': scripts,
         },
-    version='1.3.1',
+    version='1.3.2',
     long_description=long_description,
     long_description_content_type='text/markdown',
     cmdclass = {
