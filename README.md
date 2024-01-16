@@ -28,7 +28,7 @@ We recommend using one of the following two conda environments:
 * `figaro_env` is a dedicated environment already containing all the required packages. It is created by the installer if the option `-e` is provided;
 * `igwn-py39`, which includes all the required packages apart from Ray, is available [here](https://computing.docs.ligo.org/conda/environments/igwn-py39) .
 
-If you prefer install FIGARO by hand, run `python setup.py build_ext --inplace` and `python setup.py install`. In some cases (like on clusters), it may happen that you do not have the permission to write in the default installation directory. In this case, run `python setup.py install --user`. 
+If you prefer install FIGARO on your own, run `python setup.py build_ext --inplace` and `python setup.py install`. In some cases (like on clusters), it may happen that you do not have the permission to write in the default installation directory. In this case, run `python setup.py install --user`. 
 
 If you decide not to use one of the default environments, please remember that in order to have access to all the functions, LALSuite is required. Without LALSuite, the `figaro.load` module won't be able to load GW posterior samples and will raise an exception. To install LALSuite, follow the instructions provided [here](https://wiki.ligo.org/Computing/LALSuiteInstall). In most cases, `conda install -c conda-forge lalsuite` will work.
 
