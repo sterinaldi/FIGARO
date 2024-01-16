@@ -5,5 +5,64 @@ requires = [
     "setuptools>=42",
     "wheel",
     "build",
-]
+    ]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ['figaro']
+
+[project]
+name = 'figaro'
+description = 'FIGARO: Fast Inference for GW Astronomy, Research & Observations'
+version = '1.3.2'
+requires-python = '< 3.12'
+readme = {file = "README.md", content-type = "text/markdown"}
+license = {file = "LICENSE"}
+keywords = ['DPGMM', 'figaro', 'hierarchical', 'inference', 'HDPGMM']
+
+authors = [
+  {name = "Stefano Rinaldi", email = "stefano.rinaldi@uni-heidelberg.de"},
+  {name = "Walter Del Pozzo"},
+  {name = "Daniele Sanfratello"}
+  ]
+
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Researchers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.6",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  'Topic :: Scientific/Engineering :: Astronomy',
+  'Topic :: Scientific/Engineering :: Physics',
+
+]
+
+dependencies = [
+    "numpy > 1.22",
+    "scipy",
+    "matplotlib != 3.6.3",
+    "dill",
+    "corner",
+    "numba",
+    "h5py",
+    "tqdm",
+    "lalsuite",
+    "myst-parser",
+    "ray",
+    ]
+
+[project.urls]
+Documentation = "https://figaro.readthedocs.io"
+Repository = "https://github.com/sterinaldi/FIGARO.git"
+Issues = "https://github.com/sterinaldi/FIGARO/issues"
+
+[project.scripts]
+figaro-density          = "figaro.pipelines.probability_density:main"
+figaro-hierarchical     = "figaro.pipelines.hierarchical_inference:main"
+figaro-par-hierarchical = "figaro.pipelines.par_hierarchical_inference:main"
+figaro-par-density      = "figaro.pipelines.par_probability_density:main"
