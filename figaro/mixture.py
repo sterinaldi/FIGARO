@@ -1034,9 +1034,9 @@ class DPGMM(density):
         Arguments:
             id: sample id
         """
-        x          = self.stored_pts[id]
-        cl_id      = self.assignations[id]
-        self._remove_from_cluster(x, cl_id)
+        x   = self.stored_pts[id]
+        cid = self.assignations[id]
+        self._remove_from_cluster(x, cid)
         self._assign_to_cluster(x, id)
         self.alpha = _update_alpha(self.alpha, self.n_pts, (np.array(self.N_list) > 0).sum(), self.alpha_0)
 
@@ -1140,23 +1140,25 @@ class HDPGMM(DPGMM):
     Child of DPGMM class
     
     Arguments:
-        iterable bounds:  boundaries of the rectangle over which the distribution is defined. It should be in the format [[xmin, xmax],[ymin, ymax],...]
-        double alpha0:    initial guess for concentration parameter
-        double MC_draws:  number of MC draws for integral
-        bool probit:      whether to use the probit transformation or not
+        iterable bounds:     boundaries of the rectangle over which the distribution is defined. It should be in the format [[xmin, xmax],[ymin, ymax],...]
+        double alpha0:       initial guess for concentration parameter
+        double MC_draws:     number of MC draws for integral
+        bool probit:         whether to use the probit transformation or not
+        int n_reassignments: number of reassignments. Default is not to reassign.
     
     Returns:
         HDPGMM: instance of HDPGMM class
     """
     def __init__(self, bounds,
-                       alpha0     = 1.,
-                       prior_pars = None,
-                       MC_draws   = None,
-                       probit     = True,
+                       alpha0          = 1.,
+                       prior_pars      = None,
+                       MC_draws        = None,
+                       probit          = True,
+                       n_reassignments = 100,
                        ):
         bounds   = np.atleast_2d(bounds)
         self.dim = len(bounds)
-        super().__init__(bounds = bounds, alpha0 = alpha0, probit = probit)
+        super().__init__(bounds = bounds, alpha0 = alpha0, probit = probit, n_reassignments = n_reassignments)
         if prior_pars is not None:
             self.exp_sigma, self.a = prior_pars
         else:
@@ -1166,6 +1168,7 @@ class HDPGMM(DPGMM):
             self.MC_draws = int((self.dim+1)*1e3)
         else:
             self.MC_draws = int(MC_draws)
+        self.evaluated_logL = {}
         # For logsumexp_jit
         self.b_ones = np.ones(self.MC_draws)
         # MC samples
@@ -1176,6 +1179,7 @@ class HDPGMM(DPGMM):
         Initialise the mixture to initial conditions
         """
         super().initialise()
+        self.evaluated_logL = {}
         self._draw_MC_samples()
     
     def _draw_MC_samples(self):
@@ -1203,26 +1207,28 @@ class HDPGMM(DPGMM):
         """
         self.n_pts += 1
         x = np.random.choice(ev)
+        self.stored_pts[self.n_pts-1] = x
         self._assign_to_cluster(x)
         self.alpha = _update_alpha(self.alpha, self.n_pts, self.n_cl, self.alpha_0)
 
-    def _cluster_assignment_distribution(self, x):
+    def _cluster_assignment_distribution(self, x, logL_x = None):
         """
         Compute the marginal distribution of cluster assignment for each cluster.
         
         Arguments:
-            np.ndarray x: sample
+            figaro.mixture.mixture x: sample
+            double logL_x:            evaluated log likelihood
         
         Returns:
             dict: p_i for each component
         """
         scores = np.zeros(self.n_cl+1)
         logL_N = np.zeros((self.n_cl+1, self.MC_draws))
-        
-        if self.dim == 1:
-            logL_x = evaluate_mixture_MC_draws_1d(self.mu_MC, self.sigma_MC, x.means, x.covs, x.w)
-        else:
-            logL_x = evaluate_mixture_MC_draws(self.mu_MC, self.sigma_MC, x.means, x.covs, x.w)
+        if logL_x is None:
+            if self.dim == 1:
+                logL_x = evaluate_mixture_MC_draws_1d(self.mu_MC, self.sigma_MC, x.means, x.covs, x.w)
+            else:
+                logL_x = evaluate_mixture_MC_draws(self.mu_MC, self.sigma_MC, x.means, x.covs, x.w)
         for i in range(self.n_cl+1):
             if i == 0:
                 ss = None
@@ -1231,38 +1237,68 @@ class HDPGMM(DPGMM):
             else:
                 ss        = self.mixture[i-1]
                 logL_D    = ss.logL_D
-                scores[i] = np.log(ss.N)
-            scores[i] += logsumexp_jit(logL_D + logL_x, b = self.b_ones) - logsumexp_jit(logL_D, b = self.b_ones)
+                with np.errstate(divide = 'ignore', invalid = 'ignore'):
+                    scores[i] = np.log(ss.N)
+            if np.isfinite(scores[i]):
+                scores[i] += logsumexp_jit(logL_D + logL_x, b = self.b_ones) - logsumexp_jit(logL_D, b = self.b_ones)
+            else:
+                scores[i] = -np.inf
             logL_N[i]  = logL_D + logL_x
         norm   = logsumexp_jit(scores, b = np.ones(self.n_cl+1))
         scores = np.exp(scores-norm)
-        return scores, logL_N
+        return scores, logL_N, logL_x
 
-    def _assign_to_cluster(self, x):
+    def _assign_to_cluster(self, x, pt_id = None, logL_x = None):
         """
         Assign the new sample x to an existing cluster or to a new cluster according to the marginal distribution of cluster assignment.
         
         Arguments:
             np.ndarray x: sample
+            int pt_id:    point id
+            logL_x:       evaluated log likelihood
         """
-        scores, logL_N = self._cluster_assignment_distribution(x)
+        if pt_id is None:
+            pt_id = self.n_pts-1
+        scores, logL_N, logL_x = self._cluster_assignment_distribution(x, logL_x)
         try:
-            cid = np.random.choice(self.n_cl+1, p=scores)
+            cid = np.random.choice(np.arange(-1, self.n_cl), p=scores)
         except ValueError:
-            cid = 0
-        if cid == 0:
+            cid = -1
+        if cid == -1:
             self.mixture.append(_component_h(x, self.dim, self.prior, logL_N[cid], self.mu_MC, self.sigma_MC, self.b_ones))
             self.N_list.append(1.)
             self.n_cl += 1
+            self.assignations[pt_id] = int(self.n_cl)-1
         else:
-            self.mixture[int(cid)-1] = self._add_datapoint_to_component(x, self.mixture[int(cid)-1], logL_N[int(cid)])
-            self.N_list[int(cid)-1] += 1
+            self.mixture[int(cid)] = self._add_datapoint_to_component(x, self.mixture[int(cid)], logL_N[int(cid)+1])
+            self.N_list[int(cid)] += 1
+            self.assignations[pt_id] = int(cid)
+        self.evaluated_logL[pt_id] = logL_x
         # Update weights
         self.w = np.array(self.N_list)
         self.w = self.w/self.w.sum()
-        self.log_w = np.log(self.w)
+        with np.errstate(divide = 'ignore', invalid = 'ignore'):
+            self.log_w = np.log(self.w)
         return
 
+    def _remove_from_cluster(self, x, cid, logL_x):
+        """
+        Remove the sample x from its assigned cluster.
+        
+        Arguments:
+            np.ndarray x:  sample
+            int cid:       cluster id
+            double logL_x: log likelihood for the point
+        """
+        self.mixture[int(cid)] = self._remove_datapoint_from_component(x, self.mixture[int(cid)], self.mixture[int(cid)].logL_D - logL_x)
+        self.N_list[int(cid)] -= 1
+        # Update weights
+        self.w = np.array(self.N_list)
+        self.w = self.w/self.w.sum()
+        with np.errstate(divide = 'ignore', invalid = 'ignore'):
+            self.log_w = np.log(self.w)
+        return
+    
     def _add_datapoint_to_component(self, x, ss, logL_D):
         """
         Update component parameters after assigning a sample to a component
@@ -1293,6 +1329,36 @@ class HDPGMM(DPGMM):
         ss.N += 1
         return ss
 
+    def _remove_datapoint_from_component(self, x, ss, logL_D):
+        """
+        Update component parameters after assigning a sample to a component
+        
+        Arguments:
+            np.ndarray x: sample
+            component ss: component to update
+            double logL_D: log Likelihood denominator
+        
+        Returns:
+            component: updated component
+        """
+        ss.events.remove(x)
+        ss.means.remove(x.means)
+        ss.covs.remove(x.covs)
+        ss.log_w.remove(x.log_w)
+        ss.logL_D = logL_D
+
+        log_norm_D = logsumexp_jit(logL_D, self.b_ones)
+        
+        idx      = np.random.choice(self.MC_draws, p = np.exp(logL_D - log_norm_D))
+        ss.mu    = np.copy(self.mu_MC[idx])
+        ss.sigma = np.copy(self.sigma_MC[idx])
+        if self.dim == 1:
+            ss.mu = np.atleast_2d(ss.mu).T
+            ss.sigma = np.atleast_2d(ss.sigma).T
+        
+        ss.N -= 1
+        return ss
+
     def build_mixture(self):
         """
         Instances a mixture class representing the inferred distribution
@@ -1302,7 +1368,8 @@ class HDPGMM(DPGMM):
         """
         if self.n_cl == 0:
             raise FIGAROException("You are trying to build an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, the inferred mixture is returned by that method as an instance of mixture class.")
-        return mixture(np.array([comp.mu[0] for comp in self.mixture]), np.array([comp.sigma for comp in self.mixture]), np.array(self.w), self.bounds, self.dim, self.n_cl, self.n_pts, self.alpha, probit = self.probit)
+        idx = np.where(np.array(self.N_list) > 0)[0]
+        return mixture(np.array([comp.mu[0] for comp in np.array(self.mixture)[idx]]), np.array([comp.sigma for comp in np.array(self.mixture)[idx]]), np.array(self.w)[idx], self.bounds, self.dim, (np.array(self.N_list) > 0).sum(), self.n_pts, self.alpha, probit = self.probit)
 
     def density_from_samples(self, events):
         """
@@ -1317,6 +1384,23 @@ class HDPGMM(DPGMM):
         np.random.shuffle(events)
         for ev in events:
             self.add_new_point(ev)
+        # Random Gibbs walk (if required)
+        for id in np.random.choice(self.n_pts, size = self.n_reassignments, replace = True):
+            self._reassign_point(id)
         d = self.build_mixture()
         self.initialise()
         return d
+
+    def _reassign_point(self, id):
+        """
+        Update the probability density reconstruction reassigining an existing sample
+        
+        Arguments:
+            id: sample id
+        """
+        x      = self.stored_pts[id]
+        cid    = self.assignations[id]
+        logL_x = self.evaluated_logL[id]
+        self._remove_from_cluster(x, cid, logL_x)
+        self._assign_to_cluster(x, id, logL_x)
+        self.alpha = _update_alpha(self.alpha, self.n_pts, (np.array(self.N_list) > 0).sum(), self.alpha_0)
