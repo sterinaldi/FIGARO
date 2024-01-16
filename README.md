@@ -26,7 +26,7 @@ However, if you wish to include FIGARO in your own scripts, an introductive guid
 You can install FIGARO by running `source install.sh`: this script will go through all the necessary steps to install the code.
 We recommend using one of the following two conda environments:
 * `figaro_env` is a dedicated environment already containing all the required packages. It is created by the installer if the option `-e` is provided;
-* `igwn-py39`, which includes all the required packages apart from ImageIO, is available [here](https://computing.docs.ligo.org/conda/environments/igwn-py39) .
+* `igwn-py39`, which includes all the required packages apart from Ray, is available [here](https://computing.docs.ligo.org/conda/environments/igwn-py39) .
 
 If you prefer install FIGARO by hand, run `python setup.py build_ext --inplace` and `python setup.py install`. In some cases (like on clusters), it may happen that you do not have the permission to write in the default installation directory. In this case, run `python setup.py install --user`. 
 
