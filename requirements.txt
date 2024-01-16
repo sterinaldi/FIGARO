@@ -9,3 +9,4 @@ h5py
 tqdm
 lalsuite
 myst-parser
+ray
