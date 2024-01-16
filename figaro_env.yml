@@ -3,24 +3,10 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - astropy
-  - pip=22.3.1
-  - python=3.9
-  - scipy=1.10.0
+  - python=3.10
+  - scipy
   - setuptools=65.6.3
-  - tqdm
   - wheel=0.37.1
   - yaml=0.2.5
-  - pip:
-      - corner
-      - cython==0.29.33
-      - dill==0.3.6
-      - imageio
-      - matplotlib!=3.6.3
-      - numba==0.56.4
-      - numpy==1.21.6
-      - pyvo
-      - h5py
-      - ipython==7.31.1
-      - myst-parser
+  - ipython
 prefix: /opt/anaconda3/envs/figaro_env
