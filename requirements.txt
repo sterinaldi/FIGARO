@@ -4,10 +4,7 @@ matplotlib!=3.6.3
 cython
 dill
 corner
-astropy
-pyvo
 numba
-imageio
 h5py
 tqdm
 lalsuite
