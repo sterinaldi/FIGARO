@@ -11,16 +11,18 @@ if $env_flag; then
     if [[ $CONDA_DEFAULT_ENV!='figaro_env' ]]; then
         conda activate figaro_env
     fi
-else
-    {
-    pip install -r requirements.txt
-    } || {
-    pip install --user -r requirements.txt
-    }
-fi
 
+# Install lalsuite from CONDA
 conda install -c conda-forge -y -S lalsuite
-pip install matplotlib!=3.6.3
+
+{
+pip install -r requirements.txt
+} || {
+pip install --user -r requirements.txt
+}
+
+python setup.py build_ext --inplace
+
 {
 python setup.py install
 } || {
