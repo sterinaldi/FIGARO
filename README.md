@@ -5,7 +5,7 @@ It is also possible to perform hierarchical inferences: in this case, the model 
 Differently from other DPGMM implementations relying on variational algorithms, FIGARO does not require the user to specify a priori the maximum allowed number of mixture components. The required number of Gaussian distributions to be included in the mixture is inferred from the data.
 Please cite [Rinaldi & Del Pozzo (2022b)](https://ui.adsabs.harvard.edu/abs/2022arXiv220507252R/abstract) if you use FIGARO in your research. The documentation and user guide for FIGARO is available at https://figaro.readthedocs.io .
 
-## Get started
+## Getting started
 
 FIGARO comes with two plug-and-play console scripts:
 * `figaro-density` reconstructs a probability density given a set of samples;
