@@ -88,7 +88,8 @@ setup(
     long_description_content_type='text/markdown',
     cmdclass = {
             "build_ext": build_ext
-            }
+            },
+    test_suite='figaro._tests',
     )
 
 if not ray_flag:
