@@ -2,9 +2,6 @@ import numpy as np
 from figaro.cumulative import fast_log_cumulative
 from scipy.special import logsumexp
 
-# -----------------------
-# confidence calculations
-# -----------------------
 def FindNearest_Volume(ra, dec, dist, value):
     """
     Find the pixel that contains the triplet (ra', dec', D') stored in value.
