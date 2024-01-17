@@ -13,15 +13,15 @@ packages = ['figaro', 'figaro._pipelines']
 [project]
 name = 'figaro'
 description = 'FIGARO: Fast Inference for GW Astronomy, Research & Observations'
-version = '1.4.0'
+version = '1.4.1'
 requires-python = '< 3.12'
 readme = {file = "README.md", content-type = "text/markdown"}
 license = {file = "LICENSE"}
 keywords = ['DPGMM', 'figaro', 'hierarchical', 'inference', 'HDPGMM']
 authors = [
-  {name = "Stefano Rinaldi", email = "stefano.rinaldi@uni-heidelberg.de"},
-  {name = "Walter Del Pozzo"},
-  {name = "Daniele Sanfratello"}
+  "Stefano Rinaldi <stefano.rinaldi@uni-heidelberg.de>",
+  "Walter Del Pozzo",
+  "Daniele Sanfratello",
   ]
 
 classifiers = [
