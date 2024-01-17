@@ -7,7 +7,6 @@ from figaro.exceptions import FIGAROException
 from figaro.mixture import mixture
 from figaro.cosmology import CosmologicalParameters
 from pathlib import Path
-from scipy.optimize import newton
 from tqdm import tqdm
 
 supported_extensions = ['h5', 'hdf5', 'txt', 'dat', 'csv']
@@ -47,43 +46,6 @@ GW_par = {'m1'                 : 'mass_1_source',
           'log_prior'          : 'log_prior',
           'log_likelihood'     : 'log_likelihood',
           }
-
-def _find_redshift(omega, dl):
-    """
-    Find redshift given an array of luminosity distances and a cosmology using Newton's method.
-    Returns the same shape as input array.
-    
-    Arguments:
-        CosmologicalParameters omega: cosmology (see cosmology.pyx for definition)
-        np.ndarray dl:                luminosity distance
-    
-    Returns:
-        np.ndarray: redshift
-    """
-    if isinstance(dl, float) or isinstance(dl, int):
-        return _find_redshift_double(omega, dl)
-    elif hasattr(dl, '__iter__'):
-        return np.array([_find_redshift_double(omega, d) for d in dl])
-    else:
-        raise FIGAROException("Dl type not supported")
-
-def _find_redshift_double(omega, dl):
-    """
-    Find redshift given a luminosity distance and a cosmology using Newton's method
-    
-    Arguments:
-        CosmologicalParameters omega: cosmology (see cosmology.pyx for definition)
-        double dl:                    luminosity distance
-    
-    Returns:
-        double: redshift
-    """
-    if dl == 0.:
-        return 0.
-    else:
-        def objective(z, omega, dl):
-            return dl - omega.LuminosityDistance_double(z)
-        return newton(objective,1.0,args=(omega,dl))
     
 def available_gw_pars():
     """
@@ -263,7 +225,7 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
         np.ndarray:    samples
     '''
     h, om, ol = cosmology
-    omega = CosmologicalParameters(h, om, ol, -1, 0)
+    omega = CosmologicalParameters(h, om, ol, -1, 0, 0)
     if not waveform in supported_waveforms:
         raise FIGAROException("Unknown waveform: please use 'combined' (default), 'imr' or 'seob'")
     
@@ -454,7 +416,7 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
             ss = {name: data[lab] for name, lab in zip(names_GWTC1.keys(), names_GWTC1.values())}
 
             # Derived quantities
-            ss['z']       = _find_redshift(omega, ss['luminosity_distance'])
+            ss['z']       = omega.Redshift(ss['luminosity_distance'])
             ss['m1']      = ss['m1_detect']/(1+ss['z'])
             ss['m2']      = ss['m2_detect']/(1+ss['z'])
             ss['mc']      = (ss['m1']*ss['m2'])**(3./5.)/(ss['m1']+ss['m2'])**(1./5.)

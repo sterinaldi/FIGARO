@@ -1,6 +1,5 @@
 import numpy as np
 from figaro.cumulative import fast_log_cumulative
-from scipy.special import logsumexp
 
 def FindNearest_Volume(ra, dec, dist, value):
     """

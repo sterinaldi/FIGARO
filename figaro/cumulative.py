@@ -1,13 +1,6 @@
 import numpy as np
 from numba import njit, prange
-from figaro.mixture import _log1p_jit
-
-@njit
-def log_add(x, y):
-    if x >= y:
-        return x+_log1p_jit(np.exp(y-x))
-    else:
-        return y+_log1p_jit(np.exp(x-y))
+from figaro._numba_functions import *
 
 @njit
 def fast_log_cumulative(f):

@@ -10,29 +10,9 @@ from typing import cast
 from collections import Counter
 from scipy.stats import multivariate_normal as mn
 
+from figaro._numba_functions import *
 from figaro.transform import transform_to_probit, transform_from_probit
 from figaro.exceptions import FIGAROException
-
-#-–––––––––-#
-# Utilities #
-#-----------#
-@njit
-def _outer_jit(x, y):
-    return np.outer(x, y)
-    
-@njit
-def _divide_jit(x, y):
-    return np.divide(x, y)
-
-@njit
-def _diag_jit(m):
-    return np.diag(m)
-
-@njit
-def _rescale_matrix(S, n):
-    std = np.sqrt(_diag_jit(S))
-    rho = _divide_jit(S, _outer_jit(std,std))
-    return rho * _outer_jit(std/np.sqrt(n), std/np.sqrt(n))
 
 def recursive_grid(bounds, n_pts, get_1d = False):
     """
