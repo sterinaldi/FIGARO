@@ -2,7 +2,8 @@ import numpy as np
 from numba import njit
 from scipy.special import logsumexp
 from figaro.exceptions import FIGAROException
-from figaro.likelihood import log_norm, inv_jit
+from figaro._likelihood import log_norm
+from figaro._numba_functions import inv_jit
 from figaro.decorators import probit
 
 @njit

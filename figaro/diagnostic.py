@@ -4,7 +4,6 @@ from numba import njit, prange
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-from matplotlib import rcParams
 from distutils.spawn import find_executable
 
 from figaro.cumulative import fast_cumulative

@@ -12,15 +12,14 @@ from scipy.stats import invwishart, norm, invgamma, dirichlet, gamma
 from figaro.decorators import *
 from figaro.transform import *
 from figaro._numba_functions import *
-from figaro._likelihood import evaluate_mixture_MC_draws, evaluate_mixture_MC_draws_1d, logsumexp_jit, log_norm, inv_jit
+from figaro._likelihood import evaluate_mixture_MC_draws, evaluate_mixture_MC_draws_1d, log_norm
 from figaro.exceptions import except_hook, FIGAROException
-from figaro.utils import get_priors, _rescale_matrix, _outer_jit, _diag_jit
+from figaro.utils import get_priors
 from figaro.marginal import _condition, _marginalise
 
 from numba import njit, prange
 
 sys.excepthook = except_hook
-
 
 #-----------#
 # Functions #
