@@ -1,6 +1,5 @@
 [build-system]
 requires = [
-    "Cython",
     "oldest-supported-numpy",
     "setuptools>=42",
     "wheel",
@@ -39,7 +38,6 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   'Topic :: Scientific/Engineering :: Astronomy',
   'Topic :: Scientific/Engineering :: Physics',
-
 ]
 
 dependencies = [
