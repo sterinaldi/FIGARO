@@ -8,7 +8,7 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-py-modules = ['figaro']
+packages = ['figaro', 'figaro._pipelines']
 
 [project]
 name = 'figaro'
@@ -18,7 +18,6 @@ requires-python = '< 3.12'
 readme = {file = "README.md", content-type = "text/markdown"}
 license = {file = "LICENSE"}
 keywords = ['DPGMM', 'figaro', 'hierarchical', 'inference', 'HDPGMM']
-
 authors = [
   {name = "Stefano Rinaldi", email = "stefano.rinaldi@uni-heidelberg.de"},
   {name = "Walter Del Pozzo"},
@@ -60,7 +59,7 @@ Repository = "https://github.com/sterinaldi/FIGARO.git"
 Issues = "https://github.com/sterinaldi/FIGARO/issues"
 
 [project.scripts]
-figaro-density          = "figaro.pipelines.probability_density:main"
-figaro-hierarchical     = "figaro.pipelines.hierarchical_inference:main"
-figaro-par-hierarchical = "figaro.pipelines.par_hierarchical_inference:main"
-figaro-par-density      = "figaro.pipelines.par_probability_density:main"
+figaro-density          = "figaro._pipelines.probability_density:main"
+figaro-hierarchical     = "figaro._pipelines.hierarchical_inference:main"
+figaro-par-hierarchical = "figaro._pipelines.par_hierarchical_inference:main"
+figaro-par-density      = "figaro._pipelines.par_probability_density:main"
