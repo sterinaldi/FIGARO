@@ -1,4 +1,2 @@
 include LICENSE README.md MANIFEST.in
-include requirements.txt
-recursive-include figaro *.c *.pxd *.pyx
 recursive-include docs *.rst
