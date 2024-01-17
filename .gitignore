@@ -3,7 +3,7 @@
 *.pkl
 notebooks/skymap_*
 *.ipynb
-notebooks/json_test.json
+notebooks
 *.DS_Store
 
 # Byte-compiled / optimized / DLL files
