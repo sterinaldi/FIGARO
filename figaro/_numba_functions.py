@@ -20,34 +20,34 @@ def logsumexp_jit(a, b):
 @njit
 def log_add(x, y):
     if x >= y:
-        return x+_log1p_jit(np.exp(y-x))
+        return x+log1p_jit(np.exp(y-x))
     else:
-        return y+_log1p_jit(np.exp(x-y))
+        return y+log1p_jit(np.exp(x-y))
 
 @njit
-def _outer_jit(x, y):
+def outer_jit(x, y):
     return np.outer(x, y)
     
 @njit
-def _divide_jit(x, y):
+def divide_jit(x, y):
     return np.divide(x, y)
 
 @njit
-def _diag_jit(m):
+def diag_jit(m):
     return np.diag(m)
 
 @njit
-def _rescale_matrix(S, n):
-    std = np.sqrt(_diag_jit(S))
-    rho = _divide_jit(S, _outer_jit(std,std))
-    return rho * _outer_jit(std/np.sqrt(n), std/np.sqrt(n))
+def rescale_matrix(S, n):
+    std = np.sqrt(diag_jit(S))
+    rho = divide_jit(S, outer_jit(std,std))
+    return rho * outer_jit(std/np.sqrt(n), std/np.sqrt(n))
 
 @njit
-def _eigh_jit(m):
+def eigh_jit(m):
     return np.linalg.eigh(m)
 
 @njit
-def _log1p_jit(x):
+def log1p_jit(x):
     return np.log1p(x)
 
 """
@@ -64,5 +64,5 @@ functype = ctypes.CFUNCTYPE(_dble, _dble)
 gammaln_float64 = functype(addr)
 
 @njit
-def _gammaln_jit(x):
+def gammaln_jit(x):
     return gammaln_float64(x)

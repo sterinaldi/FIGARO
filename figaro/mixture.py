@@ -40,7 +40,7 @@ def _student_t(df, t, mu, sigma, dim):
     Returns:
         float: student_t(df).logpdf(t)
     """
-    vals, vecs = _eigh_jit(sigma)
+    vals, vecs = eigh_jit(sigma)
     logdet     = np.log(vals).sum()
     valsinv    = np.array([1./v for v in vals])
     U          = vecs * np.sqrt(valsinv)
@@ -48,8 +48,8 @@ def _student_t(df, t, mu, sigma, dim):
     maha       = np.sum(np.dot(dev, U)**2, axis=-1)
 
     x = 0.5 * (df + dim)
-    A = _gammaln_jit(x)
-    B = _gammaln_jit(0.5 * df)
+    A = gammaln_jit(x)
+    B = gammaln_jit(0.5 * df)
     C = dim/2. * np.log(df * np.pi)
     D = 0.5 * logdet
     E = -x * np.log1p((1./df) * maha)
@@ -75,8 +75,8 @@ def _update_alpha(alpha, n, K, alpha0, burnin = 1000):
     for i in prange(n_draws):
         a_new = a_old + (np.random.random() - 0.5)*0.5
         if a_new > 0.:
-            logP_old = _gammaln_jit(a_old) - _gammaln_jit(a_old + n) + (K+alpha0) * np.log(a_old) - a_old
-            logP_new = _gammaln_jit(a_new) - _gammaln_jit(a_new + n) + (K+alpha0) * np.log(a_new) - a_new
+            logP_old = gammaln_jit(a_old) - gammaln_jit(a_old + n) + (K+alpha0) * np.log(a_old) - a_old
+            logP_new = gammaln_jit(a_new) - gammaln_jit(a_new + n) + (K+alpha0) * np.log(a_new) - a_new
             if logP_new - logP_old > np.log(np.random.random()):
                 a_old = a_new
     return a_old
@@ -105,7 +105,7 @@ def _compute_t_pars(k, mu, nu, L, mean, S, N, dim):
     k_n, mu_n, nu_n, L_n = _compute_hyperpars(k, mu, nu, L, mean, S, N)
     # Update t-parameters
     t_df    = nu_n - dim + 1
-    t_shape = _rescale_matrix(L_n, 1./((k_n+1.)/(k_n*t_df)))
+    t_shape = rescale_matrix(L_n, 1./((k_n+1.)/(k_n*t_df)))
     return t_df, t_shape, mu_n
 
 @njit
@@ -133,7 +133,7 @@ def _compute_hyperpars(k, mu, nu, L, mean, S, N):
     mu_n = (mu*k + N*mean)/k_n
     nu_n = nu + N
     if N > 0:
-        L_n = L + S + _rescale_matrix(_outer_jit((mean - mu).T, (mean - mu)), k_n/(k*N))
+        L_n = L + S + rescale_matrix(outer_jit((mean - mu).T, (mean - mu)), k_n/(k*N))
     else:
         L_n = L + S
     return k_n, mu_n, nu_n, L_n
@@ -161,10 +161,10 @@ def _compute_component_suffstats_add(x, mean, S, N, p_mu, p_k, p_nu, p_L):
         np.ndarray: covariance (maximum a posteriori)
     """
     new_mean  = (mean*N+x)/(N+1)
-    new_S     = (S + _rescale_matrix(_outer_jit(mean,mean), 1./N) + _outer_jit(x,x)) - _rescale_matrix(_outer_jit(new_mean, new_mean), 1./(N+1))
+    new_S     = (S + rescale_matrix(outer_jit(mean,mean), 1./N) + outer_jit(x,x)) - rescale_matrix(outer_jit(new_mean, new_mean), 1./(N+1))
     new_N     = N+1
     new_mu    = ((p_mu*p_k + new_N*new_mean)/(p_k + new_N))[0]
-    new_sigma = _rescale_matrix(p_L + new_S + _rescale_matrix(_outer_jit((new_mean - p_mu).T, (new_mean - p_mu)), (p_k + new_N)/(p_k*new_N)), (p_nu + new_N - x.shape[-1] - 1))
+    new_sigma = rescale_matrix(p_L + new_S + rescale_matrix(outer_jit((new_mean - p_mu).T, (new_mean - p_mu)), (p_k + new_N)/(p_k*new_N)), (p_nu + new_N - x.shape[-1] - 1))
     
     return new_mean, new_S, new_N, new_mu, new_sigma
 
@@ -193,7 +193,7 @@ def _compute_component_suffstats_remove(x, mean, S, N, p_mu, p_k, p_nu, p_L):
     if N > 1:
         new_mean  = (mean*N-x)/(N-1)
         if N > 2:
-            new_S = (S + _rescale_matrix(_outer_jit(mean,mean), 1./N) - _outer_jit(x,x)) - _rescale_matrix(_outer_jit(new_mean, new_mean), 1./(N-1))
+            new_S = (S + rescale_matrix(outer_jit(mean,mean), 1./N) - outer_jit(x,x)) - rescale_matrix(outer_jit(new_mean, new_mean), 1./(N-1))
         else:
             new_S = np.zeros(S.shape)
     else:
@@ -202,9 +202,9 @@ def _compute_component_suffstats_remove(x, mean, S, N, p_mu, p_k, p_nu, p_L):
     new_N     = N-1
     new_mu    = ((p_mu*p_k + new_N*new_mean)/(p_k + new_N))[0]
     if N > 2:
-        new_sigma = _rescale_matrix(p_L + new_S + _rescale_matrix(_outer_jit((new_mean - p_mu).T, (new_mean - p_mu)), (p_k + new_N)/(p_k*new_N)), (p_nu + new_N - x.shape[-1] - 1))
+        new_sigma = rescale_matrix(p_L + new_S + rescale_matrix(outer_jit((new_mean - p_mu).T, (new_mean - p_mu)), (p_k + new_N)/(p_k*new_N)), (p_nu + new_N - x.shape[-1] - 1))
     else:
-        new_sigma = _rescale_matrix(p_L, (p_nu + new_N - x.shape[-1] - 1))
+        new_sigma = rescale_matrix(p_L, (p_nu + new_N - x.shape[-1] - 1))
     return new_mean, new_S, new_N, new_mu, new_sigma
     
 #-------------------#
@@ -228,7 +228,7 @@ class _prior:
     def __init__(self, k, L, nu, mu):
          self.k   = k
          self.nu  = np.max([nu, mu.shape[-1]+2])
-         self.L   = _rescale_matrix(L, 1./(self.nu-mu.shape[-1]-1))
+         self.L   = rescale_matrix(L, 1./(self.nu-mu.shape[-1]-1))
          self.mu  = mu
 
 class _component:
@@ -247,7 +247,7 @@ class _component:
         self.mean  = x
         self.S     = np.identity(x.shape[-1])*0.
         self.mu    = np.atleast_2d((prior.mu*prior.k + self.N*self.mean)/(prior.k + self.N)).astype(np.float64)[0]
-        self.sigma = _rescale_matrix(prior.L, (prior.nu - x.shape[-1] - 1))
+        self.sigma = rescale_matrix(prior.L, (prior.nu - x.shape[-1] - 1))
 
 class _component_h:
     """
@@ -1023,7 +1023,7 @@ class DPGMM(density):
             if ss.N > 0:
                 k_n, mu_n, nu_n, L_n = _compute_hyperpars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.S, ss.N)
                 variances[i] = invwishart(df = nu_n, scale = L_n).rvs()
-                means[i]     = mn(mean = mu_n[0], cov = _rescale_matrix(variances[i], k_n), allow_singular = True).rvs()
+                means[i]     = mn(mean = mu_n[0], cov = rescale_matrix(variances[i], k_n), allow_singular = True).rvs()
                 i += 1
         w = dirichlet(self.w[self.w > 0]*self.n_pts+self.alpha/self.n_cl).rvs()[0]
         return mixture(means, variances, w, self.bounds, self.dim, n_cl, self.n_pts, self.alpha, probit = self.probit)
@@ -1160,8 +1160,8 @@ class HDPGMM(DPGMM):
             self.mu_MC = self.mu_MC.flatten()
         else:
             rhos = invwishart(df = self.dim+2, scale = np.identity(self.dim)).rvs(size = self.MC_draws)
-            rhos = np.array([r/_outer_jit(np.sqrt(_diag_jit(r)), np.sqrt(_diag_jit(r))) for r in rhos])
-            self.sigma_MC = np.array([r*_outer_jit(s,s) for r, s in zip(rhos, np.sqrt(self.sigma_MC))])
+            rhos = np.array([r/outer_jit(np.sqrt(diag_jit(r)), np.sqrt(diag_jit(r))) for r in rhos])
+            self.sigma_MC = np.array([r*_outerjit(s,s) for r, s in zip(rhos, np.sqrt(self.sigma_MC))])
             
     def add_new_point(self, ev):
         """

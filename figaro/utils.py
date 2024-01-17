@@ -5,7 +5,6 @@ import configparser
 
 from pathlib import Path
 from tqdm import tqdm
-from numba import njit
 from typing import cast
 from collections import Counter
 from scipy.stats import multivariate_normal as mn
@@ -78,7 +77,7 @@ def rejection_sampler(n_draws, f, bounds, selfunc = None):
         samples.extend(pts[np.where(h < probs)])
     return np.array(samples).flatten()[:n_draws]
 
-def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df = None, k = None, a = None, scale = None, probit = True, hierarchical = False):
+def get_priors(bounds, samples = None, mean = None, std = None, df = None, k = None, a = None, scale = None, probit = True, hierarchical = False):
     """
     This method takes the prior parameters for the Normal-Inverse-Wishart distribution in the natural space and returns them as parameters in the probit space, ordered as required by FIGARO. In the following, D will denote the dimensionality of the inferred distribution.
 
@@ -86,8 +85,7 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
         * df, is the number of degrees of freedom for the Inverse Wishart distribution,. It must be greater than D+1. If this parameter is None or does not satisfy the condition df > D+1, the default value D+2 is used;
         * k is the scale parameter for the multivariate Normal distribution. Suggested values are  k <~ 1e-1. If None, the default value 1e-2 is used.
         * mu is the mean of the multivariate Normal distribution. It can be either estimated from the available samples or passed directly as a 1D array with length D (the keyword argument mean overrides the samples). If None, the default value 0 (corresponding to the parameter space center) is used.
-        * L is the expected value for the Inverse Wishart distribution. This parameter can be either (in descending priority order):
-            * passed as 2D array with shape (D,D), the covariance matrix - keyword cov;
+        * L is the expected value for the Inverse Wishart distribution. This parameter can be either:
             * passed as 1D array with shape (D,) or double: vector of standard deviations (if double, it assumes that the same std has to be used for all dimensions) - keyword std;
             * estimated from samples - keyword samples.
        
@@ -98,7 +96,6 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
         np.ndarray samples:             2D [DPGMM] or 3D [(H)DPGMM] array with samples
         double or np.ndarray mean:      mean [DPGMM]
         double or np.ndarray std:       expected standard deviation (if double, the same std is used for all dimensions, if np.ndarray must match the number of dimensions) [DPGMM and (H)DPGMM]
-        np.ndarray cov:                 covariance matrix [DPGMM]
         int df:                         degrees of freedom for Inverse Wishart distribution [DPGMM]
         double k:                       scale parameter for Normal distribution [DPGMM]
         double a:                       shape parameter for the Inverse Gamma distribution [(H)DPGMM]
@@ -171,16 +168,14 @@ def get_priors(bounds, samples = None, mean = None, std = None, cov = None, df =
             else:
                 mu_out = np.atleast_1d(np.mean(bounds, axis = 1))
         # L
-        if cov is not None:
-            L_out = cov
-        elif std is not None:
+        if std is not None:
             L_out = np.identity(dim)*std**2
         elif samples is not None:
             if probit:
                 cov_samples = np.atleast_2d(np.cov(probit_samples.T))
             else:
                 cov_samples = np.atleast_2d(np.cov(samples.T))
-            L_out = _rescale_matrix(cov_samples, scale**2)
+            L_out = rescale_matrix(cov_samples, scale**2)
         else:
             if probit:
                 sigma = transform_to_probit(np.atleast_2d(np.mean(bounds, axis = -1)+np.diff(bounds, axis = -1).flatten()/scale), bounds)[0]
