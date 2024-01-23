@@ -936,8 +936,9 @@ class DPGMM(density):
             self.assignations[pt_id] = int(cid)
         # Update weights
         self.w = np.array(self.N_list)
-        self.w = self.w/self.w.sum()
+        # Beware of empty clusters!
         with np.errstate(divide = 'ignore', invalid = 'ignore'):
+            self.w = self.w/self.w.sum()
             self.log_w = np.log(self.w)
         return
     
@@ -954,8 +955,9 @@ class DPGMM(density):
         self.n_pts            -= 1
         # Update weights
         self.w = np.array(self.N_list)
-        self.w = self.w/self.w.sum()
+        # Beware of empty clusters!
         with np.errstate(divide = 'ignore', invalid = 'ignore'):
+            self.w = self.w/self.w.sum()
             self.log_w = np.log(self.w)
         return
     
