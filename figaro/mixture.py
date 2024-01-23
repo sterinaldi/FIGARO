@@ -921,7 +921,8 @@ class DPGMM(density):
             int pt_id:    point id
         """
         if pt_id is None:
-            pt_id = self.n_pts-1
+            pt_id = len(list(self.stored_pts.keys()))-1
+        self.n_pts += 1
         scores = self._cluster_assignment_distribution(x)
         cid = np.random.choice(np.arange(-1,self.n_cl), p=scores)
         if cid == -1:
@@ -950,6 +951,7 @@ class DPGMM(density):
         """
         self.mixture[int(cid)] = self._remove_datapoint_from_component(x, self.mixture[int(cid)])
         self.N_list[int(cid)] -= 1
+        self.n_pts            -= 1
         # Update weights
         self.w = np.array(self.N_list)
         self.w = self.w/self.w.sum()
@@ -987,8 +989,7 @@ class DPGMM(density):
         Arguments:
             np.ndarray x: sample
         """
-        self.n_pts += 1
-        self.stored_pts[self.n_pts-1] = np.atleast_2d(x)
+        self.stored_pts[len(list(self.stored_pts.keys()))] = np.atleast_2d(x)
         self._assign_to_cluster(np.atleast_2d(x))
         self.alpha = _update_alpha(self.alpha, self.n_pts, self.n_cl, self.alpha_0)
     
@@ -1170,9 +1171,8 @@ class HDPGMM(DPGMM):
         Arguments:
             iterable ev: set of single-event draws from a DPGMM inference
         """
-        self.n_pts += 1
         x = np.random.choice(ev)
-        self.stored_pts[self.n_pts-1] = x
+        self.stored_pts[len(list(self.stored_pts.keys()))] = x
         self._assign_to_cluster(x)
         self.alpha = _update_alpha(self.alpha, self.n_pts, self.n_cl, self.alpha_0)
 
@@ -1223,7 +1223,8 @@ class HDPGMM(DPGMM):
             logL_x:       evaluated log likelihood
         """
         if pt_id is None:
-            pt_id = self.n_pts-1
+            pt_id = len(list(self.stored_pts.keys()))-1
+        self.n_pts += 1
         scores, logL_N, logL_x = self._cluster_assignment_distribution(x, logL_x)
         try:
             cid = np.random.choice(np.arange(-1, self.n_cl), p=scores)
@@ -1257,6 +1258,7 @@ class HDPGMM(DPGMM):
         """
         self.mixture[int(cid)] = self._remove_datapoint_from_component(self.mixture[int(cid)], self.mixture[int(cid)].logL_D - logL_x)
         self.N_list[int(cid)] -= 1
+        self.n_pts            -= 1
         # Update weights
         self.w = np.array(self.N_list)
         self.w = self.w/self.w.sum()
