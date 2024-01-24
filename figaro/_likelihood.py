@@ -114,7 +114,7 @@ def evaluate_mixture_MC_draws_1d(mu, sigma, means, vars, w):
     """
     logP = np.zeros(len(mu), dtype = np.float64)
     for i in prange(len(mu)):
-        logP[i] = logsumexp_jit(eval_mix_1d(mu[i], sigma[i], means, vars), b = w)
+        logP[i] = logsumexp_jit_weighted(eval_mix_1d(mu[i], sigma[i], means, vars), b = w)
     return logP
 
 #------------#
@@ -155,5 +155,5 @@ def evaluate_mixture_MC_draws(mu, sigma, means, covs, w):
     """
     logP = np.zeros(len(mu), dtype = np.float64)
     for i in prange(len(mu)):
-        logP[i] = logsumexp_jit(eval_mix(mu[i], sigma[i], means, covs), b = w)
+        logP[i] = logsumexp_jit_weighted(eval_mix(mu[i], sigma[i], means, covs), b = w)
     return logP

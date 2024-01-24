@@ -12,7 +12,12 @@ def logdet_jit(M):
     return np.log(np.linalg.det(M))
 
 @njit
-def logsumexp_jit(a, b):
+def logsumexp_jit(a):
+    a_max = np.max(a)
+    return np.log(np.sum(np.exp(a - a_max))) + a_max
+
+@njit
+def logsumexp_jit_weighted(a, b):
     a_max = np.max(a)
     tmp = b * np.exp(a - a_max)
     return np.log(np.sum(tmp)) + a_max

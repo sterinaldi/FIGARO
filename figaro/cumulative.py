@@ -1,6 +1,6 @@
 import numpy as np
 from numba import njit, prange
-from figaro._numba_functions import *
+from figaro._numba_functions import log_add
 
 @njit
 def fast_log_cumulative(f):

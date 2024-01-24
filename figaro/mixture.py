@@ -263,12 +263,12 @@ class _component_h:
     Returns:
         component_h: instance of component_h class
     """
-    def __init__(self, x, dim, prior, logL_D, mu_MC, sigma_MC, b_ones):
+    def __init__(self, x, dim, prior, logL_D, mu_MC, sigma_MC):
         self.dim    = dim
         self.N      = 1
         self.logL_D = logL_D
         
-        log_norm_D = logsumexp_jit(logL_D, b = b_ones)
+        log_norm_D = logsumexp_jit(logL_D)
         
         idx        = np.random.choice(len(mu_MC), p = np.exp(logL_D - log_norm_D))
         self.mu    = np.copy(mu_MC[idx])
@@ -909,7 +909,7 @@ class DPGMM(density):
                 scores[i] += self._log_predictive_likelihood(x, ss)
             else:
                 scores[i] = -np.inf
-        norm = logsumexp_jit(scores, b = np.ones(self.n_cl+1))
+        norm = logsumexp_jit(scores)
         return np.exp(scores - norm)
 
     def _assign_to_cluster(self, x, pt_id = None):
@@ -1137,8 +1137,6 @@ class HDPGMM(DPGMM):
         else:
             self.MC_draws = int(MC_draws)
         self.evaluated_logL = {}
-        # For logsumexp_jit
-        self.b_ones = np.ones(self.MC_draws)
         # MC samples
         self._draw_MC_samples()
         
@@ -1207,11 +1205,11 @@ class HDPGMM(DPGMM):
                 with np.errstate(divide = 'ignore', invalid = 'ignore'):
                     scores[i] = np.log(ss.N)
             if np.isfinite(scores[i]):
-                scores[i] += logsumexp_jit(logL_D + logL_x, b = self.b_ones) - logsumexp_jit(logL_D, b = self.b_ones)
+                scores[i] += logsumexp_jit(logL_D + logL_x) - logsumexp_jit(logL_D)
             else:
                 scores[i] = -np.inf
             logL_N[i]  = logL_D + logL_x
-        norm   = logsumexp_jit(scores, b = np.ones(self.n_cl+1))
+        norm   = logsumexp_jit(scores)
         scores = np.exp(scores-norm)
         return scores, logL_N, logL_x
 
@@ -1233,7 +1231,7 @@ class HDPGMM(DPGMM):
         except ValueError:
             cid = -1
         if cid == -1:
-            self.mixture.append(_component_h(x, self.dim, self.prior, logL_N[cid], self.mu_MC, self.sigma_MC, self.b_ones))
+            self.mixture.append(_component_h(x, self.dim, self.prior, logL_N[cid], self.mu_MC, self.sigma_MC))
             self.N_list.append(1.)
             self.n_cl += 1
             self.assignations[pt_id] = int(self.n_cl)-1
@@ -1280,7 +1278,7 @@ class HDPGMM(DPGMM):
             component: updated component
         """
         ss.logL_D = logL_D
-        log_norm_D = logsumexp_jit(logL_D, self.b_ones)
+        log_norm_D = logsumexp_jit(logL_D)
         
         idx      = np.random.choice(self.MC_draws, p = np.exp(logL_D - log_norm_D))
         ss.mu    = np.copy(self.mu_MC[idx])
@@ -1304,7 +1302,7 @@ class HDPGMM(DPGMM):
             component: updated component
         """
         ss.logL_D = logL_D
-        log_norm_D = logsumexp_jit(logL_D, self.b_ones)
+        log_norm_D = logsumexp_jit(logL_D)
         
         idx      = np.random.choice(self.MC_draws, p = np.exp(logL_D - log_norm_D))
         ss.mu    = np.copy(self.mu_MC[idx])
