@@ -1109,6 +1109,7 @@ class HDPGMM(DPGMM):
     
     Arguments:
         iterable bounds:     boundaries of the rectangle over which the distribution is defined. It should be in the format [[xmin, xmax],[ymin, ymax],...]
+        iterable prior_pars: IW parameters
         double alpha0:       initial guess for concentration parameter
         double MC_draws:     number of MC draws for integral
         bool probit:         whether to use the probit transformation or not
