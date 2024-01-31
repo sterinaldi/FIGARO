@@ -53,7 +53,7 @@ def recursive_grid(bounds, n_pts, get_1d = False):
 
 def rejection_sampler(n_draws, f, bounds, selfunc = None):
     """
-    1D rejection sampler, allows for a selection function
+    Rejection sampler, allows for a selection function
     
     Arguments:
         int n_draws:      number of draws
@@ -65,17 +65,24 @@ def rejection_sampler(n_draws, f, bounds, selfunc = None):
         np.ndarray: samples
     """
     n_draws = int(n_draws)
+    bounds  = np.atleast_2d(bounds)
+    dim     = len(bounds)
     if selfunc is None:
         selfunc = lambda x: 1
-    x   = np.linspace(bounds[0], bounds[1], 1000)
-    top = np.max(f(x)*selfunc(x))
+    if dim == 1:
+        pts = np.linspace(bounds[0,0], bounds[0,1], 1000)
+    else:
+        pts = np.random.uniform(bounds[:,0], bounds[:,1], size = (3*n_draws,len(bounds)))
+    top = np.max(f(pts)*selfunc(pts))
     samples = []
     while len(samples) < n_draws:
-        pts   = np.random.uniform(bounds[0], bounds[1], size = n_draws)
+        pts   = np.random.uniform(bounds[:,0], bounds[:,1], size = (n_draws,dim))
+        if dim == 1:
+            pts = pts.flatten()
         probs = f(pts)*selfunc(pts)
         h     = np.random.uniform(0, top, size = n_draws)
         samples.extend(pts[np.where(h < probs)])
-    return np.array(samples).flatten()[:n_draws]
+    return np.array(samples)[:n_draws]
 
 def get_priors(bounds, samples = None, mean = None, std = None, df = None, k = None, a = None, scale = None, probit = True, hierarchical = False):
     """
