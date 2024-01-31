@@ -6,6 +6,7 @@ import importlib
 
 from pathlib import Path
 from tqdm import tqdm
+from warnings import warn
 
 from figaro.mixture import DPGMM
 from figaro.utils import save_options, load_options, get_priors
@@ -107,6 +108,8 @@ def main():
         if not output_draws.exists():
             output_draws.mkdir()
         subfolder = True
+    if options.exclude_points:
+        print("Ignoring points outside bounds.")
     
     for i, file in enumerate(files):
         # Load samples
@@ -116,7 +119,6 @@ def main():
         except IndexError:
             dim = 1
         if options.exclude_points:
-            print("Ignoring points outside bounds.")
             samples = samples[np.where((np.prod(options.bounds[:,0] < samples, axis = 1) & np.prod(samples < options.bounds[:,1], axis = 1)))]
         else:
             # Check if all samples are within bounds

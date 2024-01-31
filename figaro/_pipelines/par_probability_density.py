@@ -129,6 +129,8 @@ def main():
         if not output_draws.exists():
             output_draws.mkdir()
         subfolder = True
+    if options.exclude_points:
+        print("Ignoring points outside bounds.")
     
     if not options.postprocess:
         ray.init(num_cpus = options.n_parallel)
@@ -141,7 +143,6 @@ def main():
         except IndexError:
             dim = 1
         if options.exclude_points:
-            print("Ignoring points outside bounds.")
             samples = samples[np.where((np.prod(options.bounds[:,0] < samples, axis = 1) & np.prod(samples < options.bounds[:,1], axis = 1)))]
         else:
             # Check if all samples are within bounds
