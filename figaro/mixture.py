@@ -1243,8 +1243,8 @@ class HDPGMM(DPGMM):
         self.evaluated_logL[pt_id] = logL_x
         # Update weights
         self.w = np.array(self.N_list)
-        self.w = self.w/self.w.sum()
         with np.errstate(divide = 'ignore', invalid = 'ignore'):
+            self.w = self.w/self.w.sum()
             self.log_w = np.log(self.w)
         return
 
