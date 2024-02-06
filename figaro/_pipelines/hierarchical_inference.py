@@ -72,7 +72,7 @@ def main():
         output_draws.mkdir()
     # Read hierarchical name
     if options.h_name is None:
-        options.h_name = options.samples_folder.parent.parts[-1]
+        options.h_name = options.output.parts[-1]
     # File extension
     if options.json:
         options.ext = 'json'
