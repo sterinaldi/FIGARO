@@ -1232,7 +1232,7 @@ class HDPGMM(DPGMM):
         except ValueError:
             cid = -1
         if cid == -1:
-            self.mixture.append(_component_h(x, self.dim, self.prior, logL_N[cid], self.mu_MC, self.sigma_MC))
+            self.mixture.append(_component_h(x, self.dim, self.prior, logL_N[int(cid)+1], self.mu_MC, self.sigma_MC))
             self.N_list.append(1.)
             self.n_cl += 1
             self.assignations[pt_id] = int(self.n_cl)-1
