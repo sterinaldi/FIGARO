@@ -570,7 +570,6 @@ def _load_json(file):
         draws = []
         for dict_ in list_of_dict:
             dict_.pop('log_w')
-            dict_.pop('components')
             for key in dict_.keys():
                 value = dict_[key]
                 if isinstance(value, list):
