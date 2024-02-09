@@ -2,6 +2,7 @@ import numpy as np
 import warnings
 import dill
 import configparser
+import optparse
 
 from pathlib import Path
 from tqdm import tqdm
@@ -319,44 +320,43 @@ def save_options(options, out_folder, name = None):
     Saves options for the run (reproducibility)
     
     Arguments:
-        obj options:            options
-        str or Path out_folder: folder where to save the option file
+        optparser.Options options: options
+        str or Path out_folder:    folder where to save the option file
+        str name:                  name of the run
     """
     if name is None:
         filename = 'options_log.ini'
     else:
         filename = 'options_log_{0}.ini'.format(name)
-    with open(Path(out_folder, filename), 'w') as logfile:
-        logfile.write('[OPTIONS]\n')
-        for key, val in zip(vars(options).keys(), vars(options).values()):
-            logfile.write('{0} = {1}\n'.format(key,val))
+    dd = {key:str(val) for (key, val) in vars(options).items() if not key == 'config'}
+    config = configparser.ConfigParser()
+    config.read_dict({'DEFAULT':dd})
+    with open(filename, 'w') as f:
+        config.write(f)
 
-def load_options(opts, file):
+def load_options(opts, parser):
     """
     Loads options for the run (reproducibility)
     
     Arguments:
-        obj opts:         options object
-        str or Path file: file with options
+        optparser.Options opts:       options object
+        optparse.OptionParser parser: parser object
     
     Returns:
-        obj: options
+        optparser.Options: options
     """
-    with open(file, 'r') as logfile:
-        config = configparser.RawConfigParser()
-        config.read(file)
-        opts_dict = dict(config.items('OPTIONS'))
-    for key in opts_dict.keys():
-        if opts_dict[key] in ['True', 'False']:
-            if opts_dict[key] == 'True':
-                opts_dict[key] = True
-            if opts_dict[key] == 'False':
-                opts_dict[key] = False
-        if key == 'bounds':
-            opts.bounds = str(opts_dict['bounds'])
-        else:
-            try:
-                exec('opts.{0} = opts.{0}.__class__(opts_dict["{0}"])'.format(key))
-            except TypeError:
-                exec('opts.{0} = opts.{0}.__class__()'.format(key))
+    config = configparser.ConfigParser()
+    config.read(opts.config)
+    defaults = {}
+    # Convert None and bools appropriately
+    for (key, val) in config.defaults().items():
+        if val == 'None':
+            val = None
+        elif val == 'True':
+            val = True
+        elif val == 'False':
+            val = False
+        defaults[key] = val
+    parser.set_defaults(**defaults)
+    opts, _ = parser.parse_args()
     return opts
