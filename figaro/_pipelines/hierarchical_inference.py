@@ -19,7 +19,7 @@ def main():
     parser.add_option("-i", "--input", type = "string", dest = "input", help = "Folder with single-event samples files", default = None)
     parser.add_option("-b", "--bounds", type = "string", dest = "bounds", help = "Density bounds. Must be a string formatted as '[[xmin, xmax], [ymin, ymax],...]'. For 1D distributions use '[xmin, xmax]'. Quotation marks are required and scientific notation is accepted", default = None)
     parser.add_option("-o", "--output", type = "string", dest = "output", help = "Output folder. Default: same directory as samples folder", default = None)
-    parser.add_option("-j", dest = "json", action = 'store_true', help = "Save mixtures in json file", default = False)
+    parser.add_option("--ext", dest = "ext", type = "choice", choices = ['pkl', 'json'], help = "Format of mixture output file", default = 'pkl')
     parser.add_option("--inj_density", type = "string", dest = "inj_density_file", help = "Python module with injected density - please name the method 'density'", default = None)
     parser.add_option("--selfunc", type = "string", dest = "selfunc_file", help = "Python module with selection function - please name the method 'selection_function'", default = None)
     parser.add_option("--parameter", type = "string", dest = "par", help = "GW parameter(s) to be read from files", default = None)
@@ -75,11 +75,6 @@ def main():
     # Read hierarchical name
     if options.hier_name is None:
         options.hier_name = options.output.parts[-1]
-    # File extension
-    if options.json:
-        options.ext = 'json'
-    else:
-        options.ext = 'pkl'
         
     if options.config is None:
         save_options(options, options.output, name = options.hier_name)
