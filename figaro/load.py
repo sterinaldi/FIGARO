@@ -451,7 +451,7 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
             else:
                 return samples
 
-def save_density(draws, folder = '.', name = 'density', ext = 'pkl'):
+def save_density(draws, folder = '.', name = 'density', ext = 'json'):
     """
     Exports a list of figaro.mixture instances to file
 
@@ -471,10 +471,13 @@ def save_density(draws, folder = '.', name = 'density', ext = 'pkl'):
         for draws_i in draws:
             list_of_dicts = [dr.__dict__.copy() for dr in draws_i]
             for density in list_of_dicts:
+                density.pop('components')
                 for key in density.keys():
                     value = density[key]
                     if isinstance(value, np.ndarray):
                         value = value.tolist()
+                    else:
+                        value = float(value)
                     density[key] = value
             ll.append(list_of_dicts)
         s = json.dumps(ll)
@@ -567,10 +570,13 @@ def _load_json(file):
         draws = []
         for dict_ in list_of_dict:
             dict_.pop('log_w')
+            dict_.pop('components')
             for key in dict_.keys():
                 value = dict_[key]
                 if isinstance(value, list):
                     dict_[key] = np.array(value)
+                if key == 'probit':
+                    dict_[key] = bool(value)
             draws.append(mixture(**dict_))
         ll.append(draws)
     if len(ll) == 1:
