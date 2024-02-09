@@ -18,8 +18,9 @@ The basic usage for the serial scripts is:
 * `figaro-density -i path/to/samples.txt -b "[[xmin,xmax]]`;
 * `figaro-hierarchical -i path/to/folder -b "[[xmin,xmax]]` where `folder` stores the single-event samples files `samples_1.txt`, `samples_2.txt`, and so on. 
 
+Options can also be provided via a config file: `console_script_name --config your_config_file.ini`. An example of config file can be found in `options_example.ini`.
 In order to see all the available options, run `console_script_name -h`.
 
-If you only wish to reconstruct some probability density or run a vanilla hierarchical analysis, we strongly recommend using these scripts, which are already tested and optimised.
+If you only want to reconstruct some probability density or run a vanilla hierarchical analysis, we strongly recommend using these scripts, which are already tested and optimised.
 However, if you wish to include FIGARO in your own scripts, an introductive guide can be found in the `introductive_guide.ipynb` notebook, where we show how to to reconstruct a probability density with FIGARO and how to use its products. We strongly encourage the interested user to go through the whole notebook, since it provides a (hopefully detailed) tutorial on how to properly set and use FIGARO.
 
