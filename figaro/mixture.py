@@ -704,9 +704,9 @@ class mixture(density):
             self.log_w  = log_w
             self.w      = np.exp(log_w)
         self.bounds = bounds
-        self.dim    = dim
-        self.n_cl   = n_cl
-        self.n_pts  = n_pts
+        self.dim    = int(dim)
+        self.n_cl   = int(n_cl)
+        self.n_pts  = int(n_pts)
         self.probit = probit
         self.alpha  = alpha
     
