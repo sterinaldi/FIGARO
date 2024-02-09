@@ -325,9 +325,9 @@ def save_options(options, out_folder, name = None):
         str name:                  name of the run
     """
     if name is None:
-        filename = 'options_log.ini'
+        filename = 'options.ini'
     else:
-        filename = 'options_log_{0}.ini'.format(name)
+        filename = 'options_{0}.ini'.format(name)
     dd = {key:str(val) for (key, val) in vars(options).items() if not key == 'config'}
     config = configparser.ConfigParser()
     config.read_dict({'DEFAULT':dd})
