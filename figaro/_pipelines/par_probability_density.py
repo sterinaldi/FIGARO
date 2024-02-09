@@ -1,6 +1,6 @@
 import numpy as np
 
-import optparse as op
+import optparse
 import dill
 import importlib
 
@@ -33,40 +33,42 @@ class worker:
 
 def main():
 
-    parser = op.OptionParser()
+    parser = optparse.OptionParser(prog = 'figaro-par-density', description = 'Parallelised probability density reconstruction')
     # Input/output
-    parser.add_option("-i", "--input", type = "string", dest = "samples_path", help = "File with samples", default = None)
+    parser.add_option("-i", "--input", type = "string", dest = "input", help = "File with samples", default = None)
     parser.add_option("-b", "--bounds", type = "string", dest = "bounds", help = "Density bounds. Must be a string formatted as '[[xmin, xmax], [ymin, ymax],...]'. For 1D distributions use '[xmin, xmax]'. Quotation marks are required and scientific notation is accepted", default = None)
     parser.add_option("-o", "--output", type = "string", dest = "output", help = "Output folder. Default: same directory as samples", default = None)
     parser.add_option("-j", dest = "json", action = 'store_true', help = "Save mixtures in json file", default = False)
     parser.add_option("--inj_density", type = "string", dest = "inj_density_file", help = "Python module with injected density - please name the method 'density'", default = None)
     parser.add_option("--selfunc", type = "string", dest = "selfunc_file", help = "Python module with selection function - please name the method 'selection_function'", default = None)
     parser.add_option("--parameter", type = "string", dest = "par", help = "GW parameter(s) to be read from file", default = None)
-    parser.add_option("--waveform", type = "string", dest = "wf", help = "Waveform to load from samples file. To be used in combination with --parameter. Accepted values: 'combined', 'imr', 'seob'", default = 'combined')
+    parser.add_option("--waveform", type = "choice", dest = "wf", help = "Waveform to load from samples file. To be used in combination with --parameter.", choices = ['combined', 'seob', 'imr'], default = 'combined')
     # Plot
     parser.add_option("-p", "--postprocess", dest = "postprocess", action = 'store_true', help = "Postprocessing", default = False)
     parser.add_option("--symbol", type = "string", dest = "symbol", help = "LaTeX-style quantity symbol, for plotting purposes", default = None)
     parser.add_option("--unit", type = "string", dest = "unit", help = "LaTeX-style quantity unit, for plotting purposes", default = None)
     # Settings
-    parser.add_option("--draws", type = "int", dest = "n_draws", help = "Number of draws", default = 100)
+    parser.add_option("--draws", type = "int", dest = "draws", help = "Number of draws", default = 100)
     parser.add_option("--n_samples_dsp", type = "int", dest = "n_samples_dsp", help = "Number of samples to analyse (downsampling). Default: all", default = -1)
     parser.add_option("--exclude_points", dest = "exclude_points", action = 'store_true', help = "Exclude points outside bounds from analysis", default = False)
     parser.add_option("--cosmology", type = "string", dest = "cosmology", help = "Cosmological parameters (h, om, ol). Default values from Planck (2021)", default = '0.674,0.315,0.685')
     parser.add_option("--sigma_prior", dest = "sigma_prior", type = "string", help = "Expected standard deviation (prior) - single value or n-dim values. If None, it is estimated from samples", default = None)
-    parser.add_option("--fraction", dest = "scale", type = "float", help = "Fraction of samples standard deviation for sigma prior. Overrided by sigma_prior.", default = None)
+    parser.add_option("--fraction", dest = "fraction", type = "float", help = "Fraction of samples standard deviation for sigma prior. Overrided by sigma_prior.", default = None)
     parser.add_option("--n_parallel", dest = "n_parallel", type = "int", help = "Number of parallel threads", default = 4)
     parser.add_option("--snr_threshold", dest = "snr_threshold", type = "float", help = "SNR threshold for simulated GW datasets", default = None)
     parser.add_option("--far_threshold", dest = "far_threshold", type = "float", help = "FAR threshold for simulated GW datasets", default = None)
     parser.add_option("--no_probit", dest = "probit", action = 'store_false', help = "Disable probit transformation", default = True)
-    parser.add_option("--config", dest = "config", type = "string", help = "Config file. Warning: command line options are ignored if provided", default = None)
+    parser.add_option("--config", dest = "config", type = "string", help = "Config file. Warning: command line options override config options", default = None)
     
     (options, args) = parser.parse_args()
 
+    if options.config is not None:
+        options = load_options(options, parser)
     # Paths
-    if options.samples_path is not None:
-        options.samples_path = Path(options.samples_path).resolve()
+    if options.input is not None:
+        options.input = Path(options.input).resolve()
     elif options.config is not None:
-        options.samples_path = Path('.').resolve()
+        options.input = Path('.').resolve()
     else:
         raise Exception("Please provide path to samples.")
     if options.output is not None:
@@ -74,7 +76,7 @@ def main():
         if not options.output.exists():
             options.output.mkdir(parents=True)
     else:
-        options.output = options.samples_path.parent
+        options.output = options.input.parent
     if options.config is not None:
         options.config = Path(options.config).resolve()
         
@@ -84,9 +86,8 @@ def main():
     else:
         options.ext = 'pkl'
     
-    if options.config is not None:
-        load_options(options, options.config)
-    save_options(options, options.output)
+    if options.config is None:
+        save_options(options, options.output)
 
     # Read bounds
     if options.bounds is not None:
@@ -119,12 +120,12 @@ def main():
         
     if options.sigma_prior is not None:
         options.sigma_prior = np.array([float(s) for s in options.sigma_prior.split(',')])
-    if options.samples_path.is_file():
-        files = [options.samples_path]
+    if options.input.is_file():
+        files = [options.input]
         output_draws = options.output
         subfolder = False
     else:
-        files = sum([list(options.samples_path.glob('*.'+ext)) for ext in supported_extensions], [])
+        files = sum([list(options.input.glob('*.'+ext)) for ext in supported_extensions], [])
         output_draws = Path(options.output, 'draws')
         if not output_draws.exists():
             output_draws.mkdir()
@@ -156,13 +157,13 @@ def main():
             desc = name + ' ({0}/{1})'.format(i+1, len(files))
             pool = ActorPool([worker.remote(bounds  = options.bounds,
                                             sigma   = options.sigma_prior,
-                                            scale   = options.scale,
+                                            scale   = options.fraction,
                                             samples = samples,
                                             probit  = options.probit,
                                             )
                               for _ in range(options.n_parallel)])
             draws = []
-            for s in tqdm(pool.map_unordered(lambda a, v: a.draw_sample.remote(), [_ for _ in range(options.n_draws)]), total = options.n_draws, desc = desc):
+            for s in tqdm(pool.map_unordered(lambda a, v: a.draw_sample.remote(), [_ for _ in range(options.draws)]), total = options.draws, desc = desc):
                 draws.append(s)
             draws = np.array(draws)
             # Save reconstruction

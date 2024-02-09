@@ -1,6 +1,6 @@
 import numpy as np
 
-import optparse as op
+import optparse
 import dill
 import importlib
 
@@ -105,47 +105,49 @@ class worker:
             
 def main():
 
-    parser = op.OptionParser()
+    parser = optparse.OptionParser(prog = 'figaro-par-hierarchical', description = 'Parallelised hierarchical probability density reconstruction')
     # Input/output
-    parser.add_option("-i", "--input", type = "string", dest = "samples_folder", help = "Folder with single-event samples files", default = None)
+    parser.add_option("-i", "--input", type = "string", dest = "input", help = "Folder with single-event samples files", default = None)
     parser.add_option("-b", "--bounds", type = "string", dest = "bounds", help = "Density bounds. Must be a string formatted as '[[xmin, xmax], [ymin, ymax],...]'. For 1D distributions use '[xmin, xmax]'. Quotation marks are required and scientific notation is accepted", default = None)
     parser.add_option("-o", "--output", type = "string", dest = "output", help = "Output folder. Default: same directory as samples folder", default = None)
     parser.add_option("-j", dest = "json", action = 'store_true', help = "Save mixtures in json file", default = False)
     parser.add_option("--inj_density", type = "string", dest = "inj_density_file", help = "Python module with injected density - please name the method 'density'", default = None)
     parser.add_option("--selfunc", type = "string", dest = "selfunc_file", help = "Python module with selection function - please name the method 'selection_function'", default = None)
     parser.add_option("--parameter", type = "string", dest = "par", help = "GW parameter(s) to be read from files", default = None)
-    parser.add_option("--waveform", type = "string", dest = "wf", help = "Waveform to load from samples file. To be used in combination with --parameter. Accepted values: 'combined', 'imr', 'seob'", default = 'combined')
+    parser.add_option("--waveform", type = "choice", dest = "wf", help = "Waveform to load from samples file. To be used in combination with --parameter.", choices = ['combined', 'seob', 'imr'], default = 'combined')
     # Plot
-    parser.add_option("--name", type = "string", dest = "h_name", help = "Name to be given to hierarchical inference files. Default: same name as samples folder parent directory", default = None)
+    parser.add_option("--name", type = "string", dest = "hier_name", help = "Name to be given to hierarchical inference files. Default: same name as samples folder parent directory", default = None)
     parser.add_option("-p", "--postprocess", dest = "postprocess", action = 'store_true', help = "Postprocessing", default = False)
     parser.add_option("-s", "--save_se", dest = "save_single_event", action = 'store_true', help = "Save single event plots", default = False)
     parser.add_option("--symbol", type = "string", dest = "symbol", help = "LaTeX-style quantity symbol, for plotting purposes", default = None)
     parser.add_option("--unit", type = "string", dest = "unit", help = "LaTeX-style quantity unit, for plotting purposes", default = None)
-    parser.add_option("--hier_samples", type = "string", dest = "true_vals", help = "Samples from hierarchical distribution (true single-event values, for simulations only)", default = None)
+    parser.add_option("--hier_samples", type = "string", dest = "hier_samples", help = "Samples from hierarchical distribution (true single-event values, for simulations only)", default = None)
     # Settings
-    parser.add_option("--draws", type = "int", dest = "n_draws", help = "Number of draws for hierarchical distribution", default = 100)
-    parser.add_option("--se_draws", type = "int", dest = "n_se_draws", help = "Number of draws for single-event distribution. Default: same as hierarchical distribution", default = None)
+    parser.add_option("--draws", type = "int", dest = "draws", help = "Number of draws for hierarchical distribution", default = 100)
+    parser.add_option("--se_draws", type = "int", dest = "se_draws", help = "Number of draws for single-event distribution. Default: same as hierarchical distribution", default = None)
     parser.add_option("--n_samples_dsp", type = "int", dest = "n_samples_dsp", help = "Number of samples to analyse (downsampling). Default: all", default = -1)
     parser.add_option("--exclude_points", dest = "exclude_points", action = 'store_true', help = "Exclude points outside bounds from analysis", default = False)
     parser.add_option("--cosmology", type = "string", dest = "cosmology", help = "Cosmological parameters (h, om, ol). Default values from Planck (2021)", default = '0.674,0.315,0.685')
     parser.add_option("-e", "--events", dest = "run_events", action = 'store_false', help = "Skip single-event analysis", default = True)
     parser.add_option("--se_sigma_prior", dest = "se_sigma_prior", type = "string", help = "Expected standard deviation (prior) for single-event inference - single value or n-dim values. If None, it is estimated from samples", default = None)
     parser.add_option("--sigma_prior", dest = "sigma_prior", type = "string", help = "Expected standard deviation (prior) for hierarchical inference - single value or n-dim values. If None, it is estimated from samples", default = None)
-    parser.add_option("--fraction", dest = "scale", type = "float", help = "Fraction of samples standard deviation for sigma prior. Overrided by sigma_prior.", default = None)
+    parser.add_option("--fraction", dest = "fraction", type = "float", help = "Fraction of samples standard deviation for sigma prior. Overrided by sigma_prior.", default = None)
     parser.add_option("--n_parallel", dest = "n_parallel", type = "int", help = "Number of parallel threads", default = 4)
     parser.add_option("--mc_draws", dest = "mc_draws", type = "int", help = "Number of draws for assignment MC integral", default = None)
     parser.add_option("--snr_threshold", dest = "snr_threshold", type = "float", help = "SNR threshold for simulated GW datasets", default = None)
     parser.add_option("--far_threshold", dest = "far_threshold", type = "float", help = "FAR threshold for simulated GW datasets", default = None)
     parser.add_option("--no_probit", dest = "probit", action = 'store_false', help = "Disable probit transformation", default = True)
-    parser.add_option("--config", dest = "config", type = "string", help = "Config file. Warning: command line options are ignored if provided", default = None)
+    parser.add_option("--config", dest = "config", type = "string", help = "Config file. Warning: command line options override config options", default = None)
 
     (options, args) = parser.parse_args()
 
+    if options.config is not None:
+        options = load_options(options, parser)
     # Paths
-    if options.samples_folder is not None:
-        options.samples_folder = Path(options.samples_folder).resolve()
+    if options.input is not None:
+        options.input = Path(options.input).resolve()
     elif options.config is not None:
-        options.samples_folder = Path('.').resolve()
+        options.input = Path('.').resolve()
     else:
         raise Exception("Please provide path to samples.")
     if options.output is not None:
@@ -153,7 +155,7 @@ def main():
         if not options.output.exists():
             options.output.mkdir(parents=True)
     else:
-        options.output = options.samples_folder.parent
+        options.output = options.input.parent
     if options.config is not None:
         options.config = Path(options.config).resolve()
     output_plots = Path(options.output, 'plots')
@@ -163,17 +165,16 @@ def main():
     if not output_draws.exists():
         output_draws.mkdir()
     # Read hierarchical name
-    if options.h_name is None:
-        options.h_name = options.output.parts[-1]
+    if options.hier_name is None:
+        options.hier_name = options.output.parts[-1]
     # File extension
     if options.json:
         options.ext = 'json'
     else:
         options.ext = 'pkl'
 
-    if options.config is not None:
-        load_options(options, options.config)
-    save_options(options, options.output, name = options.h_name)
+    if options.config is None:
+        save_options(options, options.output, name = options.hier_name)
 
     # Read bounds
     if options.bounds is not None:
@@ -187,8 +188,8 @@ def main():
     if options.par is not None:
         options.par = options.par.split(',')
     # Read number of single-event draws
-    if options.n_se_draws is None:
-        options.n_se_draws = options.n_draws
+    if options.se_draws is None:
+        options.se_draws = options.draws
     if options.se_sigma_prior is not None:
         options.se_sigma_prior = np.array([float(s) for s in options.se_sigma_prior.split(',')])
     if options.sigma_prior is not None:
@@ -211,14 +212,14 @@ def main():
         spec.loader.exec_module(selfunc_module)
         selfunc = selfunc_module.selection_function
     # If provided, load true values
-    true_vals = None
-    if options.true_vals is not None:
-        options.true_vals = Path(options.true_vals).resolve()
-        true_vals, true_name = load_single_event(options.true_vals, par = options.par, h = options.h, om = options.om, ol = options.ol, waveform = options.wf)
-        if np.shape(true_vals)[-1] == 1:
-            true_vals = true_vals.flatten()
+    hier_samples = None
+    if options.hier_samples is not None:
+        options.hier_samples = Path(options.hier_samples).resolve()
+        hier_samples, true_name = load_single_event(options.hier_samples, par = options.par, h = options.h, om = options.om, ol = options.ol, waveform = options.wf)
+        if np.shape(hier_samples)[-1] == 1:
+            hier_samples = hier_samples.flatten()
     # Load samples
-    events, names = load_data(options.samples_folder, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol, waveform = options.wf, snr_threshold = options.snr_threshold, far_threshold = options.far_threshold)
+    events, names = load_data(options.input, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol, waveform = options.wf, snr_threshold = options.snr_threshold, far_threshold = options.far_threshold)
     try:
         dim = np.shape(events[0][0])[-1]
     except IndexError:
@@ -257,7 +258,7 @@ def main():
                                         ext              = options.ext,
                                         se_sigma         = options.se_sigma_prior,
                                         hier_sigma       = options.sigma_prior,
-                                        scale            = options.scale,
+                                        scale            = options.fraction,
                                         events           = events,
                                         label            = symbols,
                                         unit             = units,
@@ -270,7 +271,7 @@ def main():
         if options.run_events:
             # Run each single-event analysis
             posteriors = []
-            for s in tqdm(pool.map_unordered(lambda a, v: a.run_event.remote(v), [[ev, name, options.n_se_draws] for ev, name in zip(events, names)]), total = len(events), desc = 'Events'):
+            for s in tqdm(pool.map_unordered(lambda a, v: a.run_event.remote(v), [[ev, name, options.se_draws] for ev, name in zip(events, names)]), total = len(events), desc = 'Events'):
                 posteriors.append(s)
             # Save all single-event draws together
             posteriors = np.array(posteriors)
@@ -282,30 +283,30 @@ def main():
             pass
         # Run hierarchical analysis
         draws = []
-        for s in tqdm(pool.map_unordered(lambda a, v: a.draw_hierarchical.remote(), [_ for _ in range(options.n_draws)]), total = options.n_draws, desc = 'Sampling'):
+        for s in tqdm(pool.map_unordered(lambda a, v: a.draw_hierarchical.remote(), [_ for _ in range(options.draws)]), total = options.draws, desc = 'Sampling'):
             draws.append(s)
         draws = np.array(draws)
         # Save draws
-        save_density(draws, folder = output_draws, name = 'draws_'+options.h_name, ext = options.ext)
+        save_density(draws, folder = output_draws, name = 'draws_'+options.hier_name, ext = options.ext)
     else:
-        draws = load_density(Path(output_draws, 'draws_'+options.h_name+'.'+options.ext))
+        draws = load_density(Path(output_draws, 'draws_'+options.hier_name+'.'+options.ext))
     # Plot
     if dim == 1:
         plot_median_cr(draws,
                        injected     = inj_density,
                        selfunc      = selfunc,
-                       samples      = true_vals,
+                       samples      = hier_samples,
                        out_folder   = output_plots,
-                       name         = options.h_name,
+                       name         = options.hier_name,
                        label        = options.symbol,
                        unit         = options.unit,
                        hierarchical = True,
                        )
     else:
         plot_multidim(draws,
-                      samples      = true_vals,
+                      samples      = hier_samples,
                       out_folder   = output_plots,
-                      name         = options.h_name,
+                      name         = options.hier_name,
                       labels       = symbols,
                       units        = units,
                       hierarchical = True,
