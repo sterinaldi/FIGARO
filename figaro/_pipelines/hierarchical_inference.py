@@ -1,6 +1,6 @@
 import numpy as np
 
-import optparse as op
+import optparse
 import importlib
 
 from pathlib import Path
