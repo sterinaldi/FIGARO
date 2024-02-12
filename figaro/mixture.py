@@ -1163,7 +1163,7 @@ class HDPGMM(DPGMM):
         else:
             rhos = invwishart(df = self.dim+2, scale = np.identity(self.dim)).rvs(size = self.MC_draws)
             rhos = np.array([r/outer_jit(np.sqrt(diag_jit(r)), np.sqrt(diag_jit(r))) for r in rhos])
-            self.sigma_MC = np.array([r*_outerjit(s,s) for r, s in zip(rhos, np.sqrt(self.sigma_MC))])
+            self.sigma_MC = np.array([r*outer_jit(s,s) for r, s in zip(rhos, np.sqrt(self.sigma_MC))])
             
     def add_new_point(self, ev):
         """
