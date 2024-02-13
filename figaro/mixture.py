@@ -668,9 +668,10 @@ class density:
             np.ndarray: logarithmic gradient
         """
         p = self._pdf_array_probit(x)
-        B = np.array([-np.dot(inv_jit(sigma),(x - mu)) for mu, sigma in zip(self.means, self.covs)])
+        J = np.exp(-probit_log_jacobian(x, self.bounds, self.probit))
+        B = np.array([-np.dot(inv_jit(sigma),(x - mu))*J for mu, sigma in zip(self.means, self.covs)])
         try:
-            return np.average(B, weights = p, axis = 0) + log_gradient_inv_jacobian(x, self.bounds, self.probit)
+            return np.average(B, weights = p, axis = 0) + gradient_inv_jacobian(x, self.bounds, self.probit)*J
         except ZeroDivisionError:
             return np.zeros(x.shape[-1])
 
