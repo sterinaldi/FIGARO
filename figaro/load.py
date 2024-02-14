@@ -486,34 +486,38 @@ def save_density(draws, folder = '.', name = 'density', ext = 'json'):
     else:
         raise FIGAROException("Extension {0} is not supported. Valid extensions are pkl or json.")
 
-def load_density(path):
+def load_density(path, make_comp = True):
     """
     Loads a list of figaro.mixture instances from path.
     If the requested file extension (pkl or json) is not available, it tries loading the other.
 
     Arguments:
         str or Path path: path with draws (file or folder)
+        bool make_comp:   make component objects
 
     Returns:
         list: figaro.mixture object instances
     """
+    if not make_comp:
+        warnings.warn("Setting the make_comp keyword argument to False prevents FIGARO from loading the scipy.stats.multivariate_normal objects (mainly for memory usage reasons while performing a hierarchical inference). Be aware that this makes the vast majority of the methods unusable.")
     path = Path(path)
     if path.is_file():
-        return _load_density_file(path)
+        return _load_density_file(path, make_comp)
     else:
-        files = [_load_density_file(file) for file in path.glob('*.[jp][sk][ol]*') if not file.stem == 'posteriors_single_event']
+        files = [_load_density_file(file, make_comp) for file in path.glob('*.[jp][sk][ol]*') if not file.stem == 'posteriors_single_event']
         if len(files) > 0:
             return files
         else:
             raise FIGAROException("Density file(s) not found")
 
-def _load_density_file(file):
+def _load_density_file(file, make_comp = True):
     """
     Loads a list of figaro.mixture instances from file.
     If the requested file extension (pkl or json) is not available, it tries loading the other.
 
     Arguments:
         str or Path file: file with draws
+        bool make_comp:   make component objects
 
     Returns
         list: figaro.mixture object instances
@@ -525,12 +529,12 @@ def _load_density_file(file):
             return _load_pkl(file)
         except FileNotFoundError:
             try:
-                return _load_json(file.with_suffix('.json'))
+                return _load_json(file.with_suffix('.json'), make_comp)
             except FileNotFoundError:
                 raise FIGAROException("{0} not found. Please provide it or re-run the inference.".format(file.name))
     elif ext == '.json':
         try:
-            return _load_json(file)
+            return _load_json(file, make_comp)
         except FileNotFoundError:
             try:
                 return _load_pkl(file.with_suffix('.pkl'))
@@ -553,12 +557,13 @@ def _load_pkl(file):
         draws = dill.load(f)
     return draws
 
-def _load_json(file):
+def _load_json(file, make_comp = True):
     """
     Loads a list of figaro.mixture instances from json file
 
     Arguments:
         str or Path file: file with draws
+        bool make_comp:   make component objects
 
     Returns
         list: figaro.mixture object instances
@@ -576,7 +581,7 @@ def _load_json(file):
                     dict_[key] = np.array(value)
                 if key == 'probit':
                     dict_[key] = bool(value)
-            draws.append(mixture(**dict_))
+            draws.append(mixture(**dict_, make_comp = make_comp))
         ll.append(draws)
     if len(ll) == 1:
         return ll[0]
