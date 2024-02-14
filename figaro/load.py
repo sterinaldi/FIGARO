@@ -46,12 +46,14 @@ GW_par = {'m1'                 : 'mass_1_source',
           'log_prior'          : 'log_prior',
           'log_likelihood'     : 'log_likelihood',
           }
-    
+
+supported_pars = [p for p in GW_par.keys() if not p in ['snr', 'far']]
+
 def available_gw_pars():
     """
     Print a list of available GW parameters
     """
-    print([p for p in GW_par.keys() if not p in ['snr', 'far']])
+    print(supported_pars)
 
 def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.315, ol = 0.685, volume = False, waveform = 'combined', snr_threshold = None, far_threshold = None):
     '''
