@@ -8,6 +8,10 @@ def inv_jit(M):
   return np.linalg.inv(M)
 
 @njit
+def dot_jit(v1, v2):
+  return np.dot(v1, v2)
+
+@njit
 def logdet_jit(M):
     return np.log(np.linalg.det(M))
 
