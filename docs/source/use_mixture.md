@@ -14,11 +14,11 @@ draws = load_density('./draws_file.json')
 `draws` will be a list of `figaro.mixture.mixture` objects, each of them representing a probability distribution. The methods of this class are modelled after the `scipy.stats` methods to facilitate users that are already familiar with the SciPy package:
 
 ```python
-d = draws[0]
-X = [x, y, z]
-d.pdf(X)
-d.logpdf(X)
-d.cdf(X)
+d       = draws[0]
+X       = [x, y, z]
+p       = d.pdf(X)
+log_p   = d.logpdf(X)
+c       = d.cdf(X)
 samples = d.rvs(size = 100)
 ```
 
@@ -30,6 +30,12 @@ If you need to draw samples from the median distribution, there is a dedicated m
 from figaro.utils import rvs_median
 samples = rvs_median(draws)
 ```
+
+The gradient of the recovered distribution can be evaluated using the `gradient()` method of individual draws:
+```python
+g = d.gradient(X)
+```
+(This method is painfully slow and we haven't really had the chance to optimise it. If you manage to improve it, please send us a pull request!)
 
 For multivariate distributions, it might happen that one needs to evaluate the conditional distribution or the marginal distribution.
 Making use of the properties of the multivariate Gaussian distribution, we can obtain the conditional and/or marginal distribution analytically both via the methods included in the `figaro.mixture.mixture` class or via the ones in the `figaro.marginal` module:
@@ -47,6 +53,7 @@ cond_draws = condition(draws, Y, 2)
 ```
 
 Please note that in both cases the original `draws` list is preserved.
+
 
 ## Plots
 The plots produced by the CLI can be easily reproduced using the methods included in the `figaro.plot` module. Please refer to its documentation page for the details. 
