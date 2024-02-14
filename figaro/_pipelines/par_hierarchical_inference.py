@@ -3,6 +3,7 @@ import numpy as np
 import optparse
 import dill
 import importlib
+import warnings
 
 from pathlib import Path
 from tqdm import tqdm
@@ -272,7 +273,9 @@ def main():
             posteriors = np.array(posteriors)
             save_density(posteriors, folder = output_draws, name = 'posteriors_single_event', ext = options.ext)
         else:
-            posteriors = load_density(Path(output_draws, 'posteriors_single_event.'+options.ext))
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", category=UserWarning)
+                posteriors = load_density(Path(output_draws, 'posteriors_single_event.'+options.ext), make_comp = False)
         # Load posteriors
         for s in pool.map(lambda a, v: a.load_posteriors.remote(v), [posteriors for _ in range(options.n_parallel)]):
             pass

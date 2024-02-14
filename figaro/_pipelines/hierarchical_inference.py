@@ -2,6 +2,7 @@ import numpy as np
 
 import optparse
 import importlib
+import warnings
 
 from pathlib import Path
 from tqdm import tqdm
@@ -177,7 +178,9 @@ def main():
             save_density(posteriors, folder = output_draws, name = 'posteriors_single_event', ext = options.ext)
         else:
             # Load pre-computed posteriors
-            posteriors = load_density(Path(output_draws, 'posteriors_single_event.'+options.ext))
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", category=UserWarning)
+                posteriors = load_density(Path(output_draws, 'posteriors_single_event.'+options.ext), make_comp = False)
         # Run hierarchical analysis
         prior_pars = get_priors(options.bounds, samples = events, std = options.sigma_prior, scale = options.fraction, probit = options.probit, hierarchical = True)
         mix        = HDPGMM(options.bounds, prior_pars = prior_pars, MC_draws = options.mc_draws, probit = options.probit)
