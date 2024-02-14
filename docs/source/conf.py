@@ -29,8 +29,6 @@ extensions = [
 'sphinx.ext.napoleon',
 ]
 
-autodoc_mock_imports = ['figaro.cosmology', 'figaro.cumulative']
-
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
