@@ -6,7 +6,7 @@
 FIGARO - Fast Inference for GW Astronomy, Research & Observations
 =================================================================
 
-| This page contains the documentation for FIGARO, along with a brief description of how to use it in your research project. Please refer to the `GitHub repository <https://github.com/sterinaldi/FIGARO>`_ for bug reports (extremely appreciated) or issues. If you use FIGARO in your research, please cite `this paper <https://ui.adsabs.harvard.edu/abs/2022MNRAS.517L...5R/abstract>`_.
+| This page contains the documentation for FIGARO, along with a brief description of how to use it in your research project. Please refer to the `GitHub repository <https://github.com/sterinaldi/FIGARO>`_ for bug reports (extremely appreciated) or issues.
 | If you're curious about the other projects I'm working on or if you want to get in touch with me, feel free to visit `my website <https://sterinaldi.github.io>`_!
 
 .. toctree::
@@ -16,7 +16,7 @@ FIGARO - Fast Inference for GW Astronomy, Research & Observations
    installation.md
    quickstart.md
    use_mixture.md
-   acknowledgments.md
+   acknowledgment.md
    api
    figaro
 
