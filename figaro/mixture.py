@@ -45,7 +45,7 @@ def _student_t(df, t, mu, sigma, dim):
     valsinv    = np.array([1./v for v in vals])
     U          = vecs * np.sqrt(valsinv)
     dev        = t - mu
-    maha       = np.sum(np.dot(dev, U)**2, axis=-1)
+    maha       = np.sum(dot_jit(dev, U)**2, axis=-1)
 
     x = 0.5 * (df + dim)
     A = gammaln_jit(x)
@@ -654,7 +654,7 @@ class density:
         Returns:
             np.ndarray: gradient
         """
-        return self._fast_pdf(x)*self._log_gradient(x)
+        return self._pdf(x)*self._log_gradient(x)
     
     @probit
     def _log_gradient(self, x):
@@ -669,7 +669,7 @@ class density:
         """
         p = self._pdf_array_probit(x)
         J = np.exp(-probit_log_jacobian(x, self.bounds, self.probit))
-        B = np.array([-np.dot(inv_jit(sigma),(x - mu))*J for mu, sigma in zip(self.means, self.covs)])
+        B = np.array([-dot_jit(inv_jit(sigma),(x - mu))*J for mu, sigma in zip(self.means, self.covs)])
         try:
             return np.average(B, weights = p, axis = 0) + gradient_inv_jacobian(x, self.bounds, self.probit)*J
         except ZeroDivisionError:
@@ -769,7 +769,19 @@ class mixture(density):
             np.ndarray: mixture.pdf(x)
         """
         return np.sum(np.array([w*comp.pdf(x) for w, comp in zip(self.w, self.components)]), axis = 0)
+
+    def _pdf_array_probit(self, x):
+        """
+        Evaluate every mixture component at point(s) x.
         
+        Arguments:
+            np.ndarray x: point(s) to evaluate the components at (in probit space)
+        
+        Returns:
+            np.ndarray: component.pdf(x) for each mixture component
+        """
+        return np.array([w*comp.pdf(x) for w, comp in zip(self.w, self.components)])
+
 #-------------------#
 # Inference classes #
 #-------------------#
