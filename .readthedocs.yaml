@@ -4,6 +4,3 @@ version: 2
 # Build from the docs/ directory with Sphinx
 sphinx:
   configuration: docs/source/conf.py
-
-conda:
-  environment: ./figaro_env.yml
