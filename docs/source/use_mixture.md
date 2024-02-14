@@ -35,7 +35,12 @@ The gradient of the recovered distribution can be evaluated using the `gradient(
 ```python
 g = d.gradient(X)
 ```
-(This method is painfully slow and we haven't really had the chance to optimise it. If you manage to improve it, please send us a pull request!)
+It is also possible to evaluate the gradient of the median distribution in a numerically stable way using the dedicated function:
+```python
+from figaro.utils import gradient_median
+g_median = gradient_median(X, draws)
+```
+Please note: these methods are painfully slow and we haven't really found a way of optimising them. If you manage to improve it, please send us a pull request!
 
 For multivariate distributions, it might happen that one needs to evaluate the conditional distribution or the marginal distribution.
 Making use of the properties of the multivariate Gaussian distribution, we can obtain the conditional and/or marginal distribution analytically both via the methods included in the `figaro.mixture.mixture` class or via the ones in the `figaro.marginal` module:
