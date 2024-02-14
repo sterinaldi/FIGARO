@@ -188,11 +188,18 @@ some_cool_data
 `figaro-hierarchical` has all the options and functionalities of `figaro-density`, plus some dedicated options. Below you find all the options that are not already mentioned in the previous list;
 * `--name=NAME`: name for the hierarchical output files. By default, they are named after the parent folder.
 * `-s, --save_se`: by default, plots for individual posterior distributions are not produced (to save both memory and computational resources). This option allow you to produce them;
-* `--hier_samples=HIER_SAMPLES`: if you're running FIGARO on a set of simulated data and you know the true value for the parameters of each individual observation, you can collect them into a single file and pass it to FIGARO. These values will be plot along the inferred distribution;
+* `--hier_samples=HIER_SAMPLES`: if you're running FIGARO on a set of simulated data and you know the true value for the parameters of each individual observation, you can collect them into a single `.txt` file and pass it to FIGARO. These values will be plot along the inferred distribution;
 * `--se_draws=N_SE_DRAWS`: in principle there is no reason why you might want to have the same number of draws both for the individual events and for the hierarchical distribution. The `--draws` option controls the number of realisation of the hierarchical distribution, whereas the `--se_draws` option fixes the number of realisations for each single event distribution. If not provided. `--se_draws = --draws`;
 * `-e, --events`: if you already have the single-event reconstructions, you can skip that part of the analysis with this option;
 * `--se_sigma_prior=SE_SIGMA_PRIOR`: as above, controls the expected width of the features for the individual events. If not provided, this is estimated using the samples (each event its own set);
 * `--mc_draws=MC_DRAWS`: `figaro-hierarchical` evaluates a Monte Carlo integral. This option controls the number of samples used for the integral. You have no idea of what we're talking about? Most likely you won't need this!  
 
+An example might be
+
+```
+figaro-hierarchical -i events -b "[[Xmin, Xmax],[Ymin, Ymax],[Zmin, Zmax]]" --symbol \\mathrm{X},\\mathrm{Y},\\mathrm{Z} --unit \\mathrm{cm},,\\mathrm{s} --no_probit --se_draws 100 --draws 1000 -s
+```
 
 ## Parallelised inference
+
+In certain circumstances, e.g. when we have a large number of samples or events or if we have access to a HPC, it might be useful to take advantage of parallel computing. FIGARO comes with a parallelised version of both the scripts described above, `figaro-par-density` and `figaro-par-hierarchical`. The parallelisation is almost user-transparent and it is made using [RAY](https://www.ray.io). These two CLI works exactly as the two described above, with the same options and outputs. The only additional setting to provide is the number of parallel threads with the option `--n_parallel` (valid for both, default is 2), and RAY will take care of the rest.
