@@ -22,5 +22,5 @@ Options can also be provided via a config file: `console_script_name --config yo
 In order to see all the available options, run `console_script_name -h`.
 
 If you only want to reconstruct some probability density or run a vanilla hierarchical analysis, we strongly recommend using these scripts, which are already tested and optimised.
-However, if you wish to include FIGARO in your own scripts, an introductive guide can be found in the `introductive_guide.ipynb` notebook, where we show how to to reconstruct a probability density with FIGARO and how to use its products. We strongly encourage the interested user to go through the whole notebook, since it provides a (hopefully detailed) tutorial on how to properly set and use FIGARO.
+However, if you want to include FIGARO in your own scripts, an introductive guide can be found in the `introductive_guide.ipynb` notebook, where we show how to to reconstruct a probability density with FIGARO and how to use its products. We strongly encourage the interested user to go through the whole notebook, since it provides a (hopefully detailed) tutorial on how to properly set and use FIGARO.
 
