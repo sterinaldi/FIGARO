@@ -8,7 +8,8 @@ FIGARO comes with two main CLI:
  
  Both CLI are automatically installed with FIGARO. You can check it by running `figaro-density -h` and `figaro-hierarchical -h`: this will print the help pages for the scripts.
 
-# `figaro-density`
+## `figaro-density`
+
 The `figaro-density` CLI reconstructs a probability density given a set of samples. Let's assume to have a folder structure as this:
 ```
 my_folder
@@ -17,4 +18,4 @@ my_folder
     ├─ event_2.txt
     └─ event_3.txt
 ```
-
+We want to reconstruct `event_1.txt`, and we are in `my_folder`. 
