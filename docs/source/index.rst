@@ -15,6 +15,7 @@ FIGARO - Fast Inference for GW Astronomy, Research & Observations
    :caption: Contents:
 
    README.md
+   quickstart.md
    api
    figaro
 
