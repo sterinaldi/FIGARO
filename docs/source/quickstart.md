@@ -8,7 +8,7 @@ FIGARO comes with two main CLI:
  
  Both CLI are automatically installed with FIGARO. You can check it by running `figaro-density -h` and `figaro-hierarchical -h`: this will print the help pages for the scripts.
 
-## figaro-density
+## figaro-density
 
 The `figaro-density` CLI reconstructs a probability density given a set of samples. Let's assume to have a folder structure as this:
 ```
@@ -79,7 +79,19 @@ my_folder
 │   └─ prob_event_3.txt
 └── options.ini
 ```
+Keep in mind that this is **not** a hierarchical analysis.
 
+Several options are available to further customise the behaviour of `figaro-density`. Below you find a complete list of all the available options.
+
+* `-i FILE, --input=FILE`: file or folder with the samples to analyse (REQUIRED);
+* `-b BOUNDS, --bounds=BOUNDS`: minimum and maximum allowed values for our samples to take per dimension. Must be formatted as "[[Xmin, Xmax], [Ymin, Ymax],...]". For 1D distributions use "[Xmin, Xmax]". **Quotation marks are mandatory!**
+* `-o OUTPUT_FOLDER, --output=OUTPUT_FOLDER`: folder where to put the output files. Default values is the parent directory of the samples directory;
+* `--ext=EXTENSION`: format of the output file. Can either be `json` (default, recommended) or `pkl`;
+* `--inj_density=INJECTED_FILE`: if you know the true underlying distribution for whathever reason (simulations or other analyses), you may want to include it in your plots. You just have to prepare a `.py` file that includes a method called `density(x)` (the name is important and it must take only one parameter, possibly a vector, as input) with your pdf. This distribution will be shown in the produced plots;
+* `--selfunc=SELECTION_FUNCTION_FILE`: if your data are affected by selection bias but you have a model for the selection function, you can prepare a `.py` file including a method called `selection_function(x)` with the same prescriptions as above. FIGARO will deconvolve the selection effects from your data (only 1-dimensional distribution). WARNING: check that your selection function does not return zeros;
+* `--parameter=PAR`: GW parameter(s) to use for posterior probability density reconstruction (available only for [LVK data release files](https://gwosc.org/eventapi/html/GWTC/) – this option will be ignored for other files). For a list of available GW parameters, run `python -c 'from figaro.load import available_gw_pars; available_gw_pars()'`;
+* `--waveform=WF`: waveform family used to generate the posterior samples. Default is *combined*, but *imr* and *seob* are also available. To be used together with `--parameter` only. If you're not familiar with different waveform families, you probably won't need this option;
+* ``
 
 ## figaro-hierarchical
 
