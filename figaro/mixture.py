@@ -678,7 +678,7 @@ class density:
 class mixture(density):
     """
     Class to store a single draw from DPGMM/(H)DPGMM.
-    Methods inherited from density class.
+    Methods inherited from density class
     
     Arguments:
         iterable means:    component means
@@ -690,14 +690,19 @@ class mixture(density):
         int n_pts:         number of points used to infer the mixture
         double alpha:      concentration parameter
         bool probit:       whether to use the probit transformation or not
+        np.ndarray log_w:  component log weights
+        bool make_comp:    make component objects
     
     Returns:
         mixture: instance of mixture class
     """
-    def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, alpha = 1., probit = True, log_w = None):
+    def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, alpha = 1., probit = True, log_w = None, make_comp = True):
         self.means      = means
         self.covs       = covs
-        self.components = [mn(mean, cov, allow_singular = True) for mean, cov in zip(self.means, self.covs)]
+        if make_comp:
+            self.components = [mn(mean, cov, allow_singular = True) for mean, cov in zip(self.means, self.covs)]
+        else:
+            self.components = []
         if log_w is None:
             self.w      = w
             self.log_w  = np.log(w)
