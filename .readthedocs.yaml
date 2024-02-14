@@ -8,7 +8,7 @@ build:
 
 python:
   install:
-    package: "myst_parser"
+    - package: "myst_parser"
 
 # Build from the docs/ directory with Sphinx
 sphinx:
