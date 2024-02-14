@@ -6,6 +6,10 @@ build:
   tools:
     python: "3.11"
 
+python:
+  install:
+    - requirements: "myst_parser"
+
 # Build from the docs/ directory with Sphinx
 sphinx:
   configuration: docs/source/conf.py
