@@ -205,6 +205,19 @@ def get_priors(bounds, samples = None, mean = None, std = None, df = None, k = N
 
         return (k_out, L_out, df_out, mu_out)
 
+def gradient_median(x, draws):
+    """
+    Computes the gradient of the median distribution (slow but numerically stable)
+    
+    Arguments:
+        np.ndarray x:   points to evaluate the median at
+        iterable draws: container for mixture instances
+    
+    Returns:
+        np.ndarray: gradient
+    """
+    return np.median([d.gradient(x) for d in draws], axis = 0)
+
 def rvs_median(draws, size = 1):
     """
     Generates samples from median distribution of a set of draws.
