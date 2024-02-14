@@ -13,8 +13,10 @@ FIGARO - Fast Inference for GW Astronomy, Research & Observations
    :maxdepth: 1
    :caption: Contents:
 
-   README.md
+   installation.md
    quickstart.md
+   use_mixture.md
+   acknowledgments.md
    api
    figaro
 
