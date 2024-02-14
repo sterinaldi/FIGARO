@@ -51,7 +51,11 @@ my_folder
 
 `event_1.pdf` and `log_event_1.pdf` (this is produced only if the samples are one-dimensional) show the reconstructed probability density, whereas `draws_event_1.json` contains the individual draws that has been produced by FIGARO (see below for how to use them). `prob_event_1.txt` contains the probability values used to produce `event_1.pdf`.
 `options.ini` contains a summary of all the options (provided and default) for the run. It can be used both as a log file and to reproduce the run with the same settings via
-```figaro-density --config options.ini```
+
+```
+figaro-density --config options.ini
+```
+
 An example of options file with some suggestions on how to customise it can be found [here](https://github.com/sterinaldi/FIGARO/blob/main/options_example.ini).
 
 If instead of a single file we point `figaro-density` to a folder with multiple files, e.g. with
@@ -87,6 +91,8 @@ my_folder
 ```
 Keep in mind that this is **not** a hierarchical analysis.
 
+### Options
+
 Several options are available to further customise the behaviour of `figaro-density`. Below you find a complete list of all the available options.
 
 * `-i FILE, --input=FILE`: file or folder with the samples to analyse. **REQUIRED!**;
@@ -102,13 +108,13 @@ Several options are available to further customise the behaviour of `figaro-dens
 * `--unit=UNIT`: LaTeX-style quantity unit, for plotting purposes. Same prescriptions as above applies. If not provided, no units will be plotted. Leave blank these parameters that does not have units: `--units \\mathrm{cm},,\\mathrm{s}`;
 * `--draws=N_DRAWS`: number of draws, default 100. The more, the better (you don't say?);
 * `--n_samples_dsp=N_SAMPLES`: number of samples to use for the analysis. Default is to use all the samples, but you can specify a smaller subset. Samples are randomly drawn;
-* `--exclude_points`: FIGARO, by default, performs a completely user-transparent coordinate change from the rectangle defined by the bounds to $\mathbb{R}^N$ (see Section 3.1 of [Rinaldi & Del Pozzo (2022)](https://ui.adsabs.harvard.edu/abs/2022MNRAS.509.5454R/abstract) for the definition). Since the transformation is not defined on or outside the boundaries, all the samples must lie within these, and this option prunes all the samples that are outside the specified bounds;
+* `--exclude_points`: FIGARO, by default, performs a completely user-transparent coordinate change from the rectangle defined by the bounds to :math:`\mathbb{R}^N` (see Section 3.1 of [Rinaldi & Del Pozzo (2022)](https://ui.adsabs.harvard.edu/abs/2022MNRAS.509.5454R/abstract) for the definition). Since the transformation is not defined on or outside the boundaries, all the samples must lie within these, and this option prunes all the samples that are outside the specified bounds;
 * `--cosmology=h,om,ol`: cosmological parameters to map luminosity distance samples into redshift samples (again, if you don't know what we're talking about, you probably won't need this option);
 * `--sigma_prior=SIGMA_PRIOR`: expected width of the features to be found in the reconstructed distribution. By default, this is estimated using the available samples using the `fraction` option instead of this one. It can either be a single value (valid for all the dimensions) or a N-uple of values, one per dimension;
 * `--fraction=FRACTION`: Estimates the expected width of the features as `std(samples)/fraction`. Default is 5. This option is overrided by `sigma_prior`, if both are provided;
 * `--snr_threshold=TH`: signal-to-noise threshold to filter simulated GW catalogs (most likely not needed);
 * `--far_threshold=TH`: false alarm rate threshold to filter simulated GW catalogs (as above, most likely not needed);
-* `--no_probit`: in some cases, the underlying distribution is defined over the whole real line (or $\mathbb{R}^N$), therefore the coordinate change might not be needed. This option disables it, and in this case no exception will be thrown if some samples are outside the bounds;
+* `--no_probit`: in some cases, the underlying distribution is defined over the whole real line (or :math:`\mathbb{R}^N`), therefore the coordinate change might not be needed. This option disables it, and in this case no exception will be thrown if some samples are outside the bounds;
 * `--config=CONFIG_FILE`: all the above options can be stored in a single `.ini` file under the `[DEFAULT]` section and passed to `figaro-density` with this option. The config file (see [here](https://github.com/sterinaldi/FIGARO/blob/main/options_example.ini) for an example) does not need to include all the options – default values will be used for all unprovided options – and command-line options take precedence over the ones provided via config file.
 
 A more fine-tuned analysis for the example above could be:
@@ -117,7 +123,7 @@ A more fine-tuned analysis for the example above could be:
 figaro-density -i events -b "[[Xmin, Xmax],[Ymin, Ymax],[Zmin, Zmax]]" --symbol \\mathrm{X},\\mathrm{Y},\\mathrm{Z} --unit \\mathrm{cm},,\\mathrm{s} --exclude_points --draws 1000 --fraction 10 --n_samples_dsp 3000
 ```
 
-## `figaro-hierarchical
+## `figaro-hierarchical`
 
 Let us consider now the situation in which we have a set of posterior distributions, described by different sets of posterior samples, and we want to infer the distribution from which the observations are drawn. The `figaro-hierarchical` CLI performs the hierarchical inference, first reconstructing the individual posterior distributions and then combining them together. Let's assume, once again, to have a folder structure as this:
 ```
@@ -174,5 +180,19 @@ some_cool_data
 │   └─ prob_some_cool_data.txt (only if the distribution is 1D)
 └── options.ini
 ```
+
+`some_cool_data.pdf` shows the inferred hierarchical distribution, and the relative draws are stored in `draws/draws_some_cool_data.json` (by default, the inference is named after the parent directory).
+
+### Options
+
+`figaro-hierarchical` has all the options and functionalities of `figaro-density`, plus some dedicated options. Below you find all the options that are not already mentioned in the previous list;
+* `--name=NAME`: name for the hierarchical output files. By default, they are named after the parent folder.
+* `-s, --save_se`: by default, plots for individual posterior distributions are not produced (to save both memory and computational resources). This option allow you to produce them;
+* `--hier_samples=HIER_SAMPLES`: if you're running FIGARO on a set of simulated data and you know the true value for the parameters of each individual observation, you can collect them into a single file and pass it to FIGARO. These values will be plot along the inferred distribution;
+* `--se_draws=N_SE_DRAWS`: in principle there is no reason why you might want to have the same number of draws both for the individual events and for the hierarchical distribution. The `--draws` option controls the number of realisation of the hierarchical distribution, whereas the `--se_draws` option fixes the number of realisations for each single event distribution. If not provided. `--se_draws = --draws`;
+* `-e, --events`: if you already have the single-event reconstructions, you can skip that part of the analysis with this option;
+* `--se_sigma_prior=SE_SIGMA_PRIOR`: as above, controls the expected width of the features for the individual events. If not provided, this is estimated using the samples (each event its own set);
+* `--mc_draws=MC_DRAWS`: `figaro-hierarchical` evaluates a Monte Carlo integral. This option controls the number of samples used for the integral. You have no idea of what we're talking about? Most likely you won't need this!  
+
 
 ## Parallelised inference
