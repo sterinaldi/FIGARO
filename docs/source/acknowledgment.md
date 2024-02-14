@@ -1,8 +1,8 @@
-# Acknowledgements
+# Acknowledgments
 FIGARO is licensed under the [MIT License](https://github.com/sterinaldi/FIGARO/blob/main/LICENSE).
 
 If you use FIGARO in your research, please cite [Rinaldi & Del Pozzo (2022b)](https://ui.adsabs.harvard.edu/abs/2022MNRAS.517L...5R/abstract):
-```
+```text
 @ARTICLE{2022MNRAS.517L...5R,
        author = {{Rinaldi}, Stefano and {Del Pozzo}, Walter},
         title = "{Rapid localization of gravitational wave hosts with FIGARO}",
@@ -24,7 +24,7 @@ archivePrefix = {arXiv},
 
 If you make use of the hierarchical analysis, you should mention (H)DPGMM as the model used and cite the paper where it is introduced, [Rinaldi & Del Pozzo (2022a)](https://ui.adsabs.harvard.edu/abs/2022MNRAS.509.5454R/abstract):
 
-```
+```text
 @ARTICLE{2022MNRAS.509.5454R,
        author = {{Rinaldi}, Stefano and {Del Pozzo}, Walter},
         title = "{(H)DPGMM: a hierarchy of Dirichlet process Gaussian mixture models for the inference of the black hole mass function}",
