@@ -16,6 +16,7 @@ from figaro import plot_settings
 from figaro.marginal import marginalise
 from figaro.credible_regions import ConfidenceArea
 from figaro.utils import recursive_grid
+from figaro.mixture import mixture
 
 # Telling python to ignore empty legend warning from matplotlib
 warnings.filterwarnings("ignore", message = "No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.")
@@ -397,7 +398,13 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
         # Marginalise over all uninterested columns
         dims = list(np.arange(dim))
         dims.remove(column)
-        marg_draws = marginalise(draws, dims)
+        try:
+            if np.all([isinstance(d, mixture) for d in draws]):
+                marg_draws = marginalise(draws, dims)
+            else:
+                marg_draws = np.array([d.marginalise(dims) for d in draws])
+        except AttributeError:
+            raise AttributeError("The provided instances do not have a marginalise() method")
         # Credible regions
         lim = bounds[column]
         if samples is not None and not ext_bounds:
@@ -453,7 +460,13 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
             dims = list(np.arange(dim))
             dims.remove(column)
             dims.remove(row)
-            marg_draws = marginalise(draws, dims)
+            try:
+                if np.all([isinstance(d, mixture) for d in draws]):
+                    marg_draws = marginalise(draws, dims)
+                else:
+                    marg_draws = np.array([d.marginalise(dims) for d in draws])
+            except AttributeError:
+                raise AttributeError("The provided instances do not have a marginalise() method")
             
             # Credible regions
             lim = bounds[[row, column]]
