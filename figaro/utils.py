@@ -89,16 +89,21 @@ def get_priors(bounds, samples = None, mean = None, std = None, df = None, k = N
     """
     This method takes the prior parameters for the Normal-Inverse-Wishart distribution in the natural space and returns them as parameters in the probit space, ordered as required by FIGARO. In the following, D will denote the dimensionality of the inferred distribution.
 
-    Four parameters are returned:
-        * df, is the number of degrees of freedom for the Inverse Wishart distribution,. It must be greater than D+1. If this parameter is None or does not satisfy the condition df > D+1, the default value D+2 is used;
-        * k is the scale parameter for the multivariate Normal distribution. Suggested values are  k <~ 1e-1. If None, the default value 1e-2 is used.
-        * mu is the mean of the multivariate Normal distribution. It can be either estimated from the available samples or passed directly as a 1D array with length D (the keyword argument mean overrides the samples). If None, the default value 0 (corresponding to the parameter space center) is used.
-        * L is the expected value for the Inverse Wishart distribution. This parameter can be either:
-            * passed as 1D array with shape (D,) or double: vector of standard deviations (if double, it assumes that the same std has to be used for all dimensions) - keyword std;
-            * estimated from samples - keyword samples.
-       
-    The order in which they are returned is (k,L,df,mu).
-    
+    Either four or two parameters are returned:
+        * If hierarchical is False, (k, L, df, mu) are returned:
+            - df, is the number of degrees of freedom for the Inverse Wishart distribution,. It must be greater than D+1. If this parameter is None or does not satisfy the condition df > D+1, the default value D+2 is used;
+            - k is the scale parameter for the multivariate Normal distribution. Suggested values are  k <~ 1e-1. If None, the default value 1e-2 is used.
+            - mu is the mean of the multivariate Normal distribution. It can be either estimated from the available samples or passed directly as a 1D array with length D (the keyword argument mean overrides the samples). If None, the default value 0 (corresponding to the parameter space center) is used.
+            - L is the expected value for the Inverse Wishart distribution. This parameter can be either:
+                - passed as 1D array with shape (D,) or double: vector of standard deviations (if double, it assumes that the same std has to be used for all dimensions) - keyword std;
+                - estimated from samples - keyword samples.
+        * If hierarchical is True, (L, a) are returned:
+            - L is the expected value for the Inverse Gamma distribution. It can be either:
+                - passed as 1D array with shape (D,) or double: vector of standard deviations (if double, it assumes that the same std has to be used for all dimensions) - keyword std;
+                - estimated from samples - keyword samples;
+                - estimated from bounds using the keyword fraction.
+            - a is the shape parameter of the gamma distribution. It can be either passed with the dedicated keyword or fixed to the default parameter, 2.
+
     Arguments:
         np.ndarray bounds:              boundaries for probit transformation
         np.ndarray samples:             2D [DPGMM] or 3D [(H)DPGMM] array with samples
