@@ -465,7 +465,7 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
                     marg_draws = marginalise(draws, dims)
                 else:
                     marg_draws = np.array([d.marginalise(dims) for d in draws])
-            except AttributeError:
+            except:
                 raise AttributeError("The provided instances do not have a marginalise() method")
             
             # Credible regions

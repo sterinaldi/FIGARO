@@ -43,6 +43,8 @@ def _marginalise(mix, axis = -1):
     # Circular import
     from figaro.mixture import mixture
     ax     = np.atleast_1d(axis)
+    if len(axis) == 0:
+        return mix
     dim    = mix.dim - len(ax)
     if dim < 1:
         raise FIGAROException("Cannot marginalise out all dimensions")
@@ -63,7 +65,7 @@ def marginalise(draws, axis = -1):
     Returns:
         figaro.mixture.mixture: the marginalised mixture(s)
     """
-    if axis == []:
+    if len(axis) == 0:
         return draws
     if np.iterable(draws):
         return np.array([_marginalise(d, axis) for d in draws])
