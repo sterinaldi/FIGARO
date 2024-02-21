@@ -988,12 +988,13 @@ class DPGMM(density):
             self.log_w = np.log(self.w)
         return
     
-    def density_from_samples(self, samples):
+    def density_from_samples(self, samples, make_comp = True):
         """
         Reconstruct the probability density from a set of samples.
         
         Arguments:
             iterable samples: samples set
+            bool make_comp:   whether to instantiate the scipy.stats.multivariate_normal components or not
         
         Returns:
             mixture: the inferred mixture
@@ -1006,7 +1007,7 @@ class DPGMM(density):
         # Random Gibbs walk (if required)
         for id in np.random.choice(self.n_pts, size = self.n_reassignments, replace = True):
             self._reassign_point(id)
-        d = self.build_mixture()
+        d = self.build_mixture(make_comp)
         self.initialise()
         return d
     
@@ -1035,9 +1036,12 @@ class DPGMM(density):
         self._assign_to_cluster(x, id)
         self.alpha = _update_alpha(self.alpha, self.n_pts, (np.array(self.N_list) > 0).sum(), self.alpha_0)
 
-    def build_mixture(self):
+    def build_mixture(self, make_comp = True):
         """
         Instances a mixture class representing the inferred distribution
+        
+        Arguments:
+            bool make_comp:   whether to instantiate the scipy.stats.multivariate_normal components or not
         
         Returns:
             mixture: the inferred distribution
@@ -1056,7 +1060,7 @@ class DPGMM(density):
                 means[i]     = mn(mean = mu_n[0], cov = rescale_matrix(variances[i], k_n), allow_singular = True).rvs()
                 i += 1
         w = dirichlet(self.w[self.w > 0]*self.n_pts+self.alpha/self.n_cl).rvs()[0]
-        return mixture(means, variances, w, self.bounds, self.dim, n_cl, self.n_pts, self.alpha, probit = self.probit)
+        return mixture(means, variances, w, self.bounds, self.dim, n_cl, self.n_pts, self.alpha, probit = self.probit, make_comp = make_comp)
 
     # Methods to overwrite density methods
     def _rvs_probit(self, size = 1):
@@ -1342,9 +1346,12 @@ class HDPGMM(DPGMM):
         ss.N -= 1
         return ss
 
-    def build_mixture(self):
+    def build_mixture(self, make_comp = True):
         """
         Instances a mixture class representing the inferred distribution
+        
+        Arguments:
+            bool make_comp:   whether to instantiate the scipy.stats.multivariate_normal components or not
         
         Returns:
             mixture: the inferred distribution
@@ -1352,7 +1359,7 @@ class HDPGMM(DPGMM):
         if self.n_cl == 0:
             raise FIGAROException("You are trying to build an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, the inferred mixture is returned by that method as an instance of mixture class.")
         idx = np.where(np.array(self.N_list) > 0)[0]
-        return mixture(np.array([comp.mu for comp in np.array(self.mixture)[idx]]), np.array([comp.sigma for comp in np.array(self.mixture)[idx]]), np.array(self.w)[idx], self.bounds, self.dim, (np.array(self.N_list) > 0).sum(), self.n_pts, self.alpha, probit = self.probit)
+        return mixture(np.array([comp.mu for comp in np.array(self.mixture)[idx]]), np.array([comp.sigma for comp in np.array(self.mixture)[idx]]), np.array(self.w)[idx], self.bounds, self.dim, (np.array(self.N_list) > 0).sum(), self.n_pts, self.alpha, probit = self.probit, make_comp = make_comp)
 
     def density_from_samples(self, events):
         """
