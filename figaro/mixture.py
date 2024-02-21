@@ -759,7 +759,7 @@ class mixture(density):
         if self.components is not None:
             return logsumexp(np.array([w+comp.logpdf(x) for w, comp in zip(self.log_w, self.components)]), axis = 0)
         else:
-            super()._logpdf_probit(x)
+            return super()._logpdf_probit(x)
 
     def _pdf_probit(self, x):
         """
@@ -774,7 +774,7 @@ class mixture(density):
         if self.components is not None:
             return np.sum(np.array([w*comp.pdf(x) for w, comp in zip(self.w, self.components)]), axis = 0)
         else:
-            super()._pdf_probit(x)
+            return super()._pdf_probit(x)
 
     def _pdf_array_probit(self, x):
         """
@@ -789,7 +789,7 @@ class mixture(density):
         if self.components is not None:
             return np.array([w*comp.pdf(x) for w, comp in zip(self.w, self.components)])
         else:
-            super()._pdf_array_probit(x)
+            return super()._pdf_array_probit(x)
 
 #-------------------#
 # Inference classes #
