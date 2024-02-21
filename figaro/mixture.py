@@ -702,7 +702,7 @@ class mixture(density):
         if make_comp:
             self.components = [mn(mean, cov, allow_singular = True) for mean, cov in zip(self.means, self.covs)]
         else:
-            self.components = []
+            self.components = None
         if log_w is None:
             self.w      = w
             self.log_w  = np.log(w)
@@ -756,7 +756,10 @@ class mixture(density):
         Returns:
             np.ndarray: mixture.logpdf(x)
         """
-        return logsumexp(np.array([w+comp.logpdf(x) for w, comp in zip(self.log_w, self.components)]), axis = 0)
+        if self.components is not None:
+            return logsumexp(np.array([w+comp.logpdf(x) for w, comp in zip(self.log_w, self.components)]), axis = 0)
+        else:
+            super()._logpdf_probit(x)
 
     def _pdf_probit(self, x):
         """
@@ -768,7 +771,10 @@ class mixture(density):
         Returns:
             np.ndarray: mixture.pdf(x)
         """
-        return np.sum(np.array([w*comp.pdf(x) for w, comp in zip(self.w, self.components)]), axis = 0)
+        if self.components is not None:
+            return np.sum(np.array([w*comp.pdf(x) for w, comp in zip(self.w, self.components)]), axis = 0)
+        else:
+            super()._pdf_probit(x)
 
     def _pdf_array_probit(self, x):
         """
@@ -780,7 +786,10 @@ class mixture(density):
         Returns:
             np.ndarray: component.pdf(x) for each mixture component
         """
-        return np.array([w*comp.pdf(x) for w, comp in zip(self.w, self.components)])
+        if self.components is not None:
+            return np.array([w*comp.pdf(x) for w, comp in zip(self.w, self.components)])
+        else:
+            super()._pdf_array_probit(x)
 
 #-------------------#
 # Inference classes #
