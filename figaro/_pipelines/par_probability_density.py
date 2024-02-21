@@ -29,7 +29,7 @@ class worker:
         self.samples.setflags(write = True)
 
     def draw_sample(self):
-        return self.mixture.density_from_samples(self.samples)
+        return self.mixture.density_from_samples(self.samples, make_comp = False)
 
 def main():
 

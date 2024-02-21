@@ -67,7 +67,7 @@ class worker:
         # Actual inference
         prior_pars = get_priors(self.bounds, samples = ev, probit = self.probit, std = self.se_sigma, scale = self.scale, hierarchical = False)
         self.mixture.initialise(prior_pars = prior_pars)
-        draws      = [self.mixture.density_from_samples(ev) for _ in range(n_draws)]
+        draws      = [self.mixture.density_from_samples(ev, make_comp = False) for _ in range(n_draws)]
         # Plots
         plt_bounds = np.atleast_2d([ev.min(axis = 0), ev.max(axis = 0)]).T
         if self.save_se:
@@ -96,7 +96,7 @@ class worker:
         return draws
 
     def draw_hierarchical(self):
-        return self.hierarchical_mixture.density_from_samples(self.posteriors)
+        return self.hierarchical_mixture.density_from_samples(self.posteriors, make_comp = False)
     
     def load_posteriors(self, posteriors):
         self.posteriors = np.copy(posteriors)

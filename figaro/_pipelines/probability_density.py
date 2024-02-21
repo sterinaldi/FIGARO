@@ -127,7 +127,7 @@ def main():
             prior_pars = get_priors(options.bounds, samples = samples, std = options.sigma_prior, scale = options.fraction, probit = options.probit, hierarchical = False)
             mix        = DPGMM(options.bounds, prior_pars = prior_pars, probit = options.probit)
             desc       = name + ' ({0}/{1})'.format(i+1, len(files))
-            draws      = np.array([mix.density_from_samples(samples) for _ in tqdm(range(options.draws), desc = desc)])
+            draws      = np.array([mix.density_from_samples(samples, make_comp = False) for _ in tqdm(range(options.draws), desc = desc)])
             # Save reconstruction
             save_density(draws, folder = output_draws, name = 'draws_'+name, ext = options.ext)
         else:

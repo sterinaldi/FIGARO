@@ -162,7 +162,7 @@ def main():
                 prior_pars = get_priors(mix.bounds, samples = ev, probit = options.probit, std = options.se_sigma_prior, scale = options.fraction, hierarchical = False)
                 mix.initialise(prior_pars = prior_pars)
                 # Draw samples
-                draws = [mix.density_from_samples(ev) for _ in range(options.se_draws)]
+                draws = [mix.density_from_samples(ev, make_comp = False) for _ in range(options.se_draws)]
                 posteriors.append(draws)
                 # Make plots
                 if options.save_single_event:
@@ -184,7 +184,7 @@ def main():
         # Run hierarchical analysis
         prior_pars = get_priors(options.bounds, samples = events, std = options.sigma_prior, scale = options.fraction, probit = options.probit, hierarchical = True)
         mix        = HDPGMM(options.bounds, prior_pars = prior_pars, MC_draws = options.mc_draws, probit = options.probit)
-        draws      = np.array([mix.density_from_samples(posteriors) for _ in tqdm(range(options.draws), desc = 'Hierarchical')])
+        draws      = np.array([mix.density_from_samples(posteriors, make_comp = False) for _ in tqdm(range(options.draws), desc = 'Hierarchical')])
         # Save draws
         save_density(draws, folder = output_draws, name = 'draws_'+options.hier_name, ext = options.ext)
     else:
