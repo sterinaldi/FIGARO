@@ -1361,12 +1361,13 @@ class HDPGMM(DPGMM):
         idx = np.where(np.array(self.N_list) > 0)[0]
         return mixture(np.array([comp.mu for comp in np.array(self.mixture)[idx]]), np.array([comp.sigma for comp in np.array(self.mixture)[idx]]), np.array(self.w)[idx], self.bounds, self.dim, (np.array(self.N_list) > 0).sum(), self.n_pts, self.alpha, probit = self.probit, make_comp = make_comp)
 
-    def density_from_samples(self, events):
+    def density_from_samples(self, events, make_comp = True):
         """
         Reconstruct the probability density from a set of samples.
         
         Arguments:
             iterable samples: set of single-event draws from DPGMM
+            bool make_comp:   whether to instantiate the scipy.stats.multivariate_normal components or not
         
         Returns:
             mixture: the inferred mixture
@@ -1377,7 +1378,7 @@ class HDPGMM(DPGMM):
         # Random Gibbs walk (if required)
         for id in np.random.choice(self.n_pts, size = self.n_reassignments, replace = True):
             self._reassign_point(id)
-        d = self.build_mixture()
+        d = self.build_mixture(make_comp = make_comp)
         self.initialise()
         return d
 
