@@ -207,7 +207,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
     if true_value is not None:
         if true_value_label is not None:
             true_value_label = '$'+true_value_label+'$'
-        ax.axvline(true_value, ls = '--', color = 'r', lw = 0.5, label = true_value_label)
+        ax.axvline(true_value, ls = '--', color = 'r', dashes = (5,5), lw = 0.5, label = true_value_label)
     ax.plot(x, p[50], lw = 0.7, color = 'steelblue', label = '${0}$'.format(median_label))
     if label is None:
         label = 'x'
@@ -600,7 +600,7 @@ def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', na
     if true_value is not None:
         if true_value_label is not None:
             true_value_label = '$'+true_value_label+'$'
-        ax.axvline(true_value, ls = '--', color = 'r', lw = 0.5, label = true_value_label)
+        ax.axvline(true_value, ls = '--', color = 'r', lw = 0.5, dashes = (5,5), label = true_value_label)
     if median_label is not None:
         median_label = '$'+median_label+'$'
     ax.plot(x, p[50], lw = 0.7, color = 'steelblue', label = median_label)
