@@ -1,7 +1,6 @@
 import numpy as np
 
 import optparse
-import dill
 import importlib
 import warnings
 
@@ -22,7 +21,7 @@ class worker:
     def __init__(self, bounds,
                        out_folder_plots,
                        out_folder_draws,
-                       ext         = 'pkl',
+                       ext         = 'json',
                        se_sigma    = None,
                        hier_sigma  = None,
                        scale       = None,
@@ -54,7 +53,6 @@ class worker:
         self.save_se          = save_se
         self.label            = label
         self.unit             = unit
-        self.posteriors       = None
         self.probit           = probit
         self.ext              = ext
 
