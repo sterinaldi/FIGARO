@@ -23,7 +23,7 @@ def main():
     parser.add_option("--ext", dest = "ext", type = "choice", choices = ['pkl', 'json'], help = "Format of mixture output file", default = 'json')
     parser.add_option("--inj_density", type = "string", dest = "inj_density_file", help = "Python module with injected density - please name the method 'density'", default = None)
     parser.add_option("--selfunc", type = "string", dest = "selfunc_file", help = "Python module with selection function - please name the method 'selection_function'", default = None)
-    parser.add_option("--parameter", type = "choice", dest = "par", help = "GW parameter(s) to be read from file", choices = supported_pars, default = None)
+    parser.add_option("--parameter", type = "string", dest = "par", help = "GW parameter(s) to be read from file", default = None)
     parser.add_option("--waveform", type = "choice", dest = "wf", help = "Waveform to load from samples file. To be used in combination with --parameter.", choices = ['combined', 'seob', 'imr'], default = 'combined')
     # Plot
     parser.add_option("--name", type = "string", dest = "hier_name", help = "Name to be given to hierarchical inference files. Default: same name as samples folder parent directory", default = None)
@@ -90,6 +90,8 @@ def main():
     # Read parameter(s)
     if options.par is not None:
         options.par = options.par.split(',')
+        if not ([par in supported_pars for par in options.par]).all():
+            raise Exception("Please provide parameters from this list: "+', '.join(supported_pars[:-2]))
     # Read number of single-event draws
     if options.se_draws is None:
         options.se_draws = options.draws
