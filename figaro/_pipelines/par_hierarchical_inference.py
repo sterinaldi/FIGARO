@@ -181,7 +181,7 @@ def main():
     # Read parameter(s)
     if options.par is not None:
         options.par = options.par.split(',')
-        if not ([par in supported_pars for par in options.par]).all():
+        if not np.all([par in supported_pars for par in options.par]):
             raise Exception("Please provide parameters from this list: "+', '.join(supported_pars[:-2]))
     # Read number of single-event draws
     if options.se_draws is None:
