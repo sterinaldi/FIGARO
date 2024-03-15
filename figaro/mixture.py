@@ -42,8 +42,7 @@ def _student_t(df, t, mu, sigma, dim):
     """
     vals, vecs = eigh_jit(sigma)
     logdet     = np.log(vals).sum()
-    valsinv    = np.array([1./v for v in vals])
-    U          = vecs * np.sqrt(valsinv)
+    U          = vecs * np.sqrt(1./vals)
     dev        = t - mu
     maha       = np.sum(dot_jit(dev, U)**2, axis=-1)
 
@@ -1056,7 +1055,11 @@ class DPGMM(density):
         for ss in self.mixture:
             if ss.N > 0:
                 k_n, mu_n, nu_n, L_n = _compute_hyperpars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.S, ss.N)
-                variances[i] = invwishart(df = nu_n, scale = L_n).rvs()
+                try:
+                    variances[i] = invwishart(df = nu_n, scale = L_n).rvs()
+                except:
+                    print(k_n, mu_n, nu_n, L_n)
+                    exit()
                 means[i]     = mn(mean = mu_n[0], cov = rescale_matrix(variances[i], k_n), allow_singular = True).rvs()
                 i += 1
         w = dirichlet(self.w[self.w > 0]*self.n_pts+self.alpha/self.n_cl).rvs()[0]
