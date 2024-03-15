@@ -165,6 +165,9 @@ def _compute_component_suffstats_add(x, mean, S, N, p_mu, p_k, p_nu, p_L):
     new_mu    = ((p_mu*p_k + new_N*new_mean)/(p_k + new_N))[0]
     new_sigma = rescale_matrix(p_L + new_S + rescale_matrix(outer_jit((new_mean - p_mu).T, (new_mean - p_mu)), (p_k + new_N)/(p_k*new_N)), (p_nu + new_N - x.shape[-1] - 1))
     
+    if np.isnan(new_S).any():
+        print(S, mean, x, new_mean, new_S)
+    
     return new_mean, new_S, new_N, new_mu, new_sigma
 
 @njit
