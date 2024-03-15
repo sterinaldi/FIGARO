@@ -47,8 +47,10 @@ def diag_jit(m):
 
 @njit
 def rescale_matrix(S, n):
-    std = np.sqrt(diag_jit(S))
-    rho = divide_jit(S, outer_jit(std,std))
+    std      = np.sqrt(diag_jit(S))
+    std_filt = std
+    std_filt[std == 0.] = 1. # avoids NaNs due to (0/0)*0
+    rho = divide_jit(S, outer_jit(std_filt,std_filt))
     return rho * outer_jit(std/np.sqrt(n), std/np.sqrt(n))
 
 @njit
