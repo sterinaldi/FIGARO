@@ -1058,7 +1058,7 @@ class DPGMM(density):
                 try:
                     variances[i] = invwishart(df = nu_n, scale = L_n).rvs()
                 except:
-                    print(k_n, mu_n, nu_n, L_n)
+                    print(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.S, ss.N)
                     exit()
                 means[i]     = mn(mean = mu_n[0], cov = rescale_matrix(variances[i], k_n), allow_singular = True).rvs()
                 i += 1
