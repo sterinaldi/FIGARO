@@ -165,11 +165,6 @@ def _compute_component_suffstats_add(x, mean, S, N, p_mu, p_k, p_nu, p_L):
     new_mu    = ((p_mu*p_k + new_N*new_mean)/(p_k + new_N))[0]
     new_sigma = rescale_matrix(p_L + new_S + rescale_matrix(outer_jit((new_mean - p_mu).T, (new_mean - p_mu)), (p_k + new_N)/(p_k*new_N)), (p_nu + new_N - x.shape[-1] - 1))
     
-    if np.isnan(new_S).any():
-#        print(S, mean, x, new_mean, new_S, N)
-#        print(N, outer_jit(mean,mean), outer_jit(x,x), outer_jit(new_mean, new_mean))
-        print('mean: ', rescale_matrix(outer_jit(mean,mean), 1./N), 'N: ', N, 'outer: ', outer_jit(mean,mean), 'new_mean: ', rescale_matrix(outer_jit(new_mean, new_mean), 1./(N+1)))
-    
     return new_mean, new_S, new_N, new_mu, new_sigma
 
 @njit
@@ -1060,11 +1055,7 @@ class DPGMM(density):
         for ss in self.mixture:
             if ss.N > 0:
                 k_n, mu_n, nu_n, L_n = _compute_hyperpars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.S, ss.N)
-                try:
-                    variances[i] = invwishart(df = nu_n, scale = L_n).rvs()
-                except:
-                    print(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, ss.mean, ss.S, ss.N)
-                    exit()
+                variances[i] = invwishart(df = nu_n, scale = L_n).rvs()
                 means[i]     = mn(mean = mu_n[0], cov = rescale_matrix(variances[i], k_n), allow_singular = True).rvs()
                 i += 1
         w = dirichlet(self.w[self.w > 0]*self.n_pts+self.alpha/self.n_cl).rvs()[0]
