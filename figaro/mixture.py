@@ -168,7 +168,7 @@ def _compute_component_suffstats_add(x, mean, S, N, p_mu, p_k, p_nu, p_L):
     if np.isnan(new_S).any():
 #        print(S, mean, x, new_mean, new_S, N)
 #        print(N, outer_jit(mean,mean), outer_jit(x,x), outer_jit(new_mean, new_mean))
-        print('mean: ', rescale_matrix(outer_jit(mean,mean), 1./N), 'new_mean: ', rescale_matrix(outer_jit(new_mean, new_mean), 1./(N+1)))
+        print('mean: ', rescale_matrix(outer_jit(mean,mean), 1./N), 'N: ', N, 'outer: ', outer_jit(mean,mean), 'new_mean: ', rescale_matrix(outer_jit(new_mean, new_mean), 1./(N+1)))
     
     return new_mean, new_S, new_N, new_mu, new_sigma
 
