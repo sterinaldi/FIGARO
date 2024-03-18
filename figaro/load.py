@@ -500,8 +500,6 @@ def load_density(path, make_comp = True):
     Returns:
         list: figaro.mixture object instances
     """
-    if not make_comp:
-        warnings.warn("Setting the make_comp keyword argument to False prevents FIGARO from loading the scipy.stats.multivariate_normal objects (mainly for memory usage reasons while performing a hierarchical inference). Be aware that this makes the vast majority of the methods unusable.")
     path = Path(path)
     if path.is_file():
         return _load_density_file(path, make_comp)
