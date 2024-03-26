@@ -262,7 +262,7 @@ class _component_h:
     Returns:
         component_h: instance of component_h class
     """
-    def __init__(self, x, dim, prior, logL_D, mu_MC, sigma_MC):
+    def __init__(self, x, dim, prior, logL_D, mu_MC, sigma_MC, log_alpha_factor):
         self.dim    = dim
         self.N      = 1
         self.logL_D = logL_D
@@ -275,6 +275,7 @@ class _component_h:
         if dim == 1:
             self.mu = np.atleast_2d(self.mu).T
             self.sigma = np.atleast_2d(self.sigma).T
+        self.N_true = self.N/np.exp(log_alpha_factor[idx])
             
 class density:
     """
@@ -1138,22 +1139,24 @@ class HDPGMM(DPGMM):
     Child of DPGMM class
     
     Arguments:
-        iterable bounds:     boundaries of the rectangle over which the distribution is defined. It should be in the format [[xmin, xmax],[ymin, ymax],...]
-        iterable prior_pars: IW parameters
-        double alpha0:       initial guess for concentration parameter
-        double MC_draws:     number of MC draws for integral
-        bool probit:         whether to use the probit transformation or not
-        int n_reassignments: number of reassignments. Default is not to reassign.
+        iterable bounds:             boundaries of the rectangle over which the distribution is defined. It should be in the format [[xmin, xmax],[ymin, ymax],...]
+        iterable prior_pars:         IW parameters
+        double alpha0:               initial guess for concentration parameter
+        double MC_draws:             number of MC draws for integral
+        bool probit:                 whether to use the probit transformation or not
+        int n_reassignments:         number of reassignments. Default is not to reassign.
+        callable selection_function: selection function approximant
     
     Returns:
         HDPGMM: instance of HDPGMM class
     """
     def __init__(self, bounds,
-                       alpha0          = 1.,
-                       prior_pars      = None,
-                       MC_draws        = None,
-                       probit          = True,
-                       n_reassignments = 0.,
+                       alpha0             = 1.,
+                       prior_pars         = None,
+                       MC_draws           = None,
+                       probit             = True,
+                       n_reassignments    = 0.,
+                       selection_function = None
                        ):
         bounds   = np.atleast_2d(bounds)
         self.dim = len(bounds)
@@ -1167,6 +1170,7 @@ class HDPGMM(DPGMM):
             self.MC_draws = int((self.dim+1)*1e3)
         else:
             self.MC_draws = int(MC_draws)
+        self.selfunc = selection_function
         self.evaluated_logL = {}
         # MC samples
         self._draw_MC_samples()
@@ -1194,6 +1198,10 @@ class HDPGMM(DPGMM):
             rhos = invwishart(df = self.dim+2, scale = np.identity(self.dim)).rvs(size = self.MC_draws)
             rhos = np.array([r/outer_jit(np.sqrt(diag_jit(r)), np.sqrt(diag_jit(r))) for r in rhos])
             self.sigma_MC = np.array([r*outer_jit(s,s) for r, s in zip(rhos, np.sqrt(self.sigma_MC))])
+        if self.selfunc is not None:
+            self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(mn(m, s).rvs(1000)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
+        else:
+            self.log_alpha_factor = np.zeros(self.MC_draws)
             
     def add_new_point(self, ev):
         """
@@ -1222,9 +1230,9 @@ class HDPGMM(DPGMM):
         logL_N = np.zeros((self.n_cl+1, self.MC_draws))
         if logL_x is None:
             if self.dim == 1:
-                logL_x = evaluate_mixture_MC_draws_1d(self.mu_MC, self.sigma_MC, x.means, x.covs, x.w)
+                logL_x = evaluate_mixture_MC_draws_1d(self.mu_MC, self.sigma_MC, x.means, x.covs, x.w) - self.log_alpha_factor
             else:
-                logL_x = evaluate_mixture_MC_draws(self.mu_MC, self.sigma_MC, x.means, x.covs, x.w)
+                logL_x = evaluate_mixture_MC_draws(self.mu_MC, self.sigma_MC, x.means, x.covs, x.w) - self.log_alpha_factor
         for i in range(self.n_cl+1):
             if i == 0:
                 ss = None
@@ -1262,7 +1270,7 @@ class HDPGMM(DPGMM):
         except ValueError:
             cid = -1
         if cid == -1:
-            self.mixture.append(_component_h(x, self.dim, self.prior, logL_N[int(cid)+1], self.mu_MC, self.sigma_MC))
+            self.mixture.append(_component_h(x, self.dim, self.prior, logL_N[int(cid)+1], self.mu_MC, self.sigma_MC, self.log_alpha_factor))
             self.N_list.append(1.)
             self.n_cl += 1
             self.assignations[pt_id] = int(self.n_cl)-1
@@ -1319,6 +1327,7 @@ class HDPGMM(DPGMM):
             ss.sigma = np.atleast_2d(ss.sigma).T
         
         ss.N += 1
+        ss.N_true = ss.N/np.exp(self.log_alpha_factor[idx])
         return ss
 
     def _remove_datapoint_from_component(self, ss, logL_D):
@@ -1343,6 +1352,7 @@ class HDPGMM(DPGMM):
             ss.sigma = np.atleast_2d(ss.sigma).T
         
         ss.N -= 1
+        ss.N_true = ss.N/np.exp(self.log_alpha_factor[idx])
         return ss
 
     def build_mixture(self, make_comp = True):
@@ -1358,7 +1368,8 @@ class HDPGMM(DPGMM):
         if self.n_cl == 0:
             raise FIGAROException("You are trying to build an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, the inferred mixture is returned by that method as an instance of mixture class.")
         idx = np.where(np.array(self.N_list) > 0)[0]
-        return mixture(np.array([comp.mu for comp in np.array(self.mixture)[idx]]), np.array([comp.sigma for comp in np.array(self.mixture)[idx]]), np.array(self.w)[idx], self.bounds, self.dim, (np.array(self.N_list) > 0).sum(), self.n_pts, self.alpha, probit = self.probit, make_comp = make_comp)
+        w   = dirichlet(np.array([comp.N_true for comp in np.array(self.mixture)[idx]])+self.alpha/self.n_cl).rvs()[0]
+        return mixture(np.array([comp.mu for comp in np.array(self.mixture)[idx]]), np.array([comp.sigma for comp in np.array(self.mixture)[idx]]), w, self.bounds, self.dim, (np.array(self.N_list) > 0).sum(), self.n_pts, self.alpha, probit = self.probit, make_comp = make_comp)
 
     def density_from_samples(self, events, make_comp = True):
         """
