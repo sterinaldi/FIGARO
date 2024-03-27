@@ -1199,7 +1199,10 @@ class HDPGMM(DPGMM):
             rhos = np.array([r/outer_jit(np.sqrt(diag_jit(r)), np.sqrt(diag_jit(r))) for r in rhos])
             self.sigma_MC = np.array([r*outer_jit(s,s) for r, s in zip(rhos, np.sqrt(self.sigma_MC))])
         if self.selfunc is not None:
-            self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(mn(m, s).rvs(1000)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
+            if self.probit:
+                self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(transform_from_probit(mn(m, s).rvs(self.MC_draws), self.bounds)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
+            else:
+                self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(mn(m, s).rvs(self.MC_draws)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
         else:
             self.log_alpha_factor = np.zeros(self.MC_draws)
             
