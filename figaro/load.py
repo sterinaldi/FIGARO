@@ -638,7 +638,7 @@ def load_selection_function(file, par = None, far_threshold = 1):
             selfunc = samples[:,:-1]
             inj_pdf = samples[:,-1]
         else:
-            selfunc, inj_pdf = _unpack_injections(file, par)
+            selfunc, inj_pdf = _unpack_injections(file, par, far_threshold
     return selfunc, inj_pdf
 
 def _unpack_injections(file, par, far_threshold = 1.):
