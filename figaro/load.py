@@ -3,6 +3,7 @@ import h5py
 import warnings
 import json
 import dill
+import importlib
 from figaro.exceptions import FIGAROException
 from figaro.mixture import mixture
 from figaro.cosmology import CosmologicalParameters
@@ -11,6 +12,10 @@ from tqdm import tqdm
 
 supported_extensions = ['h5', 'hdf5', 'txt', 'dat', 'csv']
 supported_waveforms  = ['combined', 'imr', 'seob']
+injected_pars        = ['m1', 'm2', 'z', 's1x', 's1y', 's1z', 's2x', 's2y', 's2z', 'ra', 'dec']
+loadable_inj_pars    = injected_pars + ['q', 'chi_eff', 'chi_p', 's1', 's2']
+mass_parameters      = ['m1', 'm2', 'm1_detect', 'm2_detect', 'mc', 'mt', 'q']
+spin_parameters      = ['s1x', 's1y', 's1z', 's2x', 's2y', 's2z', 's1', 's2', 'chi_eff', 'chi_p']
 
 GW_par = {'m1'                 : 'mass_1_source',
           'm2'                 : 'mass_2_source',
@@ -47,6 +52,21 @@ GW_par = {'m1'                 : 'mass_1_source',
           'log_prior'          : 'log_prior',
           'log_likelihood'     : 'log_likelihood',
           }
+
+# LVK 03 injections have a slightly different nomenclature (no underscore)
+# See https://zenodo.org/records/7890437
+inj_par = GW_par
+inj_par['m1']                  = 'mass1_source'
+inj_par['m2']                  = 'mass2_source'
+inj_par['m1_detect']           = 'mass1'
+inj_par['m2_detect']           = 'mass2'
+inj_par['spin1x']              = 'spin1x'
+inj_par['spin1y']              = 'spin1y'
+inj_par['spin1z']              = 'spin1z'
+inj_par['spin2x']              = 'spin2x'
+inj_par['spin2y']              = 'spin2y'
+inj_par['spin2z']              = 'spin2z'
+inj_par['luminosity_distance'] = 'distance'
 
 supported_pars = [p for p in GW_par.keys() if not p in ['snr', 'far']]
 
@@ -89,7 +109,7 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674
         par = ['ra', 'dec', 'luminosity_distance']
     if not ext in supported_extensions:
         raise TypeError("File {0}.{1} is not supported".format(name, ext))
-    if ext == 'txt' or ext == 'dat' or ext == 'csv':
+    if not ext in ['h5', 'hdf5']:
         if par is not None:
             warnings.warn("Par names (or volume keyword) are ignored for .txt/.dat/.csv files")
         if n_samples > -1:
@@ -159,10 +179,9 @@ def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.
         names.append(name)
         if not ext in supported_extensions:
             raise TypeError("File {0}.{1} is not supported".format(name, ext))
-        
-        if ext == 'txt' or ext == 'dat' or ext == 'csv':
+        if not ext in ['h5', 'hdf5']:
             if par is not None:
-                warnings.warn("Par names (or volume keyword) are ignored for .txt/.dat files")
+                warnings.warn("Par names (or volume keyword) are ignored for .txt/.dat/.csv files")
             if n_samples > -1:
                 samples = np.atleast_1d(np.loadtxt(event))
                 s = int(min([n_samples, len(samples)]))
@@ -225,7 +244,7 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
         double far_threshold: FAR threshold for event filtering. For injection analysis only.
     
     Returns:
-        np.ndarray:    samples
+        np.ndarray: samples
     '''
     h, om, ol = cosmology
     omega = CosmologicalParameters(h, om, ol, -1, 0, 0)
@@ -249,7 +268,7 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
         flag_filter = False
         try:
             try:
-                # LVK R&P mock data challenge
+                # LVK injections
                 try:
                     data = f['MDC']['posterior_samples']
                 # Playground
@@ -588,3 +607,131 @@ def _load_json(file, make_comp = True):
         return ll[0]
     return ll
 
+def load_selection_function(file, par = None, far_threshold = 1):
+    """
+    Loads the selection function, either from a python module containing a method called 'selection_function' or via injections.
+    If injections, it assumes that the last column of a txt/csv/dat file contains the sampling pdf.
+    
+    Arguments:
+        str or Path file: selection function file
+        list-of-str par:  list with parameter(s) to extract from GW posteriors
+        double threshold: FAR threshold to filter LVK injections
+    
+    Returns:
+        np.ndarray or callable: detected samples or callable with approximant
+        np.ndarray or NoneType: injection pdf (for samples) or None (for approximant)
+    """
+    file = Path(file)
+    ext  = file.parts[-1].split('.')[1]
+    if not ext in supported_extensions + ['py']:
+        raise FIGAROException("Selection function file not supported")
+    if ext == 'py':
+        selfunc_file_name = file.parts[-1].split('.')[0]
+        spec              = importlib.util.spec_from_file_location(selfunc_file_name, options.selfunc_file)
+        selfunc_module    = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(selfunc_module)
+        selfunc           = selfunc_module.selection_function
+        inj_pdf           = None
+    else:
+        if not ext in ['h5','hdf5']:
+            samples = np.loadtxt(file)
+            selfunc = samples[:,:-1]
+            inj_pdf = samples[:,-1]
+        else:
+            selfunc, inj_pdf = _unpack_injections(file, par)
+    return selfunc, inj_pdf
+
+def _unpack_injections(file, par, far_threshold = 1.):
+    """
+    Reads data from .h5/.hdf5 injection file (https://zenodo.org/records/7890437).
+    A sample is considered detected if at least one of the searches calls a detection.
+    
+    Arguments:
+        str event:            file to read
+        str par:              parameter to extract
+        double far_threshold: FAR threshold for injection filtering
+    
+    Returns:
+        np.ndarray: samples
+        np.ndarray: injection pdf
+    """
+    # Check that a list of parameters is passed
+    if par is None:
+        raise TypeError("Please provide a list of parameter names you want to load (e.g. ['m1']).")
+    # Check that all the parametes are loadable
+    if not np.all([p in loadable_inj_pars for p in par]):
+        wrong_pars = [p for p in par if not p in loadable_inj_pars]
+        raise FIGAROException("The following parameters are not implemented: "+", ".join(wrong_pars))
+    with h5py.File(file, 'r') as f:
+        data = f['injections']
+        # Detected injections
+        far_cwb    = np.array(data['far_cwb'])
+        far_gstlal = np.array(data['far_gstlal'])
+        far_mbta   = np.array(data['far_mbta'])
+        try:
+            far_pycbc = np.array(data['far_pycbc_bbh'])
+        except:
+            far_pycbc = np.array(data['far_pycbc_hyperbank'])
+        idx = (far_cwb < far_threshold) | (far_gstlal < far_threshold) | (far_mbta < far_threshold) | (far_pycbc < far_threshold)
+        # Load samples
+        samples = np.zeros((len(par), len(idx)))
+        inj_pdf = np.ones(len(idx))
+        # Parameters
+        m1  = np.array(data[inj_par['m1']])[idx]
+        m2  = np.array(data[inj_par['m2']])[idx]
+        q   = m2/m1
+        s1x = np.array(data[inj_par['s1x']])[idx]
+        s1y = np.array(data[inj_par['s1y']])[idx]
+        s1z = np.array(data[inj_par['s1z']])[idx]
+        s2x = np.array(data[inj_par['s2x']])[idx]
+        s2y = np.array(data[inj_par['s2y']])[idx]
+        s2z = np.array(data[inj_par['s2z']])[idx]
+        for i, lab in enumerate(par):
+            # Already available parameters:
+            if lab in injected_pars:
+                if not lab == 'cos_theta_jn':
+                    samples[i] = np.array(data[inj_par[lab]])[idx]
+                else:
+                    samples[i] = np.cos(np.array(data[inj_par[lab]])[idx])
+            else:
+                # Masses
+                if lab == 'q':
+                    samples[i] = q
+                if lab == 'mt':
+                    samples[i] = m1 + m2
+                if lab == 'mc':
+                    samples[i] = m1*m2**(3./5.)/(m1+m2)**(1./5.)
+                # Spins
+                if lab == 's1':
+                    samples[i] = np.sqrt(s1x**2+s1y**2+s1z**2)
+                if lab == 's2':
+                    samples[i] = np.sqrt(s2x**2+s2y**2+s2z**2)
+                if lab == 'chi_eff':
+                    samples[i] = (s1z + q*s2z)/(1+q)
+                if lab == 'chi_p':
+                    samples[i] = np.maximum(np.sqrt(s1x**2+s1y**2), np.sqrt(s2x**2+s2y**2)*q*(4*q+3)/(4+3*q))
+        # Sampling pdf
+        n_mass_pars = len([lab for lab in par if lab in mass_parameters])
+        n_spin_pars = len([lab for lab in par if lab in spin_parameters])
+        # Masses
+        if n_mass_pars == 1:
+            inj_pdf *= np.array(data['mass1_source_sampling_pdf'])[idx]
+        elif n_mass_pars == 2:
+            inj_pdf *= np.array(data['mass1_source_mass2_source_sampling_pdf'])[idx]
+        if 'q' in par:
+            inj_pdf *= m1
+        # Spins
+        inj_pdf *= (np.array(data['spin1x_spin1y_spin1z_sampling_pdf'])[idx]*np.array(data['spin2x_spin2y_spin2z_sampling_pdf'])[idx])**(n_spin_pars/6.)
+        if 's1' in par or 'chi_eff' in par or 'chi_p' in par:
+            inj_pdf /= 2*np.pi*(s1x**2+s1y**2+s1z**2)
+        if 's2' in par or 'chi_eff' in par or 'chi_p' in par:
+            inj_pdf /= 2*np.pi*(s2x**2+s2y**2+s2z**2)
+        # Distance
+        if 'z' in par:
+            inj_pdf *= np.array(data['redshift_sampling_pdf'])[idx]
+        # Sky position
+        if 'ra' in par:
+            inj_pdf *= np.array(data['right_ascension_sampling_pdf'])[idx]
+        if 'dec' in par:
+            inj_pdf *= np.array(data['declination_sampling_pdf'])[idx]
+    return samples, inj_pdf
