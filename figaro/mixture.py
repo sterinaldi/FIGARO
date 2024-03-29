@@ -1145,7 +1145,8 @@ class HDPGMM(DPGMM):
         double MC_draws:             number of MC draws for integral
         bool probit:                 whether to use the probit transformation or not
         int n_reassignments:         number of reassignments. Default is not to reassign.
-        callable selection_function: selection function approximant
+        callable selection_function: selection function approximant or samples
+        np.ndarray injection_pdf:    pdf of injected samples (for selection function inclusion)
     
     Returns:
         HDPGMM: instance of HDPGMM class
@@ -1156,7 +1157,8 @@ class HDPGMM(DPGMM):
                        MC_draws           = None,
                        probit             = True,
                        n_reassignments    = 0.,
-                       selection_function = None
+                       selection_function = None,
+                       injection_pdf      = None,
                        ):
         bounds   = np.atleast_2d(bounds)
         self.dim = len(bounds)
@@ -1170,8 +1172,17 @@ class HDPGMM(DPGMM):
             self.MC_draws = int((self.dim+1)*1e3)
         else:
             self.MC_draws = int(MC_draws)
-        self.selfunc = selection_function
         self.evaluated_logL = {}
+        # Selection function
+        self.selfunc = selection_function
+        if not callable(self.selfunc):
+            try:
+                self.log_inj_pdf = np.log(injection_pdf)
+            except TypeError:
+                raise FIGAROException("Please provide injection pdf")
+            if self.probit:
+                self.selfunc          = transform_to_probit(self.selfunc, self.bounds)
+                self.log_jacobian_inj = probit_logJ(self.selfunc, self.bounds, self.probit)
         # MC samples
         self._draw_MC_samples()
         
@@ -1199,10 +1210,18 @@ class HDPGMM(DPGMM):
             rhos = np.array([r/outer_jit(np.sqrt(diag_jit(r)), np.sqrt(diag_jit(r))) for r in rhos])
             self.sigma_MC = np.array([r*outer_jit(s,s) for r, s in zip(rhos, np.sqrt(self.sigma_MC))])
         if self.selfunc is not None:
-            if self.probit:
-                self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(transform_from_probit(mn(m, s).rvs(self.MC_draws), self.bounds)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
+            # Approximant
+            if callable(self.selfunc):
+                if self.probit:
+                    self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(transform_from_probit(mn(m, s).rvs(self.MC_draws), self.bounds)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
+                else:
+                    self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(mn(m, s).rvs(self.MC_draws)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
+            # Injections
             else:
-                self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(mn(m, s).rvs(self.MC_draws)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
+                if self.probit:
+                    self.log_alpha_factor = np.array([logsumexp_jit(log_norm(self.selfunc, m, s) - self.log_jacobian_inj - self.log_inj_pdf) - np.log(self.MC_draws) for m, s in zip(self.mu_MC, self.sigma_MC)])
+                else:
+                    self.log_alpha_factor = np.array([logsumexp_jit(log_norm(self.selfunc, m, s) - self.log_inj_pdf) - np.log(self.MC_draws) for m, s in zip(self.mu_MC, self.sigma_MC)])
         else:
             self.log_alpha_factor = np.zeros(self.MC_draws)
             
