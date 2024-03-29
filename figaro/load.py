@@ -60,12 +60,12 @@ inj_par['m1']                  = 'mass1_source'
 inj_par['m2']                  = 'mass2_source'
 inj_par['m1_detect']           = 'mass1'
 inj_par['m2_detect']           = 'mass2'
-inj_par['spin1x']              = 'spin1x'
-inj_par['spin1y']              = 'spin1y'
-inj_par['spin1z']              = 'spin1z'
-inj_par['spin2x']              = 'spin2x'
-inj_par['spin2y']              = 'spin2y'
-inj_par['spin2z']              = 'spin2z'
+inj_par['s1x']                 = 'spin1x'
+inj_par['s1y']                 = 'spin1y'
+inj_par['s1z']                 = 'spin1z'
+inj_par['s2x']                 = 'spin2x'
+inj_par['s2y']                 = 'spin2y'
+inj_par['s2z']                 = 'spin2z'
 inj_par['luminosity_distance'] = 'distance'
 
 supported_pars = [p for p in GW_par.keys() if not p in ['snr', 'far']]
@@ -627,7 +627,7 @@ def load_selection_function(file, par = None, far_threshold = 1):
         raise FIGAROException("Selection function file not supported")
     if ext == 'py':
         selfunc_file_name = file.parts[-1].split('.')[0]
-        spec              = importlib.util.spec_from_file_location(selfunc_file_name, options.selfunc_file)
+        spec              = importlib.util.spec_from_file_location(selfunc_file_name, file)
         selfunc_module    = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(selfunc_module)
         selfunc           = selfunc_module.selection_function
@@ -672,7 +672,7 @@ def _unpack_injections(file, par, far_threshold = 1.):
             far_pycbc = np.array(data['far_pycbc_bbh'])
         except:
             far_pycbc = np.array(data['far_pycbc_hyperbank'])
-        idx = (far_cwb < far_threshold) | (far_gstlal < far_threshold) | (far_mbta < far_threshold) | (far_pycbc < far_threshold)
+        idx = np.where((far_cwb < far_threshold) | (far_gstlal < far_threshold) | (far_mbta < far_threshold) | (far_pycbc < far_threshold))[0]
         # Load samples
         samples = np.zeros((len(par), len(idx)))
         inj_pdf = np.ones(len(idx))
@@ -734,4 +734,4 @@ def _unpack_injections(file, par, far_threshold = 1.):
             inj_pdf *= np.array(data['right_ascension_sampling_pdf'])[idx]
         if 'dec' in par:
             inj_pdf *= np.array(data['declination_sampling_pdf'])[idx]
-    return samples, inj_pdf
+    return samples.T, inj_pdf
