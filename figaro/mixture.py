@@ -275,7 +275,7 @@ class _component_h:
         if dim == 1:
             self.mu = np.atleast_2d(self.mu).T
             self.sigma = np.atleast_2d(self.sigma).T
-        self.N_true = self.N/np.exp(log_alpha_factor[idx])
+        self.N_true = np.exp(np.log(self.N) - log_alpha_factor[idx])
             
 class density:
     """
@@ -697,8 +697,8 @@ class mixture(density):
         mixture: instance of mixture class
     """
     def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, alpha = 1., probit = True, log_w = None, make_comp = True):
-        self.means      = means
-        self.covs       = covs
+        self.means = means
+        self.covs  = covs
         if make_comp:
             self.components = [mn(mean, cov, allow_singular = True) for mean, cov in zip(self.means, self.covs)]
         else:
@@ -1180,9 +1180,9 @@ class HDPGMM(DPGMM):
                 self.log_inj_pdf = np.log(injection_pdf)
             except TypeError:
                 raise FIGAROException("Please provide injection pdf")
+            self.log_jacobian_inj = -probit_logJ(self.selfunc, self.bounds, self.probit)
             if self.probit:
-                self.selfunc          = transform_to_probit(self.selfunc, self.bounds)
-                self.log_jacobian_inj = probit_logJ(self.selfunc, self.bounds, self.probit)
+                self.selfunc = transform_to_probit(self.selfunc, self.bounds)
         # MC samples
         self._draw_MC_samples()
         
@@ -1213,18 +1213,16 @@ class HDPGMM(DPGMM):
             # Approximant
             if callable(self.selfunc):
                 if self.probit:
-                    self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(transform_from_probit(mn(m, s).rvs(self.MC_draws), self.bounds)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
+                    self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(transform_from_probit(mn(m,s).rvs(self.MC_draws), self.bounds)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
                 else:
-                    self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(mn(m, s).rvs(self.MC_draws)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
+                    self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(mn(m,s).rvs(self.MC_draws)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
             # Injections
             else:
-                if self.probit:
-                    self.log_alpha_factor = np.array([logsumexp_jit(log_norm(self.selfunc, m, s) - self.log_jacobian_inj - self.log_inj_pdf) - np.log(self.MC_draws) for m, s in zip(self.mu_MC, self.sigma_MC)])
-                else:
-                    self.log_alpha_factor = np.array([logsumexp_jit(log_norm(self.selfunc, m, s) - self.log_inj_pdf) - np.log(self.MC_draws) for m, s in zip(self.mu_MC, self.sigma_MC)])
+                self.log_alpha_factor = np.array([logsumexp_jit(mn(m,s).logpdf(self.selfunc) + self.log_jacobian_inj - self.log_inj_pdf) - np.log(self.MC_draws) for m, s in zip(self.mu_MC, self.sigma_MC)])
+                self.log_alpha_factor[len(self.selfunc)*np.exp(self.log_alpha_factor) < 1] = np.inf
         else:
             self.log_alpha_factor = np.zeros(self.MC_draws)
-            
+        
     def add_new_point(self, ev):
         """
         Update the probability density reconstruction adding a new sample
@@ -1349,7 +1347,7 @@ class HDPGMM(DPGMM):
             ss.sigma = np.atleast_2d(ss.sigma).T
         
         ss.N += 1
-        ss.N_true = ss.N/np.exp(self.log_alpha_factor[idx])
+        ss.N_true = np.exp(np.log(ss.N) - self.log_alpha_factor[idx])
         return ss
 
     def _remove_datapoint_from_component(self, ss, logL_D):
@@ -1374,7 +1372,7 @@ class HDPGMM(DPGMM):
             ss.sigma = np.atleast_2d(ss.sigma).T
         
         ss.N -= 1
-        ss.N_true = ss.N/np.exp(self.log_alpha_factor[idx])
+        ss.N_true = np.exp(np.log(ss.N) - self.log_alpha_factor[idx])
         return ss
 
     def build_mixture(self, make_comp = True):
