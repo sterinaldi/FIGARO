@@ -11,7 +11,7 @@ from figaro.mixture import DPGMM, HDPGMM
 from figaro.transform import transform_to_probit
 from figaro.utils import save_options, load_options, get_priors
 from figaro.plot import plot_median_cr, plot_multidim
-from figaro.load import load_data, load_single_event, save_density, load_density, supported_pars
+from figaro.load import load_data, load_single_event, load_selection_function, save_density, load_density, supported_pars
 
 def main():
 
@@ -108,14 +108,11 @@ def main():
         inj_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(inj_module)
         inj_density = inj_module.density
-    #If provided, load selecton function
+    # If provided, load selecton function
     selfunc = None
+    inj_pdf = None
     if options.selfunc_file is not None:
-        selfunc_file_name = Path(options.selfunc_file).parts[-1].split('.')[0]
-        spec = importlib.util.spec_from_file_location(selfunc_file_name, options.selfunc_file)
-        selfunc_module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(selfunc_module)
-        selfunc = selfunc_module.selection_function
+        selfunc, inj_pdf = load_selection_function(options.selfunc_file, options.par)
     # If provided, load true values
     hier_samples = None
     if options.hier_samples is not None:
@@ -185,7 +182,7 @@ def main():
                 posteriors = load_density(Path(output_draws, 'posteriors_single_event.'+options.ext), make_comp = False)
         # Run hierarchical analysis
         prior_pars = get_priors(options.bounds, samples = events, std = options.sigma_prior, scale = options.fraction, probit = options.probit, hierarchical = True)
-        mix        = HDPGMM(options.bounds, prior_pars = prior_pars, MC_draws = options.mc_draws, probit = options.probit, selection_function = selfunc)
+        mix        = HDPGMM(options.bounds, prior_pars = prior_pars, MC_draws = options.mc_draws, probit = options.probit, selection_function = selfunc, injection_pdf = inj_pdf)
         draws      = np.array([mix.density_from_samples(posteriors, make_comp = False) for _ in tqdm(range(options.draws), desc = 'Hierarchical')])
         # Save draws
         save_density(draws, folder = output_draws, name = 'draws_'+options.hier_name, ext = options.ext)
@@ -193,7 +190,7 @@ def main():
         draws = load_density(Path(output_draws, 'draws_'+options.hier_name+'.'+options.ext))
     # Plot
     if dim == 1:
-        plot_median_cr(draws, injected = inj_density, selfunc = selfunc, samples = hier_samples, out_folder = output_plots, name = options.hier_name, label = options.symbol, unit = options.unit, hierarchical = True)
+        plot_median_cr(draws, injected = inj_density, samples = hier_samples, out_folder = output_plots, name = options.hier_name, label = options.symbol, unit = options.unit, hierarchical = True)
     else:
         plot_multidim(draws, samples = hier_samples, out_folder = output_plots, name = options.hier_name, labels = symbols, units = units, hierarchical = True)
 
