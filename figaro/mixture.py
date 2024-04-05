@@ -1218,7 +1218,7 @@ class HDPGMM(DPGMM):
                     self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(mn(m,s).rvs(self.MC_draws)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
             # Injections
             else:
-                self.log_alpha_factor = np.array([logsumexp_jit(mn(m,s).logpdf(self.selfunc) + self.log_jacobian_inj - self.log_inj_pdf) - np.log(self.MC_draws) for m, s in zip(self.mu_MC, self.sigma_MC)])
+                self.log_alpha_factor = np.array([logsumexp_jit(mn(m,s).logpdf(self.selfunc) + self.log_jacobian_inj - self.log_inj_pdf) - np.log(len(self.selfunc)) for m, s in zip(self.mu_MC, self.sigma_MC)])
                 self.log_alpha_factor[len(self.selfunc)*np.exp(self.log_alpha_factor) < 1] = np.inf
         else:
             self.log_alpha_factor = np.zeros(self.MC_draws)
