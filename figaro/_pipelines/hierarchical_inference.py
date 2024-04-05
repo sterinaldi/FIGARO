@@ -43,8 +43,7 @@ def main():
     parser.add_option("--sigma_prior", dest = "sigma_prior", type = "string", help = "Expected standard deviation (prior) for hierarchical inference - single value or n-dim values. If None, it is estimated from samples", default = None)
     parser.add_option("--fraction", dest = "fraction", type = "float", help = "Fraction of samples standard deviation for sigma prior. Overrided by sigma_prior.", default = None)
     parser.add_option("--mc_draws", dest = "mc_draws", type = "int", help = "Number of draws for assignment MC integral", default = None)
-    parser.add_option("--snr_threshold", dest = "snr_threshold", type = "float", help = "SNR threshold for simulated GW datasets", default = None)
-    parser.add_option("--far_threshold", dest = "far_threshold", type = "float", help = "FAR threshold for simulated GW datasets", default = None)
+    parser.add_option("--far_threshold", dest = "far_threshold", type = "float", help = "FAR threshold for LVK sensitivity estimate injections", default = 1.)
     parser.add_option("--no_probit", dest = "probit", action = 'store_false', help = "Disable probit transformation", default = True)
     parser.add_option("--config", dest = "config", type = "string", help = "Config file. Warning: command line options override config options", default = None)
     
@@ -112,7 +111,11 @@ def main():
     selfunc = None
     inj_pdf = None
     if options.selfunc_file is not None:
-        selfunc, inj_pdf = load_selection_function(options.selfunc_file, options.par)
+        selfunc, inj_pdf = load_selection_function(options.selfunc_file, par = options.par, far_threshold = options.far_threshold)
+        if not callable(selfunc):
+            # Keeping only the samples within bounds
+            selfunc = selfunc[np.where((np.prod(options.bounds[:,0] < selfunc, axis = 1) & np.prod(selfunc < options.bounds[:,1], axis = 1)))]
+            inj_pdf = inj_pdf[np.where((np.prod(options.bounds[:,0] < selfunc, axis = 1) & np.prod(selfunc < options.bounds[:,1], axis = 1)))]
     # If provided, load true values
     hier_samples = None
     if options.hier_samples is not None:
@@ -122,7 +125,7 @@ def main():
             hier_samples = hier_samples.flatten()
             
     # Load samples
-    events, names = load_data(options.input, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol, waveform = options.wf, snr_threshold = options.snr_threshold, far_threshold = options.far_threshold)
+    events, names = load_data(options.input, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol, waveform = options.wf)
     try:
         dim = np.shape(events[0][0])[-1]
     except IndexError:

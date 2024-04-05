@@ -107,11 +107,9 @@ def main():
     #If provided, load selecton function
     selfunc = None
     if options.selfunc_file is not None:
-        selfunc_file_name = Path(options.selfunc_file).parts[-1].split('.')[0]
-        spec = importlib.util.spec_from_file_location(selfunc_file_name, options.selfunc_file)
-        selfunc_module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(selfunc_module)
-        selfunc = selfunc_module.selection_function
+        selfunc, _ = load_selection_function(options.selfunc_file, par = options.par)
+        if not callable(selfunc):
+            raise Exception("Only .py files with callable approximants are allowed for DPGMM reconstruction")
         
     if options.sigma_prior is not None:
         options.sigma_prior = np.array([float(s) for s in options.sigma_prior.split(',')])
