@@ -3,6 +3,7 @@ import h5py
 import warnings
 import json
 import dill
+import copy
 import importlib
 from figaro.exceptions import FIGAROException
 from figaro.mixture import mixture
@@ -55,7 +56,7 @@ GW_par = {'m1'                 : 'mass_1_source',
 
 # LVK 03 injections have a slightly different nomenclature (no underscore)
 # See https://zenodo.org/records/7890437
-inj_par = GW_par
+inj_par = copy.deepcopy(GW_par)
 inj_par['m1']                  = 'mass1_source'
 inj_par['m2']                  = 'mass2_source'
 inj_par['m1_detect']           = 'mass1'
