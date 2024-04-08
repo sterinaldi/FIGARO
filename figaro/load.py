@@ -633,14 +633,17 @@ def load_selection_function(file, par = None, far_threshold = 1):
         spec.loader.exec_module(selfunc_module)
         selfunc           = selfunc_module.selection_function
         inj_pdf           = None
+        n_total_inj       = None
     else:
         if not ext in ['h5','hdf5']:
-            samples = np.loadtxt(file)
-            selfunc = samples[:,:-1]
-            inj_pdf = samples[:,-1]
+            samples     = np.loadtxt(file)
+            det_idx     = samples[:,-1]
+            selfunc     = samples[:,:-2][det_idx == 1]
+            inj_pdf     = samples[:,-2][det_idx == 1]
+            n_total_inj = len(samples)
         else:
-            selfunc, inj_pdf = _unpack_injections(file, par, far_threshold)
-    return selfunc, inj_pdf
+            selfunc, inj_pdf, n_total_inj = _unpack_injections(file, par, far_threshold)
+    return selfunc, inj_pdf, n_total_inj
 
 def _unpack_injections(file, par, far_threshold = 1.):
     """
@@ -665,6 +668,7 @@ def _unpack_injections(file, par, far_threshold = 1.):
         raise FIGAROException("The following parameters are not implemented: "+", ".join(wrong_pars))
     with h5py.File(file, 'r') as f:
         data = f['injections']
+        n_total_inj = int(data.attrs['total_generated'])
         # Detected injections
         far_cwb    = np.array(data['far_cwb'])
         far_gstlal = np.array(data['far_gstlal'])
@@ -722,7 +726,8 @@ def _unpack_injections(file, par, far_threshold = 1.):
         if 'q' in par:
             inj_pdf *= m1
         # Spins
-        inj_pdf *= (np.array(data['spin1x_spin1y_spin1z_sampling_pdf'])[idx]*np.array(data['spin2x_spin2y_spin2z_sampling_pdf'])[idx])**(n_spin_pars/6.)
+        if n_spin_pars > 0:
+            inj_pdf *= (np.array(data['spin1x_spin1y_spin1z_sampling_pdf'])[idx]*np.array(data['spin2x_spin2y_spin2z_sampling_pdf'])[idx])**(n_spin_pars/6.)
         if 's1' in par or 'chi_eff' in par or 'chi_p' in par:
             inj_pdf /= 2*np.pi*(s1x**2+s1y**2+s1z**2)
         if 's2' in par or 'chi_eff' in par or 'chi_p' in par:
@@ -735,4 +740,4 @@ def _unpack_injections(file, par, far_threshold = 1.):
             inj_pdf *= np.array(data['right_ascension_sampling_pdf'])[idx]
         if 'dec' in par:
             inj_pdf *= np.array(data['declination_sampling_pdf'])[idx]
-    return samples.T, inj_pdf
+    return samples.T, inj_pdf, n_total_inj

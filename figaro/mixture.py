@@ -1159,6 +1159,7 @@ class HDPGMM(DPGMM):
                        n_reassignments    = 0.,
                        selection_function = None,
                        injection_pdf      = None,
+                       total_injections   = None,
                        ):
         bounds   = np.atleast_2d(bounds)
         self.dim = len(bounds)
@@ -1178,11 +1179,13 @@ class HDPGMM(DPGMM):
         if not callable(self.selfunc):
             try:
                 self.log_inj_pdf = np.log(injection_pdf)
+                self.total_inj   = int(total_injections)
             except TypeError:
                 raise FIGAROException("Please provide injection pdf")
-            self.log_jacobian_inj = -probit_logJ(self.selfunc, self.bounds, self.probit)
+            self.log_jacobian_inj = np.zeros(len(self.selfunc))
             if self.probit:
                 self.selfunc = transform_to_probit(self.selfunc, self.bounds)
+                self.log_jacobian_inj = -probit_logJ(self.selfunc, self.bounds, self.probit)
         # MC samples
         self._draw_MC_samples()
         
@@ -1212,14 +1215,20 @@ class HDPGMM(DPGMM):
         if self.selfunc is not None:
             # Approximant
             if callable(self.selfunc):
-                if self.probit:
-                    self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(transform_from_probit(mn(m,s).rvs(self.MC_draws), self.bounds)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
-                else:
-                    self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(mn(m,s).rvs(self.MC_draws)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
+                n_samples = self.MC_draws
+                with np.errstate(divide = 'ignore', invalid = 'ignore'):
+                    if self.probit:
+                        self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(transform_from_probit(mn(m,s).rvs(self.MC_draws), self.bounds)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
+                    else:
+                        self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(mn(m,s).rvs(self.MC_draws)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
             # Injections
             else:
-                self.log_alpha_factor = np.array([logsumexp_jit(mn(m,s).logpdf(self.selfunc) + self.log_jacobian_inj - self.log_inj_pdf) - np.log(len(self.selfunc)) for m, s in zip(self.mu_MC, self.sigma_MC)])
-                self.log_alpha_factor[len(self.selfunc)*np.exp(self.log_alpha_factor) < 1] = np.inf
+                n_samples = self.total_inj
+                self.log_alpha_factor = np.array([logsumexp_jit(mn(m,s).logpdf(self.selfunc) + self.log_jacobian_inj - self.log_inj_pdf) - np.log(self.total_inj) for m, s in zip(self.mu_MC, self.sigma_MC)])
+            # Numerical stability: mu+sigma ignored if p_det too small (not enough predicted points to have a reliable value for alpha)
+            self.log_alpha_factor[self.log_alpha_factor < np.log(5e-3)] = np.inf
+            # Check for NaNs
+            self.log_alpha_factor = np.nan_to_num(self.log_alpha_factor, nan = np.inf, posinf = np.inf, neginf = np.inf)
         else:
             self.log_alpha_factor = np.zeros(self.MC_draws)
         
