@@ -33,6 +33,7 @@ class worker:
                        probit      = True,
                        selfunc     = None,
                        inj_pdf     = None,
+                       n_total_inj = None,
                        ):
         self.dim                  = bounds.shape[0]
         self.bounds               = bounds
@@ -42,6 +43,7 @@ class worker:
                                            probit             = probit,
                                            selection_function = selfunc,
                                            injection_pdf      = inj_pdf,
+                                           total_injections   = n_total_inj,
                                            prior_pars         = get_priors(self.bounds,
                                                                            samples      = events,
                                                                            std          = hier_sigma,
@@ -210,7 +212,7 @@ def main():
     selfunc = None
     inj_pdf = None
     if options.selfunc_file is not None:
-        selfunc, inj_pdf = load_selection_function(options.selfunc_file, par = options.par, far_threshold = options.far_threshold)
+        selfunc, inj_pdf, n_total_inj = load_selection_function(options.selfunc_file, par = options.par, far_threshold = options.far_threshold)
         if not callable(selfunc):
             # Keeping only the samples within bounds
             selfunc = selfunc[np.where((np.prod(options.bounds[:,0] < selfunc, axis = 1) & np.prod(selfunc < options.bounds[:,1], axis = 1)))]
@@ -271,6 +273,7 @@ def main():
                                         probit           = options.probit,
                                         selfunc          = selfunc,
                                         inj_pdf          = inj_pdf,
+                                        n_total_inj      = n_total_inj,
                                         )
                           for _ in range(options.n_parallel)])
         

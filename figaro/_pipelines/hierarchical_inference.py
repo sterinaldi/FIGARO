@@ -111,8 +111,8 @@ def main():
     selfunc = None
     inj_pdf = None
     if options.selfunc_file is not None:
-        selfunc, inj_pdf = load_selection_function(options.selfunc_file, par = options.par, far_threshold = options.far_threshold)
-        if not callable(selfunc):
+        selfunc, inj_pdf, n_total_inj = load_selection_function(options.selfunc_file, par = options.par, far_threshold = options.far_threshold)
+        if not callable(selfunc) and not options.probit:
             # Keeping only the samples within bounds
             selfunc = selfunc[np.where((np.prod(options.bounds[:,0] < selfunc, axis = 1) & np.prod(selfunc < options.bounds[:,1], axis = 1)))]
             inj_pdf = inj_pdf[np.where((np.prod(options.bounds[:,0] < selfunc, axis = 1) & np.prod(selfunc < options.bounds[:,1], axis = 1)))]
@@ -185,7 +185,7 @@ def main():
                 posteriors = load_density(Path(output_draws, 'posteriors_single_event.'+options.ext), make_comp = False)
         # Run hierarchical analysis
         prior_pars = get_priors(options.bounds, samples = events, std = options.sigma_prior, scale = options.fraction, probit = options.probit, hierarchical = True)
-        mix        = HDPGMM(options.bounds, prior_pars = prior_pars, MC_draws = options.mc_draws, probit = options.probit, selection_function = selfunc, injection_pdf = inj_pdf)
+        mix        = HDPGMM(options.bounds, prior_pars = prior_pars, MC_draws = options.mc_draws, probit = options.probit, selection_function = selfunc, injection_pdf = inj_pdf, total_injections = n_total_inj)
         draws      = np.array([mix.density_from_samples(posteriors, make_comp = False) for _ in tqdm(range(options.draws), desc = 'Hierarchical')])
         # Save draws
         save_density(draws, folder = output_draws, name = 'draws_'+options.hier_name, ext = options.ext)
