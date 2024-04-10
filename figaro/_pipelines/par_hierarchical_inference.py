@@ -172,9 +172,9 @@ def main():
     if options.hier_name is None:
         options.hier_name = options.output.parts[-1]
     if options.selfunc_file is None:
-        options.hier_name = 'observed_'+options.hier_name
+        hier_name = 'observed_'+options.hier_name
     else:
-        options.hier_name = 'intrinsic_'+options.hier_name
+        hier_name = 'intrinsic_'+options.hier_name
 
     if options.config is None:
         save_options(options, options.output, name = options.hier_name)
@@ -298,9 +298,9 @@ def main():
             draws.append(s)
         draws = np.array(draws)
         # Save draws
-        save_density(draws, folder = output_draws, name = 'draws_'+options.hier_name, ext = options.ext)
+        save_density(draws, folder = output_draws, name = 'draws_'+hier_name, ext = options.ext)
     else:
-        draws = load_density(Path(output_draws, 'draws_'+options.hier_name+'.'+options.ext))
+        draws = load_density(Path(output_draws, 'draws_'+hier_name+'.'+options.ext))
     # Plot
     if dim == 1:
         plot_median_cr(draws,
@@ -316,7 +316,7 @@ def main():
         plot_multidim(draws,
                       samples      = hier_samples,
                       out_folder   = output_plots,
-                      name         = options.hier_name,
+                      name         = hier_name,
                       labels       = symbols,
                       units        = units,
                       hierarchical = True,

@@ -75,7 +75,11 @@ def main():
     # Read hierarchical name
     if options.hier_name is None:
         options.hier_name = options.output.parts[-1]
-        
+    if options.selfunc_file is None:
+        hier_name = 'observed_'+options.hier_name
+    else:
+        hier_name = 'intrinsic_'+options.hier_name
+
     if options.config is None:
         save_options(options, options.output, name = options.hier_name)
     
@@ -188,14 +192,14 @@ def main():
         mix        = HDPGMM(options.bounds, prior_pars = prior_pars, MC_draws = options.mc_draws, probit = options.probit, selection_function = selfunc, injection_pdf = inj_pdf, total_injections = n_total_inj)
         draws      = np.array([mix.density_from_samples(posteriors, make_comp = False) for _ in tqdm(range(options.draws), desc = 'Hierarchical')])
         # Save draws
-        save_density(draws, folder = output_draws, name = 'draws_'+options.hier_name, ext = options.ext)
+        save_density(draws, folder = output_draws, name = 'draws_'+hier_name, ext = options.ext)
     else:
-        draws = load_density(Path(output_draws, 'draws_'+options.hier_name+'.'+options.ext))
+        draws = load_density(Path(output_draws, 'draws_'+hier_name+'.'+options.ext))
     # Plot
     if dim == 1:
         plot_median_cr(draws, injected = inj_density, samples = hier_samples, out_folder = output_plots, name = options.hier_name, label = options.symbol, unit = options.unit, hierarchical = True)
     else:
-        plot_multidim(draws, samples = hier_samples, out_folder = output_plots, name = options.hier_name, labels = symbols, units = units, hierarchical = True)
+        plot_multidim(draws, samples = hier_samples, out_folder = output_plots, name = hier_name, labels = symbols, units = units, hierarchical = True)
 
 if __name__ == '__main__':
     main()
