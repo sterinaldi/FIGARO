@@ -253,13 +253,14 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
             plot_folder = out_folder
             log_folder  = out_folder
             txt_folder  = out_folder
-        fig.savefig(Path(log_folder, 'log_observed_{0}.pdf'.format(name)), bbox_inches = 'tight')
-        ax.set_yscale('linear')
-        ax.autoscale(True)
-        if samples is not None:
-            ax.set_xlim(xlim)
-        fig.savefig(Path(plot_folder, 'observed_{0}.pdf'.format(name)), bbox_inches = 'tight')
-        np.savetxt(Path(txt_folder, 'prob_observed_{0}.txt'.format(name)), np.array([x, p[50], p[5], p[16], p[84], p[95]]).T, header = 'x 50 5 16 84 95')
+        if not (selfunc is not None and hierarchical):
+            fig.savefig(Path(log_folder, 'log_observed_{0}.pdf'.format(name)), bbox_inches = 'tight')
+            ax.set_yscale('linear')
+            ax.autoscale(True)
+            if samples is not None:
+                ax.set_xlim(xlim)
+            fig.savefig(Path(plot_folder, 'observed_{0}.pdf'.format(name)), bbox_inches = 'tight')
+            np.savetxt(Path(txt_folder, 'prob_observed_{0}.txt'.format(name)), np.array([x, p[50], p[5], p[16], p[84], p[95]]).T, header = 'x 50 5 16 84 95')
     if show:
         ax.set_yscale('linear')
         ax.autoscale(True)
