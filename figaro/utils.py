@@ -316,7 +316,7 @@ def make_gaussian_mixture(mu, cov, bounds, out_folder = '.', names = None, save 
             else:
                 name = 'event_{0}'.format(i+1)
             np.savetxt(Path(events_folder, name+'.txt'), samples[1:])
-        mix = mixture(np.atleast_2d(mm), np.atleast_3d(cc), np.ones(len(means))/len(means), bounds, len(bounds), len(means), None, probit = probit, alpha = 1.)
+        mix = mixture(np.atleast_2d(mm), np.atleast_3d(cc), np.ones(len(means))/len(means), bounds, len(bounds), len(means), 0, probit = probit, alpha = 1.)
         if save:
             with open(Path(draws_folder, name+'.pkl'), 'wb') as f:
                 dill.dump(np.array([mix]), f)
