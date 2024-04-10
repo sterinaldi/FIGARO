@@ -99,7 +99,7 @@ class PPPlot(axes.Axes):
         
 projection_registry.register(PPPlot)
 
-def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}', median_label = None, fig = None):
+def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}', median_label = None, fig = None, colors = ['steelblue', 'darkturquoise', 'mediumturquoise']):
     """
     Plot the recovered 1D distribution along with the injected distribution and samples from the true distribution (both if available).
     
@@ -123,6 +123,8 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         str injected_label:              label to assign to the injected distribution
         str median_label:                label to assign to the reconstruction
         matplotlib.figure.Figure fig:    figure to use for plotting. Must have (dim,dim) axes.
+        list-of-str colors:              list of colors for median, 68% and 90% credible regions
+        
     
     Returns:
         matplotlib.figure.Figure: figure with the plot
@@ -132,6 +134,8 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
             median_label = '\mathrm{(H)DPGMM}'
         else:
             median_label = '\mathrm{DPGMM}'
+    
+    color_med, color_68, color_90 = colors
     
     all_bounds = np.atleast_2d([d.bounds[0] for d in draws])
     x_min = np.max(all_bounds[:,0])
@@ -182,8 +186,8 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         ax.set_yscale('log')
     
     # CR
-    ax.fill_between(x, p[95], p[5], color = 'mediumturquoise', alpha = 0.25)
-    ax.fill_between(x, p[84], p[16], color = 'darkturquoise', alpha = 0.25)
+    ax.fill_between(x, p[95], p[5], color = color_90, alpha = 0.25)
+    ax.fill_between(x, p[84], p[16], color = color_68, alpha = 0.25)
     # Selection function (if available)
     if selfunc is not None:
         if callable(selfunc):
@@ -208,8 +212,8 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
     if true_value is not None:
         if true_value_label is not None:
             true_value_label = '$'+true_value_label+'$'
-        ax.axvline(true_value, ls = '--', color = 'r', dashes = (5,5), lw = 0.5, label = true_value_label)
-    ax.plot(x, p[50], lw = 0.7, color = 'steelblue', label = '${0}$'.format(median_label))
+        ax.axvline(true_value, ls = '--', color = 'firebrick', dashes = (5,5), lw = 0.5, label = true_value_label)
+    ax.plot(x, p[50], lw = 0.7, color = color_med, label = '${0}$'.format(median_label))
     if label is None:
         label = 'x'
     if unit is None or unit == '':
@@ -305,7 +309,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         plt.close()
     return fig
 
-def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False, n_pts = 200, true_value = None, levels = [0.5, 0.68, 0.9], scatter_points = False, median_label = None, fig = None):
+def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False, n_pts = 200, true_value = None, levels = [0.5, 0.68, 0.9], scatter_points = False, median_label = None, fig = None, colors = ['steelblue', 'darkturquoise', 'mediumturquoise'], colormap = 'Blues'):
     """
     Plot the recovered multidimensional distribution along with samples from the true distribution (if available) as corner plot.
     
@@ -327,6 +331,8 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
         bool scatter_points:           scatter samples on 2d plots
         str median_label:              label to assign to the reconstruction
         matplotlib.figure.Figure fig:  figure to use for plotting. Must have (dim,dim) axes.
+        list-of-str colors:            list of colors for median, 68% and 90% credible regions
+        str colormap:                  colormap for contour plots
     
     Returns:
         matplotlib.figure.Figure: figure with the plot
@@ -338,6 +344,9 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
             median_label = '\mathrm{(H)DPGMM}'
         else:
             median_label = '\mathrm{DPGMM}'
+    
+    color_med, color_68, color_90 = colors
+
     if labels is None:
         labels = ['$x_{'+'{0}'.format(i+1)+'}$' for i in range(dim)]
     else:
@@ -427,12 +436,12 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
             p[perc] = p[perc]/norm
             
         # CR
-        ax.fill_between(x, p[95], p[5], color = 'mediumturquoise', alpha = 0.25)
-        ax.fill_between(x, p[84], p[16], color = 'darkturquoise', alpha = 0.25)
+        ax.fill_between(x, p[95], p[5], color = color_90, alpha = 0.25)
+        ax.fill_between(x, p[84], p[16], color = color_68, alpha = 0.25)
         if true_value is not None:
             if true_value[column] is not None:
-                ax.axvline(true_value[column], c = 'orangered', lw = 0.5)
-        ax.plot(x, p[50], lw = 0.7, color = 'steelblue', label = '${0}$'.format(median_label))
+                ax.axvline(true_value[column], c = 'firebrick', lw = 0.5)
+        ax.plot(x, p[50], lw = 0.7, color = color_med, label = '${0}$'.format(median_label))
         ax.set_yticks([])
         if column == K - 1:
             if labels is not None:
@@ -491,22 +500,22 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
             with np.errstate(divide = 'ignore'):
                 logmedian = np.nan_to_num(np.log(median), nan = -np.inf, neginf = -np.inf)
             _,_,levs = ConfidenceArea(logmedian, x, y, adLevels=levels)
-            ax.contourf(Y, X, np.exp(logmedian), cmap = 'Blues', levels = 100)
+            ax.contourf(Y, X, np.exp(logmedian), cmap = colormap, levels = 100)
             if true_value is not None:
                 if true_value[row] is not None:
-                    ax.axhline(true_value[row], c = 'orangered', lw = 0.5)
+                    ax.axhline(true_value[row], c = 'firebrick', lw = 0.5)
                 if true_value[column] is not None:
-                    ax.axvline(true_value[column], c = 'orangered', lw = 0.5)
+                    ax.axvline(true_value[column], c = 'firebrick', lw = 0.5)
                 if true_value[column] is not None and true_value[row] is not None:
-                    ax.plot(true_value[column], true_value[row], color = 'orangered', marker = 's', ms = 3)
-            c1 = ax.contour(Y, X, logmedian, np.sort(levs), colors='steelblue', linewidths=0.3)
+                    ax.plot(true_value[column], true_value[row], color = 'firebrick', marker = 's', ms = 3)
+            c1 = ax.contour(Y, X, logmedian, np.sort(levs), colors=color_med, linewidths=0.3)
             if plot_settings.tex_flag:
                 ax.clabel(c1, fmt = {l:'{0:.0f}\\%'.format(100*s) for l,s in zip(c1.levels, np.sort(levels)[::-1])}, fontsize = 3)
             else:
                 ax.clabel(c1, fmt = {l:'{0:.0f}\%'.format(100*s) for l,s in zip(c1.levels, np.sort(levels)[::-1])}, fontsize = 3)
             # Samples (if available)
             if samples is not None and scatter_points:
-                ax.scatter(samples[:,column], samples[:,row], marker = '+', c = 'orangered', linewidths = 1)
+                ax.scatter(samples[:,column], samples[:,row], marker = '+', c = 'firebrick', linewidths = 1)
             # Ticks
             xticks = np.linspace(lim[1,0], lim[1,1], 5)
             ax.set_xticks(xticks)
@@ -542,7 +551,7 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
     plt.close()
     return fig
     
-def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', name = 'density', label = None, unit = None, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}', median_label = '\mathrm{Median}', logx = False, logy = False):
+def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', name = 'density', label = None, unit = None, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}', median_label = '\mathrm{Median}', logx = False, logy = False, colors = ['steelblue','darkturquoise','mediumturquoise']):
     """
     Plot a 1D distribution along with samples from the true distribution (if available).
     Differently from plot_median_cr, this method requires the distribution to be already evaluated.
@@ -566,6 +575,7 @@ def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', na
         str median_label:                label to assign to the median distribution
         bool logx:                       x log scale
         bool logy:                       y log scale
+        list-of-str colors:              list of colors for median, 68% and 90% credible regions
     """
     
     if not np.shape(x)[0] == np.shape(draws)[-1]:
@@ -576,6 +586,8 @@ def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', na
     for perc in percentiles:
         p[perc] = np.percentile(draws, perc, axis = 0)
     
+    color_med, color_68, color_90 = colors
+    
     fig, ax = plt.subplots()
     
     # Samples (if available)
@@ -585,8 +597,8 @@ def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', na
         ylim = ax.get_ylim()
     
     # CR
-    ax.fill_between(x, p[95], p[5], color = 'mediumturquoise', alpha = 0.25)
-    ax.fill_between(x, p[84], p[16], color = 'darkturquoise', alpha = 0.25)
+    ax.fill_between(x, p[95], p[5], color = color_90, alpha = 0.25)
+    ax.fill_between(x, p[84], p[16], color = color_68, alpha = 0.25)
     # Injection (if available)
     if injected is not None:
         if callable(injected):
@@ -601,10 +613,10 @@ def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', na
     if true_value is not None:
         if true_value_label is not None:
             true_value_label = '$'+true_value_label+'$'
-        ax.axvline(true_value, ls = '--', color = 'r', lw = 0.5, dashes = (5,5), label = true_value_label)
+        ax.axvline(true_value, ls = '--', color = 'firebrick', lw = 0.5, dashes = (5,5), label = true_value_label)
     if median_label is not None:
         median_label = '$'+median_label+'$'
-    ax.plot(x, p[50], lw = 0.7, color = 'steelblue', label = median_label)
+    ax.plot(x, p[50], lw = 0.7, color = color_med, label = median_label)
     if label is None:
         label = 'x'
     if unit is None or unit == '':
@@ -669,10 +681,10 @@ def plot_n_clusters_alpha(n_cl, alpha, out_folder = '.', name = 'event', show = 
     fig, ax = plt.subplots()
     ax1 = ax.twinx()
     ax.plot(np.arange(1, len(n_cl)+1), n_cl, ls = '--', marker = '', lw = 0.7, color = 'k')
-    ax1.plot(np.arange(1, len(alpha)+1), alpha, ls = '--', marker = '', lw = 0.7, color = 'r')
+    ax1.plot(np.arange(1, len(alpha)+1), alpha, ls = '--', marker = '', lw = 0.7, color = 'firebrick')
     ax.set_xlabel('$t$')
     ax.set_ylabel('$N_{\mathrm{cl}}(t)$', color = 'k')
-    ax1.set_ylabel('$\alpha(t)$', color = 'r')
+    ax1.set_ylabel('$\alpha(t)$', color = 'firebrick')
     if show:
         plt.show()
     if save:
