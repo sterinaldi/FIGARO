@@ -1176,7 +1176,7 @@ class HDPGMM(DPGMM):
         self.evaluated_logL = {}
         # Selection function
         self.selfunc = selection_function
-        if not callable(self.selfunc):
+        if not callable(self.selfunc) and self.selfunc is not None:
             try:
                 self.log_inj_pdf = np.log(injection_pdf)
                 self.total_inj   = int(total_injections)
