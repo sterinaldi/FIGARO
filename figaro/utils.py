@@ -241,7 +241,7 @@ def rvs_median(draws, size = 1):
         samples = np.concatenate((samples, draws[i].rvs(n)))
     return samples[1:]
     
-def make_gaussian_mixture(mu, cov, bounds, out_folder = '.', names = None, save = False, save_samples = False, n_samps = 3000, probit = True):
+def make_gaussian_mixture(mu, cov, bounds, out_folder = '.', names = None, save = False, save_samples = False, n_samps = 3000, probit = True, ext = 'json'):
     """
     Builds mixtures composed of equally-weighted Gaussian distribution.
     WARNING: due to the probit coordinate change, a Gaussian distribution in the natural space does not correspond to a Gaussian distribution in the probit space.
@@ -256,13 +256,15 @@ def make_gaussian_mixture(mu, cov, bounds, out_folder = '.', names = None, save 
         bool save:         whether to save the draws or not
         bool save_samples: whether to save the samples or not
         int n_samps:       number of samples to estimate mean and covariance in probit space
-        bool probit        whether to use the probit transformation or not
+        bool probit:       whether to use the probit transformation or not
+        str ext:           file extension (pkl or json)
     
     Returns:
         np.ndarray: mixtures
     """
     # Here to avoid circular import
     from figaro.mixture import mixture
+    from figaro.load import save_density
     bounds = np.atleast_2d(bounds)
     dim    = len(bounds)
     
@@ -318,14 +320,14 @@ def make_gaussian_mixture(mu, cov, bounds, out_folder = '.', names = None, save 
             np.savetxt(Path(events_folder, name+'.txt'), samples[1:])
         mix = mixture(np.atleast_2d(mm), np.atleast_3d(cc), np.ones(len(means))/len(means), bounds, len(bounds), len(means), 0, probit = probit, alpha = 1.)
         if save:
-            with open(Path(draws_folder, name+'.pkl'), 'wb') as f:
-                dill.dump(np.array([mix]), f)
+            save_density([mix], draws_folder, name, ext)
         mixtures.append([mix])
     mixtures = np.array(mixtures)
     
     if save:
-        with open(Path(draws_folder, 'posteriors_single_event.pkl'), 'wb') as f:
-            dill.dump(mixtures, f)
+        # Circular import
+        from figaro.load import save_density
+        save_density(mixtures, draws_folder, 'posteriors_single_event', ext)
     
     return mixtures
 
