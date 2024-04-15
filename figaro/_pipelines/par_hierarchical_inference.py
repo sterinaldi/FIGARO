@@ -208,9 +208,10 @@ def main():
         inj_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(inj_module)
         inj_density = inj_module.density
-    #If provided, load selecton function
-    selfunc = None
-    inj_pdf = None
+    # If provided, load selecton function
+    selfunc     = None
+    inj_pdf     = None
+    n_total_inj = None
     if options.selfunc_file is not None:
         selfunc, inj_pdf, n_total_inj = load_selection_function(options.selfunc_file, par = options.par, far_threshold = options.far_threshold)
         if not callable(selfunc):
