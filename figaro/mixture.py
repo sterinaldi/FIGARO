@@ -275,7 +275,7 @@ class _component_h:
         if dim == 1:
             self.mu = np.atleast_2d(self.mu).T
             self.sigma = np.atleast_2d(self.sigma).T
-        self.N_true = np.exp(np.log(self.N) - log_alpha_factor[idx])
+        self.log_N_true = np.log(self.N) - log_alpha_factor[idx]
             
 class density:
     """
@@ -1356,7 +1356,7 @@ class HDPGMM(DPGMM):
             ss.sigma = np.atleast_2d(ss.sigma).T
         
         ss.N += 1
-        ss.N_true = np.exp(np.log(ss.N) - self.log_alpha_factor[idx])
+        ss.log_N_true = np.log(ss.N) - self.log_alpha_factor[idx]
         return ss
 
     def _remove_datapoint_from_component(self, ss, logL_D):
@@ -1381,7 +1381,7 @@ class HDPGMM(DPGMM):
             ss.sigma = np.atleast_2d(ss.sigma).T
         
         ss.N -= 1
-        ss.N_true = np.exp(np.log(ss.N) - self.log_alpha_factor[idx])
+        ss.log_N_true = np.log(ss.N) - self.log_alpha_factor[idx]
         return ss
 
     def build_mixture(self, make_comp = True):
@@ -1397,7 +1397,7 @@ class HDPGMM(DPGMM):
         if self.n_cl == 0:
             raise FIGAROException("You are trying to build an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, the inferred mixture is returned by that method as an instance of mixture class.")
         idx = np.where(np.array(self.N_list) > 0)[0]
-        w   = dirichlet(np.array([comp.N_true for comp in np.array(self.mixture)[idx]])+self.alpha/self.n_cl).rvs()[0]
+        w   = dirichlet(np.exp([comp.log_N_true for comp in np.array(self.mixture)[idx]])+self.alpha/self.n_cl).rvs()[0]
         return mixture(np.array([comp.mu for comp in np.array(self.mixture)[idx]]), np.array([comp.sigma for comp in np.array(self.mixture)[idx]]), w, self.bounds, self.dim, (np.array(self.N_list) > 0).sum(), self.n_pts, self.alpha, probit = self.probit, make_comp = make_comp)
 
     def density_from_samples(self, events, make_comp = True):
