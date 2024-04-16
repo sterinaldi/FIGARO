@@ -99,7 +99,7 @@ class PPPlot(axes.Axes):
         
 projection_registry.register(PPPlot)
 
-def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}', median_label = None, fig = None, colors = ['steelblue', 'darkturquoise', 'mediumturquoise']):
+def plot_median_cr(draws, injected = None, samples = None, selfunc = None, rate = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}', median_label = None, fig = None, colors = ['steelblue', 'darkturquoise', 'mediumturquoise']):
     """
     Plot the recovered 1D distribution along with the injected distribution and samples from the true distribution (both if available).
     
@@ -108,6 +108,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         callable or np.ndarray injected: injected distribution (if available)
         np.ndarray samples:              samples from the true distribution (if available)
         callable or np.ndarray selfunc:  selection function (if available)
+        double or np.ndarray rate:       integrated rate
         iterable bounds:                 bounds for the recovered distribution. If None, bounds from mixture instances are used.
         str or Path out_folder:          output folder
         str name:                        name to be given to outputs
@@ -160,7 +161,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
 
     # If samples are available, use them as bounds
     if samples is not None:
-        ax.hist(samples, bins = int(np.sqrt(len(samples))), histtype = 'step', density = True, label = '$\mathrm{Samples}$', log = True)
+        ax.hist(samples, bins = int(np.sqrt(len(samples))), histtype = 'step', density = (rate is None), label = '$\mathrm{Samples}$', log = True)
         if bounds is None:
             x_min_l, x_max_l = ax.get_xlim()
             x_min = np.max((x_min, x_min_l))
@@ -168,16 +169,20 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
     xlim = (x_min, x_max)
     x    = np.linspace(x_min, x_max, n_pts)
     dx   = x[1]-x[0]
-    
     probs = np.array([d.pdf(x) for d in draws])
-    
+    if rate is not None:
+        if hasattr(rate, '__iter__'):
+            probs  = np.array([p*r for p, r in zip(probs, rate)])
+        else:
+            probs *= rate
     percentiles = [50, 5, 16, 84, 95]
     p = {}
     for perc in percentiles:
         p[perc] = np.percentile(probs, perc, axis = 0)
-    norm = p[50].sum()*dx
-    for perc in percentiles:
-        p[perc] = p[perc]/norm
+    if rate is None:
+        norm = p[50].sum()*dx
+        for perc in percentiles:
+            p[perc] = p[perc]/norm
 
     # Samples (if available)
     if samples is not None:
@@ -293,7 +298,10 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
             ax.set_xlabel('${0}$'.format(label))
         else:
             ax.set_xlabel('${0}\ [{1}]$'.format(label, unit))
-        ax.set_ylabel('$p({0})$'.format(label))
+        if rate is not None:
+            ax.set_ylabel('$\\mathcal{R}({0})$'.format(label))
+        else:
+            ax.set_ylabel('$p({0})$'.format(label))
         ax.autoscale(True)
         ax.set_ylim(bottom = 1e-5, top = np.max(p[95])*1.1)
         ax.legend(loc = 0)
