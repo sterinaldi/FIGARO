@@ -55,7 +55,7 @@ def _marginalise(mix, axis = -1):
         make_comp = False
     else:
         make_comp = True
-    return mixture(means, covs, mix.w, bounds, dim, mix.n_cl, mix.n_pts, mix.alpha, probit = mix.probit, make_comp = make_comp)
+    return mixture(means, covs, mix.w, bounds, dim, mix.n_cl, mix.n_pts, mix.alpha, probit = mix.probit, make_comp = make_comp, alpha_factor = mix.alpha_factor)
 
 def marginalise(draws, axis = -1):
     """
@@ -134,7 +134,7 @@ def _condition(mix, vals, dims, norm = True, filter = True, tol = 1e-4):
         make_comp = False
     else:
         make_comp = True
-    return mixture(means[idx_filt], covs[idx_filt], np.exp(log_weights[idx_filt]), bounds, dim, len(log_weights[idx_filt]), mix.n_pts, mix.alpha, probit = mix.probit, log_w = log_weights[idx_filt], make_comp = make_comp)
+    return mixture(means[idx_filt], covs[idx_filt], np.exp(log_weights[idx_filt]), bounds, dim, len(log_weights[idx_filt]), mix.n_pts, mix.alpha, probit = mix.probit, log_w = log_weights[idx_filt], make_comp = make_comp, alpha_factor = mix.alpha_factor)
 
 def condition(draws, vals, dims, norm = True, filter = True, tol = 1e-4):
     """
