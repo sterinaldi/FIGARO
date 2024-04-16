@@ -931,3 +931,43 @@ def joyplot(draws, x_values, y_values, credible_regions = False, fill = True, so
             fig.savefig(Path(out_folder, 'density', '{0}.pdf'.format(name)), bbox_inches = 'tight')
     plt.close()
     return fig
+
+def plot_rate(rate_samples, out_folder = '.', name = 'density', volume_unit = None, hierarchical = False, show = False, save = True, true_value = None, true_label = None):
+    """
+    Plot the recovered multidimensional distribution along with samples from the true distribution (if available) as corner plot.
+    
+    Arguments:
+        np.ndarray rate_samples: rate samples
+        str or Path out_folder:  output folder
+        str name:                name to be given to output
+        str volume_unit:         LaTeX-style volume unit, for plotting purposes
+        bool save:               whether to save the plot or not
+        bool show:               whether to show the plot during the run or not
+        iterable true_value:     true value to plot
+        iterable levels:         credible levels to plot
+        str true_label:          label to assign to the reconstruction
+    
+    Returns:
+        matplotlib.figure.Figure: figure with the plot
+    """
+    if true_label is None:
+        true_label = '$\\mathcal{R}_\\mathrm{true}$'
+    else:
+        true_label = f'${true_label}$'
+    if volume_unit is not None:
+        xlabel = '$\\mathcal{R}\ ['+volume_unit+']$'
+    else:
+        xlabel = '$\\mathcal{R}$'
+    fig, ax = plt.subplots()
+    if true_value is not None:
+        ax.axvline(true_value, color = 'firebrick', dashes = (5,5), label = true_label)
+    ax.hist(rate_samples, histtype = 'step', density = True)
+    ax.legend(loc = 0)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel('$p(\\mathcal{R})$')
+    if save:
+        fig.savefig(Path(out_folder, 'integrated_rate_{0}.pdf'.format(name)), bbox_inches = 'tight')
+    if show:
+        plt.show()
+    plt.close()
+    return fig
