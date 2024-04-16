@@ -256,7 +256,7 @@ def sample_rate(draws, n_obs, volume = 1, size = None, each = False):
         size = len(draws)
     N_exp   = [poisson(int(n_obs/d.alpha_factor)) for d in draws]
     if each:
-        return np.array([N.rvs()/volume for d in draws])
+        return np.array([N.rvs()/volume for N in N_exp])
     idx     = np.random.choice(np.arange(len(N_exp)), size = int(size))
     ctr     = Counter(idx)
     samples = np.empty(shape = (1,))
