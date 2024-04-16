@@ -275,7 +275,7 @@ class _component_h:
         if dim == 1:
             self.mu = np.atleast_2d(self.mu).T
             self.sigma = np.atleast_2d(self.sigma).T
-        self.N_true = np.exp(np.log(self.N) - log_alpha_factor[idx])
+        self.log_N_true = np.log(self.N) - log_alpha_factor[idx]
             
 class density:
     """
@@ -681,22 +681,23 @@ class mixture(density):
     Methods inherited from density class
     
     Arguments:
-        iterable means:    component means
-        iterable covs:     component covariances
-        np.ndarray w:      component weights
-        np.ndarray bounds: bounds of probit transformation
-        int dim:           number of dimensions
-        int n_cl:          number of clusters in the mixture
-        int n_pts:         number of points used to infer the mixture
-        double alpha:      concentration parameter
-        bool probit:       whether to use the probit transformation or not
-        np.ndarray log_w:  component log weights
-        bool make_comp:    make component objects
+        iterable means:      component means
+        iterable covs:       component covariances
+        np.ndarray w:        component weights
+        np.ndarray bounds:   bounds of probit transformation
+        int dim:             number of dimensions
+        int n_cl:            number of clusters in the mixture
+        int n_pts:           number of points used to infer the mixture
+        double alpha:        concentration parameter
+        bool probit:         whether to use the probit transformation or not
+        np.ndarray log_w:    component log weights
+        bool make_comp:      make component objects
+        double alpha_factor: evaluated \int pdet(theta)p(theta|lambda) conditioned on the mixture parameters
     
     Returns:
         mixture: instance of mixture class
     """
-    def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, alpha = 1., probit = True, log_w = None, make_comp = True):
+    def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, alpha = 1., probit = True, log_w = None, make_comp = True, alpha_factor = 1.):
         self.means = means
         self.covs  = covs
         if make_comp:
@@ -708,13 +709,14 @@ class mixture(density):
             self.log_w  = np.log(w)
         else:
             self.log_w  = log_w
-            self.w      = np.exp(log_w)
-        self.bounds = bounds
-        self.dim    = int(dim)
-        self.n_cl   = int(n_cl)
-        self.n_pts  = int(n_pts)
-        self.probit = probit
-        self.alpha  = alpha
+            self.w        = np.exp(log_w)
+        self.bounds       = bounds
+        self.dim          = int(dim)
+        self.n_cl         = int(n_cl)
+        self.n_pts        = int(n_pts)
+        self.probit       = probit
+        self.alpha        = alpha
+        self.alpha_factor = alpha_factor
     
     def marginalise(self, axis = -1):
         """
@@ -1182,9 +1184,10 @@ class HDPGMM(DPGMM):
                 self.total_inj   = int(total_injections)
             except TypeError:
                 raise FIGAROException("Please provide injection pdf")
+            self.selfunc_probit   = self.selfunc
             self.log_jacobian_inj = np.zeros(len(self.selfunc))
             if self.probit:
-                self.selfunc = transform_to_probit(self.selfunc, self.bounds)
+                self.selfunc_probit   = transform_to_probit(self.selfunc, self.bounds)
                 self.log_jacobian_inj = -probit_logJ(self.selfunc, self.bounds, self.probit)
         # MC samples
         self._draw_MC_samples()
@@ -1224,7 +1227,7 @@ class HDPGMM(DPGMM):
             # Injections
             else:
                 n_samples = self.total_inj
-                self.log_alpha_factor = np.array([logsumexp_jit(mn(m,s).logpdf(self.selfunc) + self.log_jacobian_inj - self.log_inj_pdf) - np.log(self.total_inj) for m, s in zip(self.mu_MC, self.sigma_MC)])
+                self.log_alpha_factor = np.array([logsumexp_jit(mn(m,s).logpdf(self.selfunc_probit) + self.log_jacobian_inj - self.log_inj_pdf) - np.log(self.total_inj) for m, s in zip(self.mu_MC, self.sigma_MC)])
             # Numerical stability: mu+sigma ignored if p_det too small (not enough predicted points to have a reliable value for alpha)
             self.log_alpha_factor[self.log_alpha_factor < np.log(5e-3)] = np.inf
             # Check for NaNs
@@ -1356,7 +1359,7 @@ class HDPGMM(DPGMM):
             ss.sigma = np.atleast_2d(ss.sigma).T
         
         ss.N += 1
-        ss.N_true = np.exp(np.log(ss.N) - self.log_alpha_factor[idx])
+        ss.log_N_true = np.log(ss.N) - self.log_alpha_factor[idx]
         return ss
 
     def _remove_datapoint_from_component(self, ss, logL_D):
@@ -1381,7 +1384,7 @@ class HDPGMM(DPGMM):
             ss.sigma = np.atleast_2d(ss.sigma).T
         
         ss.N -= 1
-        ss.N_true = np.exp(np.log(ss.N) - self.log_alpha_factor[idx])
+        ss.log_N_true = np.log(ss.N) - self.log_alpha_factor[idx]
         return ss
 
     def build_mixture(self, make_comp = True):
@@ -1396,9 +1399,35 @@ class HDPGMM(DPGMM):
         """
         if self.n_cl == 0:
             raise FIGAROException("You are trying to build an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, the inferred mixture is returned by that method as an instance of mixture class.")
-        idx = np.where(np.array(self.N_list) > 0)[0]
-        w   = dirichlet(np.array([comp.N_true for comp in np.array(self.mixture)[idx]])+self.alpha/self.n_cl).rvs()[0]
-        return mixture(np.array([comp.mu for comp in np.array(self.mixture)[idx]]), np.array([comp.sigma for comp in np.array(self.mixture)[idx]]), w, self.bounds, self.dim, (np.array(self.N_list) > 0).sum(), self.n_pts, self.alpha, probit = self.probit, make_comp = make_comp)
+        idx   = np.where(np.array(self.N_list) > 0)[0]
+        N_pts = np.array([comp.log_N_true for comp in np.array(self.mixture)[idx]])
+        if self.selfunc is not None:
+            log_w, w           = self.log_w, self.w
+            self.log_w         = N_pts - logsumexp_jit(N_pts)
+            self.w             = np.exp(self.log_w)
+            alpha_factor       = self.compute_alpha_factor()
+            N_pts              = self.w*self.n_pts/alpha_factor
+            self.log_w, self.w = log_w, w
+        else:
+            alpha_factor = 1.
+            N_pts = np.exp(N_pts)
+        w = dirichlet(N_pts+self.alpha/self.n_cl).rvs()[0]
+        return mixture(np.array([comp.mu for comp in np.array(self.mixture)[idx]]), np.array([comp.sigma for comp in np.array(self.mixture)[idx]]), w, self.bounds, self.dim, (np.array(self.N_list) > 0).sum(), self.n_pts, self.alpha, probit = self.probit, make_comp = make_comp, alpha_factor = alpha_factor)
+    
+    def compute_alpha_factor(self):
+        """
+        Compute the integral \int pdet(theta)p(theta|lambda) dtheta conditioned on the specific DPGMM parameters
+        
+        Returns:
+            double: value of the integral
+        """
+        # Approximant
+        if callable(self.selfunc):
+            alpha_factor = np.mean(self.selfunc(self.rvs(self.MC_draws)))
+        # Injections
+        else:
+            alpha_factor = np.exp(logsumexp_jit(self.logpdf(self.selfunc) - self.log_inj_pdf) - np.log(self.total_inj))
+        return alpha_factor
 
     def density_from_samples(self, events, make_comp = True):
         """
