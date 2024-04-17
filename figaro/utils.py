@@ -1,18 +1,14 @@
 import numpy as np
 import warnings
-import dill
 import configparser
 import optparse
 
 from pathlib import Path
-from tqdm import tqdm
-from typing import cast
 from collections import Counter
-from scipy.stats import poisson, multivariate_normal as mn
+from scipy.stats import multivariate_normal as mn
 
 from figaro._numba_functions import *
 from figaro.transform import transform_to_probit, transform_from_probit
-from figaro.exceptions import FIGAROException
 
 def recursive_grid(bounds, n_pts, get_1d = False):
     """
@@ -240,29 +236,6 @@ def rvs_median(draws, size = 1):
     for i, n in zip(ctr.keys(), ctr.values()):
         samples = np.concatenate((samples, draws[i].rvs(n)))
     return samples[1:]
-
-def sample_rate(draws, n_obs, volume = 1, size = None, each = False):
-    """
-    Compute the integrated rate given a set of draws. If volume keyword is not used, returns the expected number of events before filtering.
-    
-    Arguments:
-        iterable draws: container for mixture instances
-        int n_obs:      number of observed events
-        double volume:  surveyed volume
-        int size:       number of samples
-        bool each:      sample one point from each draw
-    """
-    if size is None or each:
-        size = len(draws)
-    N_exp   = [poisson(int(n_obs/d.alpha_factor)) for d in draws]
-    if each:
-        return np.array([N.rvs()/volume for N in N_exp])
-    idx     = np.random.choice(np.arange(len(N_exp)), size = int(size))
-    ctr     = Counter(idx)
-    samples = np.empty(shape = (1,))
-    for i, n in zip(ctr.keys(), ctr.values()):
-        samples = np.concatenate((samples, N_exp[i].rvs(n)))
-    return samples[1:]/volume
     
 def make_gaussian_mixture(mu, cov, bounds, out_folder = '.', names = None, save = False, save_samples = False, n_samps = 3000, probit = True, ext = 'json'):
     """
