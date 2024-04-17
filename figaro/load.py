@@ -7,7 +7,7 @@ import copy
 import importlib
 from figaro.exceptions import FIGAROException
 from figaro.mixture import mixture
-from figaro.cosmology import CosmologicalParameters
+from figaro.cosmology import Planck18, Planck15
 from pathlib import Path
 from tqdm import tqdm
 
@@ -77,22 +77,20 @@ def available_gw_pars():
     """
     print(supported_pars)
 
-def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.315, ol = 0.685, volume = False, waveform = 'combined', snr_threshold = None, far_threshold = None):
+def load_single_event(event, seed = False, par = None, n_samples = -1, cosmology = 'Planck18', volume = False, waveform = 'combined', snr_threshold = None, far_threshold = None):
     '''
     Loads the data from .txt/.dat files (for simulations) or .h5/.hdf5 files (posteriors from GWTC) for a single event.
     Default cosmological parameters from Planck Collaboration (2021) in a flat Universe (https://www.aanda.org/articles/aa/pdf/2020/09/aa33910-18.pdf)
     Not all GW parameters are implemented: run figaro.load.available_gw_pars() for a list of the available parameters.
     
     Arguments:
-        str or Path file: file with samples
-        bool seed:        fixes the seed to a default value (1) for reproducibility
-        list-of-str par:  list with parameter(s) to extract from GW posteriors (m1, m2, mc, z, chi_effective)
-        int n_samples:    number of samples for (random) downsampling. Default -1: all samples
-        double h:         Hubble constant H0/100 [km/(s*Mpc)]
-        double om:        matter density parameter
-        double ol:        cosmological constant density parameter
-        bool volume:      if True, loads RA, dec and Luminosity distance (for skymaps)
-        str waveform:     waveform family to be used ('combined', 'seob', 'imr')
+        str or Path file:     file with samples
+        bool seed:            fixes the seed to a default value (1) for reproducibility
+        list-of-str par:      list with parameter(s) to extract from GW posteriors (m1, m2, mc, z, chi_effective)
+        int n_samples:        number of samples for (random) downsampling. Default -1: all samples
+        str cosmology:        set of cosmological parameters (Planck18 or Planck15)
+        bool volume:          if True, loads RA, dec and Luminosity distance (for skymaps)
+        str waveform:         waveform family to be used ('combined', 'seob', 'imr')
         double snr_threhsold: SNR threshold for event filtering. For injection analysis only.
         double far_threshold: FAR threshold for event filtering. For injection analysis only.
         
@@ -129,7 +127,7 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674
             raise FIGAROException("The following parameters are not implemented: "+", ".join(wrong_pars)+". Run figaro.load.available_gw_pars() for a list of available parameters.")
         # If everything is ok, load the samples
         else:
-            out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate, waveform = waveform, snr_threshold = snr_threshold, far_threshold = far_threshold)
+            out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = cosmology, rdstate = rdstate, waveform = waveform, snr_threshold = snr_threshold, far_threshold = far_threshold)
     
     if out is None:
         return out, name
@@ -138,7 +136,7 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, h = 0.674
         out = np.atleast_2d(out).T
     return out, name
 
-def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.315, ol = 0.685, volume = False, waveform = 'combined', snr_threshold = None, far_threshold = None, verbose = True):
+def load_data(path, seed = False, par = None, n_samples = -1, cosmology = 'Planck18', volume = False, waveform = 'combined', snr_threshold = None, far_threshold = None, verbose = True):
     '''
     Loads the data from .txt files (for simulations) or .h5/.hdf5/.dat files (posteriors from GWTC-x).
     Default cosmological parameters from Planck Collaboration (2021) in a flat Universe (https://www.aanda.org/articles/aa/pdf/2020/09/aa33910-18.pdf)
@@ -149,9 +147,7 @@ def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.
         bool seed:            fixes the seed to a default value (1) for reproducibility
         list-of-str par:      list with parameter(s) to extract from GW posteriors
         int n_samples:        number of samples for (random) downsampling. Default -1: all samples
-        double h:             Hubble constant H0/100 [km/(s*Mpc)]
-        double om:            matter density parameter
-        double ol:            cosmological constant density parameter
+        str cosmology:        set of cosmological parameters (Planck18 or Planck15)
         str waveform:         waveform family to be used ('combined', 'seob', 'imr')
         double snr_threhsold: SNR threshold for event filtering. For injection analysis only.
         double far_threshold: FAR threshold for event filtering. For injection analysis only.
@@ -207,7 +203,7 @@ def load_data(path, seed = False, par = None, n_samples = -1, h = 0.674, om = 0.
                 raise FIGAROException("The following parameters are not implemented: "+", ".join(wrong_pars)+". Run figaro.load.available_gw_pars() for a list of available parameters.")
             # If everything is ok, load the samples
             else:
-                out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = (h, om, ol), rdstate = rdstate, waveform = waveform, snr_threshold = snr_threshold, far_threshold = far_threshold)
+                out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = cosmology, rdstate = rdstate, waveform = waveform, snr_threshold = snr_threshold, far_threshold = far_threshold)
                 if out is not None:
                     if out.shape[-1] == len(par):
                         events.append(out)
@@ -247,8 +243,12 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
     Returns:
         np.ndarray: samples
     '''
-    h, om, ol = cosmology
-    omega = CosmologicalParameters(h, om, ol, -1, 0, 0)
+    if cosmology == 'Planck18':
+        omega = Planck18
+    elif cosmology == 'Planck15':
+        omega = Planck15
+    else:
+        raise FIGAROException("Cosmology not supported")
     if not waveform in supported_waveforms:
         raise FIGAROException("Unknown waveform: please use 'combined' (default), 'imr' or 'seob'")
     
@@ -621,6 +621,8 @@ def load_selection_function(file, par = None, far_threshold = 1):
     Returns:
         np.ndarray or callable: detected samples or callable with approximant
         np.ndarray or NoneType: injection pdf (for samples) or None (for approximant)
+        int or NoneType:        total number of injections
+        double duration:        duration of the observation
     """
     file = Path(file)
     ext  = file.parts[-1].split('.')[1]
@@ -634,6 +636,7 @@ def load_selection_function(file, par = None, far_threshold = 1):
         selfunc           = selfunc_module.selection_function
         inj_pdf           = None
         n_total_inj       = None
+        duration          = 1.
     else:
         if not ext in ['h5','hdf5']:
             samples     = np.loadtxt(file)
@@ -641,9 +644,10 @@ def load_selection_function(file, par = None, far_threshold = 1):
             selfunc     = samples[:,:-2][det_idx == 1]
             inj_pdf     = samples[:,-2][det_idx == 1]
             n_total_inj = len(samples)
+            duration    = 1.
         else:
-            selfunc, inj_pdf, n_total_inj = _unpack_injections(file, par, far_threshold)
-    return selfunc, inj_pdf, n_total_inj
+            selfunc, inj_pdf, n_total_inj, duration = _unpack_injections(file, par, far_threshold)
+    return selfunc, inj_pdf, n_total_inj, duration
 
 def _unpack_injections(file, par, far_threshold = 1.):
     """
@@ -656,8 +660,10 @@ def _unpack_injections(file, par, far_threshold = 1.):
         double far_threshold: FAR threshold for injection filtering
     
     Returns:
-        np.ndarray: samples
-        np.ndarray: injection pdf
+        np.ndarray:      samples
+        np.ndarray:      injection pdf
+        int or NoneType: total number of injections
+        double duration: duration of the observation
     """
     # Check that a list of parameters is passed
     if par is None:
@@ -669,6 +675,7 @@ def _unpack_injections(file, par, far_threshold = 1.):
     with h5py.File(file, 'r') as f:
         data = f['injections']
         n_total_inj = int(data.attrs['total_generated'])
+        duration    = data.attrs['analysis_time_s']/(60.*60.*24.*365) # Years
         # Detected injections
         far_cwb    = np.array(data['far_cwb'])
         far_gstlal = np.array(data['far_gstlal'])
@@ -740,4 +747,4 @@ def _unpack_injections(file, par, far_threshold = 1.):
             inj_pdf *= np.array(data['right_ascension_sampling_pdf'])[idx]
         if 'dec' in par:
             inj_pdf *= np.array(data['declination_sampling_pdf'])[idx]
-    return samples.T, inj_pdf, n_total_inj
+    return samples.T, inj_pdf, n_total_inj, duration
