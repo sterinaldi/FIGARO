@@ -33,7 +33,7 @@ def main():
     parser.add_option("--draws", type = "int", dest = "draws", help = "Number of draws", default = 100)
     parser.add_option("--n_samples_dsp", type = "int", dest = "n_samples_dsp", help = "Number of samples to analyse (downsampling). Default: all", default = -1)
     parser.add_option("--exclude_points", dest = "exclude_points", action = 'store_true', help = "Exclude points outside bounds from analysis", default = False)
-    parser.add_option("--cosmology", type = "string", dest = "cosmology", help = "Cosmological parameters (h, om, ol). Default values from Planck (2021)", default = '0.674,0.315,0.685')
+    parser.add_option("--cosmology", type = "choice", dest = "cosmology", help = "Set of cosmological parameters. Default values from Planck (2021)", choices = ['Planck18', 'Planck15'] default = 'Planck18')
     parser.add_option("--sigma_prior", dest = "sigma_prior", type = "string", help = "Expected standard deviation (prior) - single value or n-dim values. If None, it is estimated from samples", default = None)
     parser.add_option("--fraction", dest = "fraction", type = "float", help = "Fraction of samples standard deviation for sigma prior. Overrided by sigma_prior.", default = None)
     parser.add_option("--snr_threshold", dest = "snr_threshold", type = "float", help = "SNR threshold for simulated GW datasets", default = None)
@@ -68,8 +68,6 @@ def main():
         options.bounds = np.array(np.atleast_2d(eval(options.bounds)), dtype = np.float64)
     elif options.bounds is None and not options.postprocess:
         raise Exception("Please provide bounds for the inference (use -b '[[xmin,xmax],[ymin,ymax],...]')")
-    # Read cosmology
-    options.h, options.om, options.ol = (float(x) for x in options.cosmology.split(','))
     # Read parameter(s)
     if options.par is not None:
         options.par = options.par.split(',')
@@ -86,7 +84,7 @@ def main():
     #If provided, load selecton function
     selfunc = None
     if options.selfunc_file is not None:
-        selfunc, _ = load_selection_function(options.selfunc_file, par = options.par)
+        selfunc, _, _, _ = load_selection_function(options.selfunc_file, par = options.par)
         if not callable(selfunc):
             raise Exception("Only .py files with callable approximants are allowed for DPGMM reconstruction")
     
@@ -107,7 +105,7 @@ def main():
     
     for i, file in enumerate(files):
         # Load samples
-        samples, name = load_single_event(file, par = options.par, n_samples = options.n_samples_dsp, h = options.h, om = options.om, ol = options.ol, waveform = options.wf, snr_threshold = options.snr_threshold, far_threshold = options.far_threshold)
+        samples, name = load_single_event(file, par = options.par, n_samples = options.n_samples_dsp, cosmology = options.cosmology, waveform = options.wf, snr_threshold = options.snr_threshold, far_threshold = options.far_threshold)
         try:
             dim = np.shape(samples)[-1]
         except IndexError:
