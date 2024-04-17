@@ -69,3 +69,8 @@ Planck15 = CosmologicalParameters(0.679, 0.3065, 0.6935, -1, 0, 0)
 z = np.linspace(0,2,1000)
 dVdz_approx_planck18 = interp1d(z, Planck18.ComovingVolumeElement(z)/1e9) # In Gpc
 dVdz_approx_planck15 = interp1d(z, Planck15.ComovingVolumeElement(z)/1e9) # In Gpc
+
+def _decorator_dVdz(func, approx, z_index):
+    def decorated_func(x):
+        reaturn func(x)*approx(x[:,z_index])/(1+x[:,z_index])
+    return decorated_func
