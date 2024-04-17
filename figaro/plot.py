@@ -99,7 +99,7 @@ class PPPlot(axes.Axes):
         
 projection_registry.register(PPPlot)
 
-def plot_median_cr(draws, injected = None, samples = None, selfunc = None, rate = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}', median_label = None, fig = None, colors = ['steelblue', 'darkturquoise', 'mediumturquoise']):
+def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}', median_label = None, fig = None, colors = ['steelblue', 'darkturquoise', 'mediumturquoise']):
     """
     Plot the recovered 1D distribution along with the injected distribution and samples from the true distribution (both if available).
     
@@ -108,7 +108,6 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, rate 
         callable or np.ndarray injected: injected distribution (if available)
         np.ndarray samples:              samples from the true distribution (if available)
         callable or np.ndarray selfunc:  selection function (if available)
-        double or np.ndarray rate:       integrated rate
         iterable bounds:                 bounds for the recovered distribution. If None, bounds from mixture instances are used.
         str or Path out_folder:          output folder
         str name:                        name to be given to outputs
@@ -161,7 +160,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, rate 
 
     # If samples are available, use them as bounds
     if samples is not None:
-        ax.hist(samples, bins = int(np.sqrt(len(samples))), histtype = 'step', density = (rate is None), label = '$\mathrm{Samples}$', log = True)
+        ax.hist(samples, bins = int(np.sqrt(len(samples))), histtype = 'step', density = True, label = '$\mathrm{Samples}$', log = True)
         if bounds is None:
             x_min_l, x_max_l = ax.get_xlim()
             x_min = np.max((x_min, x_min_l))
@@ -170,19 +169,13 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, rate 
     x    = np.linspace(x_min, x_max, n_pts)
     dx   = x[1]-x[0]
     probs = np.array([d.pdf(x) for d in draws])
-    if rate is not None:
-        if hasattr(rate, '__iter__'):
-            probs  = np.array([p*r for p, r in zip(probs, rate)])
-        else:
-            probs *= rate
     percentiles = [50, 5, 16, 84, 95]
     p = {}
     for perc in percentiles:
         p[perc] = np.percentile(probs, perc, axis = 0)
-    if rate is None:
-        norm = p[50].sum()*dx
-        for perc in percentiles:
-            p[perc] = p[perc]/norm
+    norm = p[50].sum()*dx
+    for perc in percentiles:
+        p[perc] = p[perc]/norm
 
     # Samples (if available)
     if samples is not None:
@@ -298,10 +291,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, rate 
             ax.set_xlabel('${0}$'.format(label))
         else:
             ax.set_xlabel('${0}\ [{1}]$'.format(label, unit))
-        if rate is not None:
-            ax.set_ylabel('$\\mathcal{R}({0})$'.format(label))
-        else:
-            ax.set_ylabel('$p({0})$'.format(label))
+        ax.set_ylabel('$p({0})$'.format(label))
         ax.autoscale(True)
         ax.set_ylim(bottom = 1e-5, top = np.max(p[95])*1.1)
         ax.legend(loc = 0)
@@ -937,45 +927,5 @@ def joyplot(draws, x_values, y_values, credible_regions = False, fill = True, so
                 except FileExistsError:
                     pass
             fig.savefig(Path(out_folder, 'density', '{0}.pdf'.format(name)), bbox_inches = 'tight')
-    plt.close()
-    return fig
-
-def plot_rate(rate_samples, out_folder = '.', name = 'density', volume_unit = None, hierarchical = False, show = False, save = True, true_value = None, true_label = None):
-    """
-    Plot the recovered multidimensional distribution along with samples from the true distribution (if available) as corner plot.
-    
-    Arguments:
-        np.ndarray rate_samples: rate samples
-        str or Path out_folder:  output folder
-        str name:                name to be given to output
-        str volume_unit:         LaTeX-style volume unit, for plotting purposes
-        bool save:               whether to save the plot or not
-        bool show:               whether to show the plot during the run or not
-        iterable true_value:     true value to plot
-        iterable levels:         credible levels to plot
-        str true_label:          label to assign to the reconstruction
-    
-    Returns:
-        matplotlib.figure.Figure: figure with the plot
-    """
-    if true_label is None:
-        true_label = '$\\mathcal{R}_\\mathrm{true}$'
-    else:
-        true_label = f'${true_label}$'
-    if volume_unit is not None:
-        xlabel = '$\\mathcal{R}\ ['+volume_unit+']$'
-    else:
-        xlabel = '$\\mathcal{R}$'
-    fig, ax = plt.subplots()
-    if true_value is not None:
-        ax.axvline(true_value, color = 'firebrick', dashes = (5,5), label = true_label)
-    ax.hist(rate_samples, histtype = 'step', density = True)
-    ax.legend(loc = 0)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel('$p(\\mathcal{R})$')
-    if save:
-        fig.savefig(Path(out_folder, 'integrated_rate_{0}.pdf'.format(name)), bbox_inches = 'tight')
-    if show:
-        plt.show()
     plt.close()
     return fig
