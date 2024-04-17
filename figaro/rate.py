@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from collections import Counter
 from scipy.stats import poisson, norm
-from figaro.cosmology import dVdz_approx_planck18, Planck18 as omega
+from figaro.cosmology import dVdz_approx_planck18
 
 def sample_rate(draws, n_obs, selfunc, T, volume = None, size = None, each = False, n_draws = 1e4, dvdz = None, z_index = -1, normalise_alpha = False):
     """
@@ -33,7 +33,7 @@ def sample_rate(draws, n_obs, selfunc, T, volume = None, size = None, each = Fal
         normalise_alpha_factor(draws, dvdz = dvdz, z_index = z_index, n_draws = n_draws)
     N_exp   = [poisson(int(n_obs/d.alpha_factor)) for d in draws]
     if each:
-        return np.array([N.rvs()/v for N, v in zip(N_exp, volume)])
+        return np.array([N.mean()/v for N, v in zip(N_exp, volume)])
     idx     = np.random.choice(np.arange(len(N_exp)), size = int(size))
     ctr     = Counter(idx)
     samples = np.empty(shape = (1,))
