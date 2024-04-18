@@ -636,7 +636,10 @@ def load_selection_function(file, par = None, far_threshold = 1):
         selfunc           = selfunc_module.selection_function
         inj_pdf           = None
         n_total_inj       = None
-        duration          = 1.
+        try:
+            duration      = selfunc_module.duration
+        except (ImportError or ModuleNotFoundError):
+            duration      = 1.
     else:
         if not ext in ['h5','hdf5']:
             samples     = np.loadtxt(file)
