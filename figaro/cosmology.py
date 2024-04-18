@@ -70,7 +70,8 @@ z = np.linspace(0,2,1000)
 dVdz_approx_planck18 = interp1d(z, Planck18.ComovingVolumeElement(z)/1e9) # In Gpc
 dVdz_approx_planck15 = interp1d(z, Planck15.ComovingVolumeElement(z)/1e9) # In Gpc
 
-def _decorator_dVdz(func, approx, z_index):
+def _decorator_dVdz(func, approx, z_index, z_max):
+    reg_const = (1+z_max)/approx(z_max)
     def decorated_func(x):
-        return func(x)*approx(x[:,z_index])/(1+x[:,z_index])
+        return func(x)*approx(x[:,z_index])/(1+x[:,z_index]) * reg_const
     return decorated_func

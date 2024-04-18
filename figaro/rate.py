@@ -41,7 +41,7 @@ def sample_rate(draws, n_obs, selfunc, T, volume = None, size = None, each = Fal
         samples = np.concatenate((samples, N_exp[i].rvs(n)))
     return np.divide(samples[1:], volume)
 
-def normalise_alpha_factor(draws, dvdz = None, z_index = -1, n_draws = 1e4):
+def normalise_alpha_factor(draws, dvdz = None, z_index = -1, z_max = None, n_draws = 1e4):
     """
     Normalise the alpha factor for each DPGMM realisation. This is required if during the reconstruction the selection function included the dV/dz*(1+z)^-1 term.
     
@@ -49,13 +49,18 @@ def normalise_alpha_factor(draws, dvdz = None, z_index = -1, n_draws = 1e4):
         iterable draws: container for mixture instances
         callable dvdz:  function to compute the comoving volume element (in Gpc^3)
         int z_index:    redshift parameter index (default: last dimension)
+        double z_max:   max redshift value
         int n_draws:    number of MC draws
     """
     if dvdz is None:
         dvdz = dVdz_approx_planck18
+    if z_max is not None:
+        reg_const = (1+z_max)/dvdz(z_max)
+    else:
+        reg_const = 1.
     for d in draws:
         ss = d.rvs(int(n_draws))
-        d.alpha_factor /= np.mean(dvdz(ss[:,z_index])/(1+ss[:,z_index]))
+        d.alpha_factor /= np.mean(reg_const*dvdz(ss[:,z_index])/(1+ss[:,z_index]))
 
 def sample_VT(draws, selfunc, T, size = None, n_draws = 1e4, each = False, dvdz = None, z_index = -1):
     """
@@ -129,8 +134,9 @@ def plot_integrated_rate(samples, out_folder = '.', name = 'density', volume_uni
     fig, ax = plt.subplots()
     if true_value is not None:
         ax.axvline(true_value, color = 'firebrick', dashes = (5,5), label = true_label)
-    ax.hist(rate_samples, histtype = 'step', density = True)
-    ax.legend(loc = 0)
+    ax.hist(samples, histtype = 'step', density = True)
+    if true_value is not None:
+        ax.legend(loc = 0)
     ax.set_xlabel(xlabel)
     ax.set_ylabel('$p(\\mathcal{R})$')
     if save:
@@ -239,7 +245,7 @@ def plot_differential_rate(draws, rate, injected = None, bounds = None, out_fold
         unit_label = volume_unit +unit+'^{-1}'
     y_label = '$\\frac{\\mathrm{d}\\mathcal{R}}{\\mathrm{d}'+label+'}\ ['+unit_label+']$'
     ax.set_ylabel(y_label)
-    ax.set_ylim(bottom = 1e-5, top = np.max(p[95])*1.1)?
+    ax.set_ylim(bottom = 1e-5, top = np.max(p[95])*1.1)
     ax.legend(loc = 0)
     
     fig.align_labels()
