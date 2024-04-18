@@ -236,14 +236,14 @@ def main():
     if options.include_dvdz and not callable(selfunc):
         raise Exception("The inclusion of dV/dz*(1+z)^{-1} is available only with a selection function approximant.")
     if options.include_dvdz:
-        if options.par is not None:
+        if options.par is None:
             print("Redshift is assumed to be the last parameter")
             z_index = -1
         elif 'z' in options.par:
             z_index = np.where(np.array(options.par)=='z')[0][0]
         else:
             raise Exception("Redshift must be included in the rate analysis")
-        dec_selfunc = _decorator_dVdz(selfunc, approx_dVdz, z_index)
+        dec_selfunc = _decorator_dVdz(selfunc, approx_dVdz, z_index, options.bounds[z_index][1])
     else:
         dec_selfunc = selfunc
     # If provided, load true values
@@ -336,7 +336,7 @@ def main():
             draws.append(s)
         draws = np.array(draws)
         if options.include_dvdz:
-            normalise_alpha_factor(draws, dvdz = approx_dVdz, z_index = z_index)
+            normalise_alpha_factor(draws, dvdz = approx_dVdz, z_index = z_index, z_max = options.bounds[z_index][1])
         # Save draws
         save_density(draws, folder = output_draws, name = 'draws_'+hier_name, ext = options.ext)
     else:
@@ -386,26 +386,29 @@ def main():
                             z_index = z_index,
                             each    = True,
                             )
-        if options.pars is not None:
-            names = options.pars
+        if options.par is not None:
+            names = options.par
         else:
             names = np.arange(dim)
         # Marginal rates
         if dim == 1:
             plot_differential_rate(draws,
                                    rate         = rates,
-                                   name         = names[0]
+                                   out_folder   = output_rate,
+                                   name         = options.hier_name,
                                    label        = options.symbol,
                                    unit         = options.unit,
                                    hierarchical = True,
                                    )
         else:
             for i in range(dim):
-                dims = list(np.arange(dim)).remove(i)
+                dims = list(np.arange(dim))
+                dims.remove(i)
                 dd   = marginalise(draws, dims)
                 plot_differential_rate(dd,
                                        rate         = rates,
-                                       name         = names[i]
+                                       out_folder   = output_rate,
+                                       name         = names[i],
                                        label        = symbols[i],
                                        unit         = units[i],
                                        hierarchical = True,
