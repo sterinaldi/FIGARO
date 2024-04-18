@@ -1221,13 +1221,13 @@ class HDPGMM(DPGMM):
                 n_samples = self.MC_draws
                 with np.errstate(divide = 'ignore', invalid = 'ignore'):
                     if self.probit:
-                        self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(transform_from_probit(mn(m,s).rvs(self.MC_draws), self.bounds)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
+                        self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(transform_from_probit(mn(m,s, allow_singular = True).rvs(self.MC_draws), self.bounds)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
                     else:
-                        self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(mn(m,s).rvs(self.MC_draws)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
+                        self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(mn(m,s, allow_singular = True).rvs(self.MC_draws)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
             # Injections
             else:
                 n_samples = self.total_inj
-                self.log_alpha_factor = np.array([logsumexp_jit(mn(m,s).logpdf(self.selfunc_probit) + self.log_jacobian_inj - self.log_inj_pdf) - np.log(self.total_inj) for m, s in zip(self.mu_MC, self.sigma_MC)])
+                self.log_alpha_factor = np.array([logsumexp_jit(mn(m,s, allow_singular = True).logpdf(self.selfunc_probit) + self.log_jacobian_inj - self.log_inj_pdf) - np.log(self.total_inj) for m, s in zip(self.mu_MC, self.sigma_MC)])
             # Numerical stability: mu+sigma ignored if p_det too small (not enough predicted points to have a reliable value for alpha)
             self.log_alpha_factor[self.log_alpha_factor < np.log(5e-4)] = np.inf
             # Check for NaNs
