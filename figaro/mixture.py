@@ -1229,7 +1229,7 @@ class HDPGMM(DPGMM):
                 n_samples = self.total_inj
                 self.log_alpha_factor = np.array([logsumexp_jit(mn(m,s).logpdf(self.selfunc_probit) + self.log_jacobian_inj - self.log_inj_pdf) - np.log(self.total_inj) for m, s in zip(self.mu_MC, self.sigma_MC)])
             # Numerical stability: mu+sigma ignored if p_det too small (not enough predicted points to have a reliable value for alpha)
-            self.log_alpha_factor[self.log_alpha_factor < np.log(5e-3)] = np.inf
+            self.log_alpha_factor[self.log_alpha_factor < np.log(5e-4)] = np.inf
             # Check for NaNs
             self.log_alpha_factor = np.nan_to_num(self.log_alpha_factor, nan = np.inf, posinf = np.inf, neginf = np.inf)
         else:
