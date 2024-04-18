@@ -72,5 +72,5 @@ dVdz_approx_planck15 = interp1d(z, Planck15.ComovingVolumeElement(z)/1e9) # In G
 
 def _decorator_dVdz(func, approx, z_index):
     def decorated_func(x):
-        reaturn func(x)*approx(x[:,z_index])/(1+x[:,z_index])
+        return func(x)*approx(x[:,z_index])/(1+x[:,z_index])
     return decorated_func
