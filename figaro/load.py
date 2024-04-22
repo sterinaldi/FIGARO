@@ -638,7 +638,7 @@ def load_selection_function(file, par = None, far_threshold = 1):
         n_total_inj       = None
         try:
             duration      = selfunc_module.duration
-        except (ImportError or ModuleNotFoundError):
+        except:
             duration      = 1.
     else:
         if not ext in ['h5','hdf5']:
