@@ -122,7 +122,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         str true_value_label:            label to assign to the true value marker
         str injected_label:              label to assign to the injected distribution
         str median_label:                label to assign to the reconstruction
-        matplotlib.figure.Figure fig:    figure to use for plotting. Must have (dim,dim) axes.
+        matplotlib.figure.Figure fig:    figure to use for plotting.
         list-of-str colors:              list of colors for median, 68% and 90% credible regions
         
     
@@ -550,7 +550,7 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
     plt.close()
     return fig
     
-def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', name = 'density', label = None, unit = None, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}', median_label = '\mathrm{Median}', logx = False, logy = False, colors = ['steelblue','darkturquoise','mediumturquoise']):
+def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', name = 'density', label = None, unit = None, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}', median_label = '\mathrm{Median}', logx = False, logy = False, colors = ['steelblue','darkturquoise','mediumturquoise'], fig = None):
     """
     Plot a 1D distribution along with samples from the true distribution (if available).
     Differently from plot_median_cr, this method requires the distribution to be already evaluated.
@@ -575,6 +575,7 @@ def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', na
         bool logx:                       x log scale
         bool logy:                       y log scale
         list-of-str colors:              list of colors for median, 68% and 90% credible regions
+        matplotlib.figure.Figure fig:    figure to use for plotting.
     """
     
     if not np.shape(x)[0] == np.shape(draws)[-1]:
@@ -587,7 +588,10 @@ def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', na
     
     color_med, color_68, color_90 = colors
     
-    fig, ax = plt.subplots()
+    if fig is None:
+        fig, ax = plt.subplots()
+    else:
+        ax = fig.axes[0]
     
     # Samples (if available)
     if samples is not None:
@@ -663,7 +667,7 @@ def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', na
             ax.set_xlim(xlim)
         plt.show()
     plt.close()
-    
+    return fig
 
 def plot_n_clusters_alpha(n_cl, alpha, out_folder = '.', name = 'event', show = False, save = True):
     """
@@ -729,17 +733,19 @@ def pp_plot_cdf(draws, injection, n_points = 1000, out_folder = '.', name = 'eve
         fig.savefig(Path(out_folder, '{0}_ppplot.pdf'.format(name)), bbox_inches = 'tight')
     plt.close()
 
-def pp_plot_levels(CR_levels, median_CR = None, out_folder = '.', name = 'MDC', show = False, save = True):
+def pp_plot_levels(CR_levels, median_CR = None, out_folder = '.', name = 'MDC', show = False, save = True, fig = None, color = 'steelblue'):
     """
     Make pp-plot.
     
     Arguments:
-        iterable CR:            2D array with credible levels for each event
-        iterable median_CR:     credible levels of medians
-        str or Path out_folder: output folder
-        str name:               name to be given to outputs
-        bool save:              whether to save the plot or not
-        bool show:              whether to show the plot during the run or not
+        iterable CR:                  2D array with credible levels for each event
+        iterable median_CR:           credible levels of medians
+        str or Path out_folder:       output folder
+        str name:                     name to be given to outputs
+        bool save:                    whether to save the plot or not
+        bool show:                    whether to show the plot during the run or not
+        matplotlib.figure.Figure fig: figure to use for plotting.
+        str color:                    color for the main line
     """
     CR_levels = np.atleast_1d(CR_levels)
     if len(CR_levels.shape) > 1:
@@ -747,8 +753,11 @@ def pp_plot_levels(CR_levels, median_CR = None, out_folder = '.', name = 'MDC', 
     n_evs     = CR_levels.shape[-1]
     L         = np.linspace(0,1,n_evs+2)
     
-    fig = plt.figure()
-    ax  = fig.add_subplot(111, projection = 'pp_plot')
+    if fig is None:
+        fig = plt.figure()
+        ax  = fig.add_subplot(111, projection = 'pp_plot')
+    else:
+        ax = fig.axes[0]
     ax.add_confidence_band(n_evs, zorder = n_evs)
     ax.add_diagonal(zorder = n_evs+1)
     if len(CR_levels.shape) > 1:
@@ -759,12 +768,12 @@ def pp_plot_levels(CR_levels, median_CR = None, out_folder = '.', name = 'MDC', 
                 c  = 'lightsteelblue'
             else:
                 lw = 0.6
-                c  = 'steelblue'
+                c  = color
             x = np.append(0, np.append(cr, 1))
             ax.plot(np.sort(x), L, lw = lw, alpha = 0.5, color = c)
         if median_CR is not None:
             x = np.append(0, np.append(median_CR, 1))
-            ax.plot(np.sort(x), L, lw = 0.8, color = 'steelblue', label = '$\mathrm{Median}$', zorder = n_evs+2)
+            ax.plot(np.sort(x), L, lw = 0.8, color = color, label = '$\mathrm{Median}$', zorder = n_evs+2)
         # Add label for draws
         handles, labels = ax.get_legend_handles_labels()
         line = Line2D([0], [0], label='$\mathrm{Draws}$', lw = lw, color = c)
@@ -772,7 +781,7 @@ def pp_plot_levels(CR_levels, median_CR = None, out_folder = '.', name = 'MDC', 
         ax.legend(handles=handles, loc = 0, frameon = False)
     else:
         x = np.append(0, np.append(CR_levels, 1))
-        ax.plot(np.sort(x), L, lw = 0.8, color = 'steelblue', zorder = n_evs+2)
+        ax.plot(np.sort(x), L, lw = 0.8, color = color, zorder = n_evs+2)
     # Maquillage
     ax.set_xlabel('$P$')
     ax.set_ylabel('$\mathrm{Fraction\ of\ events\ within\ }CR_P$')
@@ -781,6 +790,7 @@ def pp_plot_levels(CR_levels, median_CR = None, out_folder = '.', name = 'MDC', 
     if save:
         fig.savefig(Path(out_folder, '{0}_ppplot.pdf'.format(name)), bbox_inches = 'tight')
     plt.close()
+    return fig
 
 def joyplot(draws, x_values, y_values, credible_regions = False, fill = True, solid = False, overlap = 1., xlabel = None, ylabel = None, xunit = None, yunit = None, colormap = 'coolwarm', out_folder = '.', name = 'joyplot', subfolder = False, show = False, save = True, joy = False):
     """
