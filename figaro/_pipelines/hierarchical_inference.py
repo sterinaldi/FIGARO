@@ -267,7 +267,7 @@ def main():
                      )
         draws = np.array([mix.density_from_samples(posteriors, make_comp = False) for _ in tqdm(range(options.draws), desc = 'Hierarchical')])
         if options.include_dvdz:
-            normalise_alpha_factor(draws, dvdz = approx_dVdz, z_index = z_index, options.bounds[z_index][1])
+            normalise_alpha_factor(draws, dvdz = approx_dVdz, z_index = z_index, z_max = options.bounds[z_index][1])
         # Save draws
         save_density(draws, folder = output_draws, name = 'draws_'+hier_name, ext = options.ext)
     else:
