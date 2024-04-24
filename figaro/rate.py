@@ -93,7 +93,7 @@ def sample_VT(draws, selfunc, T, size = None, n_draws = 1e4, each = False, dvdz 
         sf     = selfunc(ss)
         VT_s   = T*sf*comvol/(1+ss[:,z_index])
         VT     = np.mean(VT_s)
-        S      = np.sqrt((0.3*VT)**2 + np.cov(VT_s)/n_draws)
+        S      = np.sqrt(np.cov(VT_s)/n_draws)
         VT_dist.append(norm(np.log(VT),S/VT))
     if each:
         return np.array([np.exp(VT_i.mean()) for VT_i in VT_dist])
