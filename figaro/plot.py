@@ -265,7 +265,8 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         if samples is not None:
             ax.set_xlim(xlim)
         plt.show()
-    plt.close()
+    if (save or show):
+        plt.close()
     
     # If selection function is available, plot reweighted distribution
     if selfunc is not None:
@@ -305,6 +306,8 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
             ax.set_yscale('linear')
             ax.autoscale(True)
             plt.show()
+    
+    if (save or show):
         plt.close()
     return fig
 
@@ -547,7 +550,8 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
                 except FileExistsError:
                     pass
             fig.savefig(Path(out_folder, 'density', '{0}.pdf'.format(name)), bbox_inches = 'tight')
-    plt.close()
+    if (save or show):
+        plt.close()
     return fig
     
 def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', name = 'density', label = None, unit = None, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}', median_label = '\mathrm{Median}', logx = False, logy = False, colors = ['steelblue','darkturquoise','mediumturquoise'], fig = None):
@@ -666,7 +670,8 @@ def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', na
         if samples is not None:
             ax.set_xlim(xlim)
         plt.show()
-    plt.close()
+    if (save or show):
+        plt.close()
     return fig
 
 def plot_n_clusters_alpha(n_cl, alpha, out_folder = '.', name = 'event', show = False, save = True):
@@ -789,7 +794,8 @@ def pp_plot_levels(CR_levels, median_CR = None, out_folder = '.', name = 'MDC', 
         plt.show()
     if save:
         fig.savefig(Path(out_folder, '{0}_ppplot.pdf'.format(name)), bbox_inches = 'tight')
-    plt.close()
+    if (save or show):
+        plt.close()
     return fig
 
 def joyplot(draws, x_values, y_values, credible_regions = False, fill = True, solid = False, overlap = 1., xlabel = None, ylabel = None, xunit = None, yunit = None, colormap = 'coolwarm', out_folder = '.', name = 'joyplot', subfolder = False, show = False, save = True, joy = False):
