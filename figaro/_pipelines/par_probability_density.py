@@ -10,7 +10,7 @@ from tqdm import tqdm
 from figaro.mixture import DPGMM
 from figaro.utils import save_options, load_options, get_priors
 from figaro.plot import plot_median_cr, plot_multidim
-from figaro.load import load_single_event, save_density, load_density, supported_extensions, supported_pars
+from figaro.load import load_single_event, save_density, load_density, supported_extensions, supported_pars, load_selection_function
 
 import ray
 from ray.util import ActorPool
