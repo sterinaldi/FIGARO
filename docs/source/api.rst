@@ -14,5 +14,6 @@ Summary of methods
    figaro.mixture
    figaro.montecarlo
    figaro.plot
+   figaro.rate
    figaro.transform
    figaro.utils
