@@ -1,3 +1,6 @@
+API guide
+=========
+
 .. toctree::
    :maxdepth: 1
     
