@@ -35,7 +35,7 @@ FIGARO has the following dependencies:
 
    installation.md
    quickstart.md
-   api_guide.rst
+   api_guide
    use_mixture.md
    acknowledgment.md
    api
