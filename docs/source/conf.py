@@ -27,6 +27,7 @@ extensions = [
 'sphinx.ext.autosummary',
 'sphinx.ext.viewcode',
 'sphinx.ext.napoleon',
+'nbsphinx',
 ]
 
 # -- Options for HTML output -------------------------------------------------
