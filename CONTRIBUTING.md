@@ -16,7 +16,7 @@ The best way to get your bug fixed is to provide a test case, and/or steps to re
 
 For some specific applications (GW and cosmology), FIGARO makes use of [LAL](https://lscsoft.docs.ligo.org/lalsuite/lalsuite/index.html). If you encounter a related issue, please check that the issue is not due to your LAL installation before reporting a bug.
 
-## New features and pull requests
+## New features and pull requests
 New features can be requested and discussed in the [Issue tracker](https://github.com/sterinaldi/FIGARO/issues) and [pull requests](https://github.com/sterinaldi/FIGARO/pulls) are welcome. While requesting a feature or creating a pull request, please keep in mind that the idea is to keep the inputs for FIGARO as generic as possible (with the notable exception of GW posterior samples files). You are kindly asked not to propose/request features aimed at loading data from highly structured files.
 
 ### Acknowledgments
