@@ -29,6 +29,8 @@ FIGARO has the following dependencies:
 * lalsuite
 * ray
 
+../../introductive_guide.ipynb
+
 .. toctree::
    :maxdepth: 1
    :caption: Contents:
@@ -40,6 +42,7 @@ FIGARO has the following dependencies:
    acknowledgment.md
    api
    figaro
+   
 
 Indices and tables
 ^^^^^^^^^^^^^^^^^^
