@@ -1,6 +1,7 @@
-API guide
+FIGARO in a python script
 =========
 
 .. toctree::
-   :maxdepth: 1
-   introductive_nb
+   :maxdepth: 2
+   
+   ./introductive_notebook
