@@ -10,9 +10,9 @@ def antiprobit(func):
     """
     def f_transf(ref, x, *args, **kwargs):
         if not ref.probit:
-            return func(ref, x, *args)
+            return func(ref, x, *args, **kwargs)
         y = transform_from_probit(x, ref.bounds)
-        return func(ref, y, *args)
+        return func(ref, y, *args, **kwargs)
     return f_transf
 
 def probit(func):
@@ -21,9 +21,9 @@ def probit(func):
     """
     def f_transf(ref, x, *args, **kwargs):
         if not ref.probit:
-            return func(ref, x, *args)
+            return func(ref, x, *args, **kwargs)
         y = transform_to_probit(x, ref.bounds)
-        return func(ref, y, *args)
+        return func(ref, y, *args, **kwargs)
     return f_transf
 
 def from_probit(func):
@@ -32,7 +32,7 @@ def from_probit(func):
     """
     def f_transf(ref, *args, **kwargs):
         if not ref.probit:
-            return func(ref, *args)
-        y = func(ref, *args)
+            return func(ref, *args, **kwargs)
+        y = func(ref, *args, **kwargs)
         return transform_from_probit(y, ref.bounds)
     return f_transf
