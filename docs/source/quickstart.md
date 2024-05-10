@@ -1,6 +1,6 @@
 # Quick start
 You can use FIGARO either using the provided CLI or including it directly in your `.py` script. 
-In this page we will describe how to use the CLI (the simplest way to use FIGARO), pointing the users interested in writing their own scripts to [this jupyter notebook](https://github.com/sterinaldi/FIGARO/blob/main/introductive_guide.ipynb).
+In this page we will describe how to use the CLI (the simplest way to use FIGARO), pointing the users interested in writing their own scripts to the relevant documentation page.
 
 FIGARO comes with two main CLI:
  * `figaro-density`: reconstructs a probability density given a set of samples;
