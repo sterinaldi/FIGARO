@@ -5,6 +5,7 @@ notebooks/skymap_*
 *.ipynb
 notebooks
 *.DS_Store
+docs/source/marginalised.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
