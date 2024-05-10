@@ -35,8 +35,8 @@ FIGARO has the following dependencies:
 
    installation.md
    quickstart.md
-   api_guide
    use_mixture.md
+   introductive_guide.ipynb
    acknowledgment.md
    api
    figaro
