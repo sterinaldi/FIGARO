@@ -578,12 +578,8 @@ class density:
         """
         if self.n_cl == 0:
             raise FIGAROException("You are trying to draw samples from an empty mixture.\n If you are using the density_from_samples() method, you may want to draw samples from the output of that method.")
-        samples = self._rvs_probit(size)
-        if samples.shape[-1] == 1:
-            return samples.flatten()
-        else:
-            return samples
-        
+        return self._rvs_probit(size)
+    
     def _rvs_probit(self, size = 1):
         """
         Draw samples from mixture in probit space
