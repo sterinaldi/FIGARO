@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.abspath('../../'))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 templates_path = ['_templates']
-exclude_patterns = []
+exclude_patterns = ['_build', '**.ipynb_checkpoints']
 
 extensions = [
 'myst_parser',
@@ -28,6 +28,7 @@ extensions = [
 'sphinx.ext.viewcode',
 'sphinx.ext.napoleon',
 'nbsphinx',
+'sphinx.ext.mathjax',
 ]
 
 # -- Options for HTML output -------------------------------------------------
