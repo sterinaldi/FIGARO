@@ -550,7 +550,7 @@ class density:
         Returns:
             np.ndarray: mixture.cdf(x)
         """
-        return np.sum(np.array([w*norm(mean[0], cov[0,0]).cdf(x) for mean, cov, w in zip(self.means, np.sqrt(self.covs), self.w)]), axis = 0)
+        return np.sum(np.array([w*norm(mean[0], cov[0,0]).cdf(x) for mean, cov, w in zip(self.means, np.sqrt(self.covs), self.w)]), axis = 0).flatten()
 
     @probit
     def _logcdf(self, x):
@@ -563,7 +563,7 @@ class density:
         Returns:
             np.ndarray: mixture.logcdf(x)
         """
-        return logsumexp(np.array([w + norm(mean[0], cov[0,0]).logcdf(x) for mean, cov, w in zip(self.means, np.sqrt(self.covs), self.log_w)]), axis = 0)
+        return logsumexp(np.array([w + norm(mean[0], cov[0,0]).logcdf(x) for mean, cov, w in zip(self.means, np.sqrt(self.covs), self.log_w)]), axis = 0).flatten()
 
     @from_probit
     def rvs(self, size = 1):
@@ -578,7 +578,11 @@ class density:
         """
         if self.n_cl == 0:
             raise FIGAROException("You are trying to draw samples from an empty mixture.\n If you are using the density_from_samples() method, you may want to draw samples from the output of that method.")
-        return self._rvs_probit(size)
+        samples = self._rvs_probit(size)
+        if samples.shape[-1] == 1:
+            return samples.flatten()
+        else:
+            return samples
         
     def _rvs_probit(self, size = 1):
         """
