@@ -77,7 +77,7 @@ def available_gw_pars():
     """
     print(supported_pars)
 
-def load_single_event(event, seed = False, par = None, n_samples = -1, cosmology = 'Planck18', volume = False, waveform = 'combined', snr_threshold = None, far_threshold = None):
+def load_single_event(event, seed = False, par = None, n_samples = -1, cosmology = 'Planck18', volume = False, waveform = 'combined', snr_threshold = None, far_threshold = None, likelihood = False):
     '''
     Loads the data from .txt/.dat files (for simulations) or .h5/.hdf5 files (posteriors from GWTC) for a single event.
     Default cosmological parameters from Planck Collaboration (2021) in a flat Universe (https://www.aanda.org/articles/aa/pdf/2020/09/aa33910-18.pdf)
@@ -93,6 +93,7 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, cosmology
         str waveform:         waveform family to be used ('combined', 'seob', 'imr')
         double snr_threhsold: SNR threshold for event filtering. For injection analysis only.
         double far_threshold: FAR threshold for event filtering. For injection analysis only.
+        bool likelihood:      resample to get likelihood samples
         
     Returns:
         np.ndarray: samples
@@ -127,7 +128,7 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, cosmology
             raise FIGAROException("The following parameters are not implemented: "+", ".join(wrong_pars)+". Run figaro.load.available_gw_pars() for a list of available parameters.")
         # If everything is ok, load the samples
         else:
-            out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = cosmology, rdstate = rdstate, waveform = waveform, snr_threshold = snr_threshold, far_threshold = far_threshold)
+            out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = cosmology, rdstate = rdstate, waveform = waveform, snr_threshold = snr_threshold, far_threshold = far_threshold, likelihood = likelihood)
     
     if out is None:
         return out, name
@@ -136,7 +137,7 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, cosmology
         out = np.atleast_2d(out).T
     return out, name
 
-def load_data(path, seed = False, par = None, n_samples = -1, cosmology = 'Planck18', volume = False, waveform = 'combined', snr_threshold = None, far_threshold = None, verbose = True):
+def load_data(path, seed = False, par = None, n_samples = -1, cosmology = 'Planck18', volume = False, waveform = 'combined', snr_threshold = None, far_threshold = None, verbose = True, likelihood = False):
     '''
     Loads the data from .txt files (for simulations) or .h5/.hdf5/.dat files (posteriors from GWTC-x).
     Default cosmological parameters from Planck Collaboration (2021) in a flat Universe (https://www.aanda.org/articles/aa/pdf/2020/09/aa33910-18.pdf)
@@ -152,6 +153,7 @@ def load_data(path, seed = False, par = None, n_samples = -1, cosmology = 'Planc
         double snr_threhsold: SNR threshold for event filtering. For injection analysis only.
         double far_threshold: FAR threshold for event filtering. For injection analysis only.
         bool verbose:         show progress bar
+        bool likelihood:      resample to get likelihood samples
 
     Returns:
         np.ndarray: samples
@@ -203,7 +205,7 @@ def load_data(path, seed = False, par = None, n_samples = -1, cosmology = 'Planc
                 raise FIGAROException("The following parameters are not implemented: "+", ".join(wrong_pars)+". Run figaro.load.available_gw_pars() for a list of available parameters.")
             # If everything is ok, load the samples
             else:
-                out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = cosmology, rdstate = rdstate, waveform = waveform, snr_threshold = snr_threshold, far_threshold = far_threshold)
+                out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = cosmology, rdstate = rdstate, waveform = waveform, snr_threshold = snr_threshold, far_threshold = far_threshold, likelihood = likelihood)
                 if out is not None:
                     if out.shape[-1] == len(par):
                         events.append(out)
@@ -216,7 +218,7 @@ def load_data(path, seed = False, par = None, n_samples = -1, cosmology = 'Planc
         warnings.warn("At least one event does not have SNR samples. These events cannot be loaded for this parameter choices.")
     return (events, np.array(names))
 
-def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, waveform = 'combined', snr_threshold = None, far_threshold = None):
+def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, waveform = 'combined', snr_threshold = None, far_threshold = None, likelihood = False):
     '''
     Reads data from .h5/.hdf5 GW posterior files.
     For GWTC-3 data release, it uses by default the Mixed posterior samples.
@@ -232,13 +234,15 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
         * IMRPhenomPv3HM
     
     Arguments:
-        str event:            file to read
-        str par:              parameter to extract
-        tuple cosmology:      cosmological parameters (h, om, ol)
-        int n_samples:        number of samples for (random) downsampling. Default -1: all samples
-        str waveform:         waveform family to be used ('combined', 'imr', 'seob')
-        double snr_threhsold: SNR threshold for event filtering. For injection analysis only.
-        double far_threshold: FAR threshold for event filtering. For injection analysis only.
+        str event:                 file to read
+        list-of-str par:           parameter to extract
+        str cosmology:             set of cosmological parameters to use.
+        np.random.rdstate rdstate: state for random number generation
+        int n_samples:             number of samples for (random) downsampling. Default -1: all samples
+        str waveform:              waveform family to be used ('combined', 'imr', 'seob')
+        double snr_threhsold:      SNR threshold for event filtering. For injection analysis only.
+        double far_threshold:      FAR threshold for event filtering. For injection analysis only.
+        bool likelihood:           resample to get likelihood samples
     
     Returns:
         np.ndarray: samples
@@ -399,6 +403,10 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                     if snr_threshold is not None:
                         samples = samples[:, np.where(snr > snr_threshold)[0]]
                 samples = samples.T
+            if likelihood:
+                inv_prior = 1./_prior_gw(par, samples, cosmology)
+                h         = np.random.uniform(0,1, len(samples))
+                samples   = samples[h < inv_prior/np.max(inv_prior)]
             if n_samples > -1:
                 s = int(min([n_samples, len(samples)]))
                 return samples[rdstate.choice(np.arange(len(samples)), size = s, replace = False)]
@@ -468,12 +476,41 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                         samples.append(samples_loaded[np.where(loaded_pars == pi)[0]].flatten())
                 samples = np.array(samples)
                 samples = samples.T
+            if likelihood:
+                inv_prior = 1./_prior_gw(par, samples, cosmology)
+                h         = np.random.uniform(0,1, len(samples))
+                samples   = samples[h < inv_prior/np.max(inv_prior)]
             if n_samples > -1:
                 s = int(min([n_samples, len(samples)]))
                 return samples[rdstate.choice(np.arange(len(samples)), size = s, replace = False)]
             else:
                 return samples
 
+def _prior_gw(par, samples, cosmology = 'Planck18'):
+    """
+    GW prior parameters, following https://docs.ligo.org/RatesAndPopulations/gwpopulation_pipe/_modules/gwpopulation_pipe/data_collection.html#evaluate_prior
+    
+    Arguments:
+        np.ndarray samples: posterior samples
+        list-of-str par:    parameter(s)
+        str cosmology:      cosmological parameters.
+    
+    Returns:
+        np.ndarray: prior values
+    """
+    if cosmology == 'Planck18':
+        omega = Planck18
+    elif cosmology == 'Planck15':
+        omega = Planck15
+    else:
+        raise FIGAROException("Cosmology not supported")
+    prior = np.ones(len(samples))
+    # Redshift prior
+    if 'z' in par:
+        z = samples[:, np.where(np.array(par) == 'z')].flatten()
+        prior *= omega.ComovingVolumeElement(z)/(1.+z)
+    return prior
+    
 def save_density(draws, folder = '.', name = 'density', ext = 'json'):
     """
     Exports a list of figaro.mixture instances to file

@@ -65,8 +65,8 @@ class CosmologicalParameters:
 Planck18 = CosmologicalParameters(0.674, 0.315, 0.685, -1, 0, 0)
 Planck15 = CosmologicalParameters(0.679, 0.3065, 0.6935, -1, 0, 0)
 
-# Interpolants up to z = 2
-z = np.linspace(0,2,1000)
+# Interpolants up to z = 2.5
+z = np.linspace(0,2.5,1000)
 dVdz_approx_planck18 = interp1d(z, Planck18.ComovingVolumeElement(z)/1e9) # In Gpc
 dVdz_approx_planck15 = interp1d(z, Planck15.ComovingVolumeElement(z)/1e9) # In Gpc
 

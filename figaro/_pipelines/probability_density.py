@@ -40,6 +40,7 @@ def main():
     parser.add_option("--far_threshold", dest = "far_threshold", type = "float", help = "FAR threshold for simulated GW datasets", default = None)
     parser.add_option("--no_probit", dest = "probit", action = 'store_false', help = "Disable probit transformation", default = True)
     parser.add_option("--config", dest = "config", type = "string", help = "Config file. Warning: command line options override config options", default = None)
+    parser.add_option("-l", "--likelihood", dest = "likelihood", action = 'store_true', help = "Resample posteriors to get likelihood samples (only for GW data)", default = False)
     
     (options, args) = parser.parse_args()
 
@@ -105,7 +106,15 @@ def main():
     
     for i, file in enumerate(files):
         # Load samples
-        samples, name = load_single_event(file, par = options.par, n_samples = options.n_samples_dsp, cosmology = options.cosmology, waveform = options.wf, snr_threshold = options.snr_threshold, far_threshold = options.far_threshold)
+        samples, name = load_single_event(file,
+                                          par           = options.par,
+                                          n_samples     = options.n_samples_dsp,
+                                          cosmology     = options.cosmology,
+                                          waveform      = options.wf,
+                                          snr_threshold = options.snr_threshold,
+                                          far_threshold = options.far_threshold,
+                                          likelihood    = options.likelihood,
+                                          )
         try:
             dim = np.shape(samples)[-1]
         except IndexError:

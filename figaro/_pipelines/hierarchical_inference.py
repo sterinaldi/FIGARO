@@ -51,6 +51,7 @@ def main():
     parser.add_option("--config", dest = "config", type = "string", help = "Config file. Warning: command line options override config options", default = None)
     parser.add_option("--rate", dest = "rate", action = 'store_true', help = "Compute rate", default = False)
     parser.add_option("--include_dvdz", dest = "include_dvdz", action = 'store_true', help = "Include dV/dz*(1+z)^{-1} term in selection effects.", default = False)
+    parser.add_option("-l", "--likelihood", dest = "likelihood", action = 'store_true', help = "Resample posteriors to get likelihood samples (only for GW data)", default = False)
     
     (options, args) = parser.parse_args()
 
@@ -165,10 +166,11 @@ def main():
             
     # Load samples
     events, names = load_data(options.input,
-                              par       = options.par,
-                              n_samples = options.n_samples_dsp,
-                              cosmology = options.cosmology,
-                              waveform  = options.wf,
+                              par        = options.par,
+                              n_samples  = options.n_samples_dsp,
+                              cosmology  = options.cosmology,
+                              waveform   = options.wf,
+                              likelihood = options.likelihood,
                               )
     try:
         dim = np.shape(events[0][0])[-1]
