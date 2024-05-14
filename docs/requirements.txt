@@ -3,3 +3,4 @@ sphinx-rtd-theme
 figaro
 nbsphinx
 ipykernel
+furo
