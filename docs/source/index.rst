@@ -14,21 +14,6 @@ Statement of need
 | FIGARO is an inference code designed to estimate multivariate probability densities given samples from an unknown distribution using a Dirichlet Process Gaussian Mixture Model (DPGMM) as nonparameteric model, and to perform hierarchical non-parametric inferences: in this case, the model used is (H)DPGMM, described in `Rinaldi & Del Pozzo (2022a) <https://ui.adsabs.harvard.edu/abs/2022MNRAS.509.5454R/abstract>`_.
 | This code, originally developed in the context of black hole population studies using gravitational-wave observations, take as input generic data and therefore it can be applied to a variety of studies beyond gravitational wave populations.
 
-Dependencies
-^^^^^^^^^^^^
-FIGARO has the following dependencies:
-
-* numpy > 1.22
-* scipy
-* matplotlib
-* dill
-* Corner
-* Numba
-* h5py
-* tqdm
-* lalsuite
-* ray
-
 .. toctree::
    :maxdepth: 1
    :caption: Contents:

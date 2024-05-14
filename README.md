@@ -10,7 +10,7 @@ You can install FIGARO either via pip (stable release, recommended)
 ```
 pip install figaro
 ```
-or from this repository (potentially unstable)
+or from the repository (potentially unstable)
 ```
 git clone git@github.com:sterinaldi/FIGARO.git
 cd FIGARO
@@ -22,8 +22,8 @@ FIGARO comes with two plug-and-play CLI:
 * `figaro-density` reconstructs a probability density given a set of samples;
 * `figaro-hierarchical` reconstructs a probability density given a set of single-event samples, each of them drawn around a sample from the initial probability density.
 
-If you only want to reconstruct some probability density or run a vanilla hierarchical analysis, we strongly recommend using these CLI, which are already tested and optimised. A (hopefully gentle) introduction to them can be found at [this page](https://figaro.readthedocs.io/en/latest/quickstart.html).
-However, if you want to include FIGARO in your own scripts, an introductive guide can be found in the `introductive_guide.ipynb` notebook: there we show how to to reconstruct a probability density with FIGARO and how to use its products. We strongly encourage the interested user to go through the whole notebook, since it provides a tutorial on how to properly set and use FIGARO.
+If you only want to reconstruct some probability density or run a vanilla hierarchical analysis, we strongly recommend using these CLI, which are already tested and optimised. A (hopefully gentle) introduction to them can be found at [this page](https://figaro.readthedocs.io/en/latest/quickstart.html), and a guide on how to use the FIGARO reconstructions is available [here](https://figaro.readthedocs.io/en/latest/use_mixture.html).
+If you want to include FIGARO in your own scripts, an introductive guide can be found [here](https://figaro.readthedocs.io/en/latest/python_script.html): there we show how to to reconstruct a probability density with FIGARO and how to use its products.
 
 ## Acknowledgments
 
