@@ -7,7 +7,7 @@ import copy
 import importlib
 from figaro.exceptions import FIGAROException
 from figaro.mixture import mixture
-from figaro.cosmology import Planck18, Planck15
+from figaro.cosmology import Planck18, Planck15, dVdz_approx_planck18, dVdz_approx_planck15
 from pathlib import Path
 from tqdm import tqdm
 
@@ -404,7 +404,7 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                         samples = samples[:, np.where(snr > snr_threshold)[0]]
                 samples = samples.T
             if likelihood:
-                inv_prior = 1./_prior_gw(par, samples, cosmology)
+                inv_prior = 1./_prior_gw(par, data, cosmology)
                 h         = np.random.uniform(0,1, len(samples))
                 samples   = samples[h < inv_prior/np.max(inv_prior)]
             if n_samples > -1:
@@ -477,7 +477,7 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                 samples = np.array(samples)
                 samples = samples.T
             if likelihood:
-                inv_prior = 1./_prior_gw(par, samples, cosmology)
+                inv_prior = 1./_prior_gw(par, ss, cosmology)
                 h         = np.random.uniform(0,1, len(samples))
                 samples   = samples[h < inv_prior/np.max(inv_prior)]
             if n_samples > -1:
@@ -500,15 +500,25 @@ def _prior_gw(par, samples, cosmology = 'Planck18'):
     """
     if cosmology == 'Planck18':
         omega = Planck18
+        dVdz  = dVdz_approx_planck18
     elif cosmology == 'Planck15':
         omega = Planck15
+        dVdz  = dVdz_approx_planck15
     else:
         raise FIGAROException("Cosmology not supported")
+    vol   = omega.ComovingVolume(2.5)/1e9
     prior = np.ones(len(samples))
-    # Redshift prior
+    # Redshift prior (uniform in comoving source frame)
     if 'z' in par:
-        z = samples[:, np.where(np.array(par) == 'z')].flatten()
-        prior *= omega.ComovingVolumeElement(z)/(1.+z)
+        prior *= dVdz(samples[GW_par['z']])/((1.+samples[GW_par['z']])*vol)
+    # Mass prior (uniform in detector-frame component masses)
+    n_mass_pars = np.sum([item in par for item in ['m1','m2','mc','q']])
+    if n_mass_pars > 0:
+        prior *= (1+samples[GW_par['z']])**np.min([n_mass_pars, 2])
+    if 'q' in par:
+        prior *= samples[GW_par['m1']]
+    if ('mc' in par or 'mc_detect' in par):
+        prior *= (1 + samples[GW_par['q']]) ** 0.2 / samples[GW_par['q']] ** 0.6
     return prior
     
 def save_density(draws, folder = '.', name = 'density', ext = 'json'):
