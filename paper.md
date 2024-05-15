@@ -6,6 +6,7 @@ tags:
   - astrophysics
   - nonparametric methods
   - black holes
+  - gravitational waves
 authors:
   - given: Stefano
     surname: Rinaldi
@@ -27,7 +28,7 @@ affiliations:
  - name: INFN, Sezione di Pisa, Largo Bruno Pontecorvo 3, 56127 Pisa, Italy
    index: 4
    
-date: 13 February 2024
+date: 15 May 2024
 bibliography: paper.bib
 
 ---
@@ -38,7 +39,7 @@ The astrophysical graveyard is populated by black holes (BHs) and neutron stars 
 Bayesian non-parametric methods are models with a countably infinite number of parameters to model arbitrary probability densities. These parameters do not have any connection with the modelled distribution, making these a convenient and agnostic way of describing some unknown population. These are key tools to reconstruct probability densities without being committal to a specific functional form: the basic idea is to let the data speak for themselves, retrieving the distribution that is the most likely to have generated the observed data.
 In a certain sense, this is the most phenomenological approach possible: unlike the standard parametric approach, where we specify a functional form inspired by what we expect to find in the data, with non-parametric methods all the information comes from the data, thus avoiding the risk of biasing the inference with inaccurate models. Features in the inferred distribution will arise naturally without the need of including them in the model, leaving astrophysicists tasked with explaining them in terms of formation channels and astrophysical processes. 
 
-The GW community is currently exploring this direction [e.g., @tiwari:2021:vamana, @edelman:2023, @toubiana:2023, @callister:2024]: `FIGARO` fits in this framework, being a non-parametric inference scheme designed to reconstruct arbitrary probability densities in a hierarchical fashion under the requirement of minimal mathematical assumptions.
+The GW community is currently exploring this direction [e.g. @tiwari:2021:vamana @edelman:2023 @toubiana:2023 @callister:2024]: `FIGARO` fits in this framework, being a non-parametric inference scheme designed to reconstruct arbitrary probability densities in a hierarchical fashion under the requirement of minimal mathematical assumptions.
 
 # Statement of need
 
@@ -48,7 +49,7 @@ Despite being originally developed in the context of GW physics and in particula
 The flexibility of (H)DPGMM in reconstructing arbitrary probability densities united with the speed provided by the Gibbs sampling variation we implemented in this package makes `FIGARO` an ideal tool for population studies.
 
 # Availability and usage
-`FIGARO` is available via [PyPI](https://pypi.org/project/figaro/) and is compatible with `python<3.12`. The code is hosted on [GitHub](https://github.com/sterinaldi/figaro) and the documentation can be found at [readthedocs.io](https://figaro.readthedocs.io). `FIGARO` comes with two CLIs to perform both the reconstruction of a probability density given a set of samples (``figaro-density``) and the hierarchical inference (``figaro-hierarchical``). The code repository also includes a [jupyter notebook](https://github.com/sterinaldi/FIGARO/blob/main/introductive_guide.ipynb) with a tutorial on how to use `FIGARO` in a custom `python` script.
+`FIGARO` is available via [PyPI](https://pypi.org/project/figaro/) and is compatible with `python<3.12`. The code is hosted on [GitHub](https://github.com/sterinaldi/figaro) and the documentation can be found at [readthedocs.io](https://figaro.readthedocs.io). `FIGARO` comes with two CLIs to perform both the reconstruction of a probability density given a set of samples (``figaro-density``) and the hierarchical inference (``figaro-hierarchical``). The docmumentation also includes a guide on how to use `FIGARO` in a custom `python` script.
 
 # Publications
 This is a list of the publications that made use of `FIGARO` so far:
