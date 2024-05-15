@@ -49,7 +49,7 @@ Despite being originally developed in the context of GW physics and in particula
 The flexibility of (H)DPGMM in reconstructing arbitrary probability densities united with the speed provided by the Gibbs sampling variation we implemented in this package makes `FIGARO` an ideal tool for population studies.
 
 # Availability and usage
-`FIGARO` is available via [PyPI](https://pypi.org/project/figaro/) and is compatible with `python<3.12`. The code is hosted on [GitHub](https://github.com/sterinaldi/figaro) and the documentation can be found at [readthedocs.io](https://figaro.readthedocs.io). `FIGARO` comes with two CLIs to perform both the reconstruction of a probability density given a set of samples (``figaro-density``) and the hierarchical inference (``figaro-hierarchical``). The docmumentation also includes a guide on how to use `FIGARO` in a custom `python` script.
+`FIGARO` is available via [PyPI](https://pypi.org/project/figaro/) and is compatible with `python<3.12`. The code is hosted on [GitHub](https://github.com/sterinaldi/figaro) and the documentation is hosted at [figaro.readthedocs.io](https://figaro.readthedocs.io). `FIGARO` comes with two CLIs to perform both the reconstruction of a probability density given a set of samples (``figaro-density``) and the hierarchical inference (``figaro-hierarchical``). The docmumentation also includes a guide on how to use `FIGARO` in a custom `python` script.
 
 # Publications
 This is a list of the publications that made use of `FIGARO` so far:
