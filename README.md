@@ -4,6 +4,8 @@ FIGARO is an inference code designed to estimate multivariate probability densit
 It is also possible to perform hierarchical inferences: in this case, the model used is (H)DPGMM, described in [Rinaldi & Del Pozzo (2022a)](https://ui.adsabs.harvard.edu/abs/2022MNRAS.509.5454R/abstract).
 Differently from other DPGMM implementations relying on variational algorithms, FIGARO does not require the user to specify a priori the maximum allowed number of mixture components. The required number of Gaussian distributions to be included in the mixture is inferred from the data. The documentation and user guide for FIGARO is available at [the documentation page](https://figaro.readthedocs.io).
 
+[![status](https://joss.theoj.org/papers/d5e757291a0287f2fef1466c7eacdff5/status.svg)](https://joss.theoj.org/papers/d5e757291a0287f2fef1466c7eacdff5)
+![Test](https://github.com/sterinaldi/FIGARO/actions/workflows/python-package.yml/badge.svg)
 ## Getting started
 
 You can install FIGARO either via pip (stable release, recommended) 
