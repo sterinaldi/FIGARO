@@ -1,4 +1,5 @@
 import numpy as np
+from numba import prange
 from figaro._numba_functions import *
 
 LOG2PI = np.log(2*np.pi)
