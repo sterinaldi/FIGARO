@@ -122,7 +122,6 @@ def _condition(mix, vals, dims, norm = True, filter = True, tol = 1e-4):
         log_weights -= _marginalise(mix, axis = np.arange(mix.dim)[~idx])._logpdf_probit(vals)
     # Filter out components with negligible weights
     idx_filt = [True for _ in range(len(log_weights))]
-    norm_const = 0.
     if filter:
         ww = np.exp(log_weights)
         idx = np.argsort(ww)

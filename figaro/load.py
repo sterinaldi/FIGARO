@@ -69,7 +69,7 @@ inj_par['s2y']                 = 'spin2y'
 inj_par['s2z']                 = 'spin2z'
 inj_par['luminosity_distance'] = 'distance'
 
-supported_pars = [p for p in GW_par.keys() if not p in ['snr', 'far']]
+supported_pars = [p for p in GW_par.keys() if p not in ['snr', 'far']]
 
 def available_gw_pars():
     """
@@ -107,9 +107,9 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, cosmology
     name, ext = str(event).split('/')[-1].split('.')
     if volume:
         par = ['ra', 'dec', 'luminosity_distance']
-    if not ext in supported_extensions:
+    if ext not in supported_extensions:
         raise TypeError("File {0}.{1} is not supported".format(name, ext))
-    if not ext in ['h5', 'hdf5']:
+    if ext not in ['h5', 'hdf5']:
         if par is not None:
             warnings.warn("Par names (or volume keyword) are ignored for .txt/.dat/.csv files")
         if n_samples > -1:
@@ -124,7 +124,7 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, cosmology
             raise TypeError("Please provide a list of parameter names you want to load (e.g. ['m1']).")
         # Check that all the parametes are loadable
         if not np.all([p in GW_par.keys() for p in par]):
-            wrong_pars = [p for p in par if not p in GW_par.keys()]
+            wrong_pars = [p for p in par if p not in GW_par.keys()]
             raise FIGAROException("The following parameters are not implemented: "+", ".join(wrong_pars)+". Run figaro.load.available_gw_pars() for a list of available parameters.")
         # If everything is ok, load the samples
         else:
@@ -176,9 +176,9 @@ def load_data(path, seed = False, par = None, n_samples = -1, cosmology = 'Planc
             rdstate = np.random.RandomState()
         name, ext = str(event).split('/')[-1].split('.')
         names.append(name)
-        if not ext in supported_extensions:
+        if ext not in supported_extensions:
             raise TypeError("File {0}.{1} is not supported".format(name, ext))
-        if not ext in ['h5', 'hdf5']:
+        if ext not in ['h5', 'hdf5']:
             if par is not None:
                 warnings.warn("Par names (or volume keyword) are ignored for .txt/.dat/.csv files")
             if n_samples > -1:
@@ -201,7 +201,7 @@ def load_data(path, seed = False, par = None, n_samples = -1, cosmology = 'Planc
                 raise TypeError("Please provide a list of parameter names you want to load (e.g. ['m1']).")
             # Check that all the parametes are loadable
             if not np.all([p in GW_par.keys() for p in par]):
-                wrong_pars = [p for p in par if not p in GW_par.keys()]
+                wrong_pars = [p for p in par if p not in GW_par.keys()]
                 raise FIGAROException("The following parameters are not implemented: "+", ".join(wrong_pars)+". Run figaro.load.available_gw_pars() for a list of available parameters.")
             # If everything is ok, load the samples
             else:
@@ -253,7 +253,7 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
         omega = Planck15
     else:
         raise FIGAROException("Cosmology not supported")
-    if not waveform in supported_waveforms:
+    if waveform not in supported_waveforms:
         raise FIGAROException("Unknown waveform: please use 'combined' (default), 'imr' or 'seob'")
     
     if far_threshold is not None and snr_threshold is not None:
@@ -261,10 +261,10 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
         snr_threshold = None
     
     if far_threshold is not None:
-        if not 'far' in par:
+        if 'far' not in par:
             par = np.append(par, 'far')
     elif snr_threshold is not None:
-        if not 'snr' in par:
+        if 'snr' not in par:
             par = np.append(par, 'snr')
     
     with h5py.File(Path(event), 'r') as f:
@@ -673,7 +673,7 @@ def load_selection_function(file, par = None, far_threshold = 1):
     """
     file = Path(file)
     ext  = file.parts[-1].split('.')[1]
-    if not ext in supported_extensions + ['py']:
+    if ext not in supported_extensions + ['py']:
         raise FIGAROException("Selection function file not supported")
     if ext == 'py':
         selfunc_file_name = file.parts[-1].split('.')[0]
@@ -688,7 +688,7 @@ def load_selection_function(file, par = None, far_threshold = 1):
         except:
             duration      = 1.
     else:
-        if not ext in ['h5','hdf5']:
+        if ext not in ['h5','hdf5']:
             samples     = np.loadtxt(file)
             det_idx     = samples[:,-1]
             selfunc     = samples[:,:-2][det_idx == 1]
@@ -720,7 +720,7 @@ def _unpack_injections(file, par, far_threshold = 1.):
         raise TypeError("Please provide a list of parameter names you want to load (e.g. ['m1']).")
     # Check that all the parametes are loadable
     if not np.all([p in loadable_inj_pars for p in par]):
-        wrong_pars = [p for p in par if not p in loadable_inj_pars]
+        wrong_pars = [p for p in par if p not in loadable_inj_pars]
         raise FIGAROException("The following parameters are not implemented: "+", ".join(wrong_pars))
     with h5py.File(file, 'r') as f:
         data = f['injections']

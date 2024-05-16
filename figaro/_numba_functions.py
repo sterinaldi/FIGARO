@@ -1,5 +1,5 @@
 import numpy as np
-from numba import njit, prange
+from numba import njit
 from numba.extending import get_cython_function_address
 import ctypes
 
