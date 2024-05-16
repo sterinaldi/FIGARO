@@ -15,6 +15,7 @@ from matplotlib.gridspec import GridSpec
 from figaro import plot_settings
 from figaro.marginal import marginalise
 from figaro.credible_regions import ConfidenceArea
+from figaro.cumulative import fast_cumulative
 from figaro.utils import recursive_grid
 from figaro.mixture import mixture
 

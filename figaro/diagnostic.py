@@ -1,12 +1,8 @@
 import numpy as np
-
+import matplotlib.pyplot as plt
+import warnings
 from numba import njit, prange
 from pathlib import Path
-
-import matplotlib.pyplot as plt
-from distutils.spawn import find_executable
-
-from figaro.cumulative import fast_cumulative
 from figaro.exceptions import FIGAROException
 from figaro import plot_settings
 
