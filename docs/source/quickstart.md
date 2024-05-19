@@ -1,12 +1,12 @@
 # Quick start
-You can use FIGARO either using the provided CLI or including it directly in your `.py` script. 
-In this page we will describe how to use the CLI (the simplest way to use FIGARO), pointing the users interested in writing their own scripts to the relevant documentation page.
+You can use FIGARO either using the provided CLIs or including it directly in your `.py` script. 
+In this page we will describe how to use the CLI (the easiest way to use FIGARO), pointing the users interested in writing their own scripts to the relevant documentation page.
 
 FIGARO comes with two main CLI:
  * `figaro-density`: reconstructs a probability density given a set of samples;
  * `figaro-hierarchical`: performs a hierarchical inference given different probability densities (each represented by a set of samples).
  
- Both CLI are automatically installed with FIGARO. You can check it by running `figaro-density -h` and `figaro-hierarchical -h`: this will print the help pages for the scripts.
+ Both CLIs are automatically installed with FIGARO. You can check it by running `figaro-density -h` and `figaro-hierarchical -h`: this will print the help pages for the scripts.
 
 ## `figaro-density`
 
@@ -49,7 +49,7 @@ my_folder
 └── options.ini
 ```
 
-`event_1.pdf` and `log_event_1.pdf` (this is produced only if the samples are one-dimensional) show the reconstructed probability density, whereas `draws_event_1.json` contains the individual draws that has been produced by FIGARO (see below for how to use them). `prob_event_1.txt` contains the probability values used to produce `event_1.pdf`.
+`event_1.pdf` and `log_event_1.pdf` (the latter is produced only if the parameter space is one-dimensional) show the reconstructed probability density, whereas `draws_event_1.json` contains the individual draws that has been produced by FIGARO (see the relevant page for how to use them). `prob_event_1.txt` contains the probability values used to produce `event_1.pdf`, again for one-dimensional distribution only.
 `options.ini` contains a summary of all the options (provided and default) for the run. It can be used both as a log file and to reproduce the run with the same settings via
 
 ```
@@ -64,7 +64,7 @@ If instead of a single file we point `figaro-density` to a folder with multiple 
 figaro-density -i events -b "[[Xmin, Xmax],[Ymin, Ymax],[Zmin, Zmax]]"
 ```
 
-The CLI will gather all the suitable files in the folder and will produce a reconstruction per file. Eventually, the folder will look like this:
+the CLI will gather all the suitable files in the folder and will produce a reconstruction per file. Eventually, the folder will look like this:
 ```
 my_folder
 ├── events
