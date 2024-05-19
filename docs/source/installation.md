@@ -17,13 +17,15 @@ pip install .
 
 FIGARO has the following dependencies:
 
-* numpy > 1.22
-* scipy
-* matplotlib
-* dill
-* Corner
-* Numba
-* h5py
-* tqdm
-* lalsuite
-* ray
+```
+numpy > 1.22
+scipy
+matplotlib
+dill
+corner
+numba
+h5py
+tqdm
+lalsuite
+ray
+```
