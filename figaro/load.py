@@ -541,7 +541,8 @@ def save_density(draws, folder = '.', name = 'density', ext = 'json'):
         for draws_i in draws:
             list_of_dicts = [dr.__dict__.copy() for dr in draws_i]
             for density in list_of_dicts:
-                density.pop('components')
+                if 'components' in density.keys():
+                    density.pop('components')
                 for key in density.keys():
                     value = density[key]
                     if isinstance(value, np.ndarray):
