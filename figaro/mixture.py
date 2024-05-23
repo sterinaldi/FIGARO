@@ -692,7 +692,7 @@ class mixture(density):
         bool probit:         whether to use the probit transformation or not
         np.ndarray log_w:    component log weights
         bool make_comp:      make component objects
-        double alpha_factor: evaluated \int pdet(theta)p(theta|lambda) conditioned on the mixture parameters
+        double alpha_factor: evaluated \\int pdet(theta)p(theta|lambda) conditioned on the mixture parameters
     
     Returns:
         mixture: instance of mixture class
@@ -1416,7 +1416,7 @@ class HDPGMM(DPGMM):
     
     def compute_alpha_factor(self):
         """
-        Compute the integral \int pdet(theta)p(theta|lambda) dtheta conditioned on the specific DPGMM parameters
+        Compute the integral \\int pdet(theta)p(theta|lambda) dtheta conditioned on the specific DPGMM parameters
         
         Returns:
             double: value of the integral
