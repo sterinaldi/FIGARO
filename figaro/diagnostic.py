@@ -219,7 +219,7 @@ def entropy(draws, out_folder = '.', exp_entropy = None, name = 'event', n_draws
     if exp_entropy is not None:
         ax.axhline(exp_entropy, lw = 0.5, ls = '--', c = 'r')
     ax.set_xlabel('$N$')
-    ax.set_ylabel('$S(N)\ [\mathrm{bits}]$')
+    ax.set_ylabel('$S(N)\ [\\mathrm{bits}]$')
     if show:
         plt.show()
     if save:
