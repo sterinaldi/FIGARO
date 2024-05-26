@@ -29,8 +29,8 @@ If you want to include FIGARO in your own scripts, an introductive guide can be 
 
 ## Acknowledgments
 
-If you use FIGARO in your research, please cite [Rinaldi & Del Pozzo (2022b)](https://ui.adsabs.harvard.edu/abs/2022MNRAS.517L...5R/abstract):
-```
+If you use FIGARO in your research, please cite [Rinaldi & Del Pozzo (2024)](https://joss.theoj.org/papers/10.21105/joss.06589):
+```text
 @ARTICLE{Rinaldi2024,
        author = {{Rinaldi}, Stefano and {Del Pozzo}, Walter},
         title = "{FIGARO: hierarchical non-parametric inference for population studies}",
@@ -46,9 +46,9 @@ If you use FIGARO in your research, please cite [Rinaldi & Del Pozzo (2022b)](ht
 }
 ```
 
-If you make use of the hierarchical analysis, you should mention (H)DPGMM as the model used and cite [Rinaldi & Del Pozzo (2022a)](https://ui.adsabs.harvard.edu/abs/2022MNRAS.509.5454R/abstract):
+If you make use of the hierarchical analysis, you should mention (H)DPGMM as the model used and cite [Rinaldi & Del Pozzo (2022)](https://ui.adsabs.harvard.edu/abs/2022MNRAS.509.5454R/abstract):
 
-```
+```text
 @ARTICLE{2022MNRAS.509.5454R,
        author = {{Rinaldi}, Stefano and {Del Pozzo}, Walter},
         title = "{(H)DPGMM: a hierarchy of Dirichlet process Gaussian mixture models for the inference of the black hole mass function}",
