@@ -17,7 +17,7 @@ version = '1.6.10'
 requires-python = '< 3.12'
 readme = {file = "README.md", content-type = "text/markdown"}
 license = {file = "LICENSE"}
-keywords = ['DPGMM', 'figaro', 'hierarchical', 'inference', 'HDPGMM']
+keywords = ['DPGMM', 'HDPGMM', 'figaro', 'hierarchical', 'inference']
 authors = [
   {name = "Stefano Rinaldi", email = "stefano.rinaldi@uni-heidelberg.de"},
   {name = "Walter Del Pozzo", email = "walter.delpozzo@unipi.it"},
