@@ -31,7 +31,8 @@ jobs:
         path: dist/
   # Publish
   publish-to-pypi:
-    name: >- publish to PyPI
+    name: >-
+        publish to PyPI
     needs:
     - build
     runs-on: ubuntu-latest
