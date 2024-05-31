@@ -6,8 +6,12 @@ name: Tests
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - figaro/**
   pull_request:
     branches: [ "main" ]
+    paths:
+      - figaro/**
 
 jobs:
   build:
