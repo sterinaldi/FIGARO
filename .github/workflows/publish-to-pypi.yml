@@ -1,0 +1,51 @@
+name: publish to PyPI
+on:
+  push:
+    paths:
+      - pyproject.toml
+
+jobs:
+  build:
+    name: build distribution
+    runs-on: ubuntu-latest
+    # Install python
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "<3.12"
+    # Build source
+    - name: Install pypa/build
+      run: >-
+        python3 -m
+        pip install
+        build
+        --user
+    - name: Build a binary wheel and a source tarball
+      run: python3 -m build
+    - name: Store the distribution packages
+      uses: actions/upload-artifact@v3
+      with:
+        name: python-package-distributions
+        path: dist/
+  # Publish
+  publish-to-pypi:
+    name: >- publish to PyPI
+    needs:
+    - build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/figaro  # Replace <package-name> with your PyPI project name
+    permissions:
+      id-token: write  # IMPORTANT: mandatory for trusted publishing
+    # Steps
+    steps:
+    - name: Download all the dists
+      uses: actions/download-artifact@v3
+      with:
+        name: python-package-distributions
+        path: dist/
+    - name: publish distribution to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
