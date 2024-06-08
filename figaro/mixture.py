@@ -1399,8 +1399,9 @@ class HDPGMM(DPGMM):
         """
         if self.n_cl == 0:
             raise FIGAROException("You are trying to build an empty mixture - perhaps you called the initialise() method. If you are using the density_from_samples() method, the inferred mixture is returned by that method as an instance of mixture class.")
-        idx   = np.where(np.array(self.N_list) > 0)[0]
-        N_pts = np.array([comp.log_N_true for comp in np.array(self.mixture)[idx]])
+        idx       = np.where(np.array(self.N_list) > 0)[0]
+        N_pts     = np.array([comp.log_N_true for comp in np.array(self.mixture)[idx]])
+        self.n_cl = (np.array(self.N_list) > 0).sum()
         if self.selfunc is not None:
             log_w, w           = self.log_w, self.w
             self.log_w         = N_pts - logsumexp_jit(N_pts)
@@ -1412,7 +1413,7 @@ class HDPGMM(DPGMM):
             alpha_factor = 1.
             N_pts = np.exp(N_pts)
         w = dirichlet(N_pts+self.alpha/self.n_cl).rvs()[0]
-        return mixture(np.array([comp.mu.flatten() for comp in np.array(self.mixture)[idx]]), np.array([comp.sigma for comp in np.array(self.mixture)[idx]]), w, self.bounds, self.dim, (np.array(self.N_list) > 0).sum(), self.n_pts, self.alpha, probit = self.probit, make_comp = make_comp, alpha_factor = alpha_factor)
+        return mixture(np.array([comp.mu.flatten() for comp in np.array(self.mixture)[idx]]), np.array([comp.sigma for comp in np.array(self.mixture)[idx]]), w, self.bounds, self.dim, self.n_cl, self.n_pts, self.alpha, probit = self.probit, make_comp = make_comp, alpha_factor = alpha_factor)
     
     def compute_alpha_factor(self):
         """
