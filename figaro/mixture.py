@@ -1075,7 +1075,7 @@ class DPGMM(density):
         Returns:
             np.ndarray: samples in probit space
         """
-        idx = np.random.choice(np.arange(self.n_cl), p = self.w, size = size)
+        idx = np.random.choice(np.arange(len(self.w)), p = self.w, size = size)
         ctr = Counter(idx)
         if self.dim > 1:
             samples = np.empty(shape = (1,self.dim))
@@ -1327,7 +1327,9 @@ class HDPGMM(DPGMM):
             int cid:       cluster id
             double logL_x: log likelihood for the point
         """
-        self.mixture[int(cid)] = self._remove_datapoint_from_component(self.mixture[int(cid)], self.mixture[int(cid)].logL_D - logL_x)
+        with np.errstate(invalid = 'ignore'):
+            logL = np.nan_to_num(self.mixture[int(cid)].logL_D - logL_x, nan = -np.inf, posinf = -np.inf, neginf = -np.inf)
+        self.mixture[int(cid)]       = self._remove_datapoint_from_component(self.mixture[int(cid)], logL)
         self.N_list[int(cid)] -= 1
         self.n_pts            -= 1
         # Update weights
