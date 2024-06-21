@@ -163,7 +163,7 @@ def main():
         if not options.postprocess:
             # Actual analysis
             desc = name + ' ({0}/{1})'.format(i+1, len(files))
-            pool = ActorPool([worker.remote(bounds  = optionso.bounds,
+            pool = ActorPool([worker.remote(bounds  = options.bounds,
                                             sigma   = options.sigma_prior,
                                             scale   = options.fraction,
                                             samples = samples,
