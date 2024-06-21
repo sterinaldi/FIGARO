@@ -24,7 +24,7 @@ class worker:
                        scale   = None,
                        ):
         self.mixture = DPGMM(bounds,
-                             probit     = probit
+                             probit     = probit,
                              prior_pars = get_priors(bounds,
                                                      samples = samples,
                                                      std = sigma,
