@@ -18,13 +18,21 @@ from ray.util import ActorPool
 @ray.remote
 class worker:
     def __init__(self, bounds,
-                       sigma = None,
+                       sigma   = None,
                        samples = None,
-                       probit = True,
-                       scale = None,
+                       probit  = True,
+                       scale   = None,
                        ):
-        self.dim     = bounds.shape[-1]
-        self.mixture = DPGMM(bounds, prior_pars = get_priors(bounds, samples = samples, std = sigma, scale = scale, probit = probit, hierarchical = False), probit = probit)
+        self.mixture = DPGMM(bounds,
+                             probit     = probit
+                             prior_pars = get_priors(bounds,
+                                                     samples = samples,
+                                                     std = sigma,
+                                                     scale = scale,
+                                                     probit = probit,
+                                                     hierarchical = False,
+                                                     ),
+                            )
         self.samples = np.copy(samples)
         self.samples.setflags(write = True)
 
@@ -155,7 +163,7 @@ def main():
         if not options.postprocess:
             # Actual analysis
             desc = name + ' ({0}/{1})'.format(i+1, len(files))
-            pool = ActorPool([worker.remote(bounds  = options.bounds,
+            pool = ActorPool([worker.remote(bounds  = optionso.bounds,
                                             sigma   = options.sigma_prior,
                                             scale   = options.fraction,
                                             samples = samples,
