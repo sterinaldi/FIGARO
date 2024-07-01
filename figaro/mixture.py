@@ -56,7 +56,7 @@ def _student_t(df, t, mu, sigma, dim):
     return (A - B - C - D + E)[0]
 
 @njit
-def _update_alpha(alpha, n, K, alpha0, burnin = 1000):
+def _update_alpha(alpha, n, K, alpha0, sigma, burnin = 1000):
     """
     Update concentration parameter using a Metropolis-Hastings sampling scheme.
     
@@ -73,12 +73,37 @@ def _update_alpha(alpha, n, K, alpha0, burnin = 1000):
     n_draws = burnin+np.random.randint(100)
     for i in prange(n_draws):
         a_new = a_old + (np.random.random() - 0.5)*0.5
-        if a_new > 0.:
-            logP_old = gammaln_jit(a_old) - gammaln_jit(a_old + n) + (K+alpha0) * np.log(a_old) - a_old
-            logP_new = gammaln_jit(a_new) - gammaln_jit(a_new + n) + (K+alpha0) * np.log(a_new) - a_new
+        if a_new > -sigma:
+            logP_old = gammaln_jit(a_old) - gammaln_jit(a_old + n) + (K+alpha0*0.5) * np.log(a_old) - a_old/2.
+            logP_new = gammaln_jit(a_new) - gammaln_jit(a_new + n) + (K+alpha0*0.5) * np.log(a_new) - a_new/2.
             if logP_new - logP_old > np.log(np.random.random()):
                 a_old = a_new
     return a_old
+
+@njit
+def _update_sigma(sigma, n, K, sigma0, burnin = 1000):
+    """
+    Update discount parameter using a Metropolis-Hastings sampling scheme.
+    
+    Arguments:
+        double sigma: Initial value for discount parameter
+        int n:        Number of samples
+        int K:        Number of active clusters
+        int burnin:   MH burnin
+    
+    Returns:
+        double: new discount parameter value
+    """
+    s_old = sigma
+    n_draws = burnin+np.random.randint(100)
+    for i in prange(n_draws):
+        s_new = s_old + (np.random.random() - 0.5)*0.5
+        if s_new > 0.:
+            logP_old = gammaln_jit(s_old) - gammaln_jit(s_old + n) + (K+sigma0) * np.log(s_old) - s_old
+            logP_new = gammaln_jit(s_new) - gammaln_jit(s_new + n) + (K+sigma0) * np.log(s_new) - s_new
+            if logP_new - logP_old > np.log(np.random.random()):
+                s_old = s_new
+    return s_old
 
 @njit
 def _compute_t_pars(k, mu, nu, L, mean, S, N, dim):
@@ -814,6 +839,7 @@ class DPGMM(density):
     def __init__(self, bounds,
                        prior_pars      = None,
                        alpha0          = 1.,
+                       sigma0          = 0.,
                        probit          = True,
                        n_reassignments = 0.,
                        ):
@@ -826,6 +852,8 @@ class DPGMM(density):
             self.prior = _prior(*get_priors(bounds = self.bounds, probit = self.probit))
         self.alpha           = alpha0
         self.alpha_0         = alpha0
+        self.sigma           = sigma0
+        self.sigma_0         = sigma0
         self.mixture         = []
         self.w               = []
         self.log_w           = []
@@ -929,11 +957,14 @@ class DPGMM(density):
         for i in range(self.n_cl+1):
             if i == 0:
                 ss        = None
-                scores[i] = np.log(self.alpha)
+                scores[i] = np.log(self.alpha + self.sigma*(np.array(self.N_list) > 0).sum())
             else:
                 ss        = self.mixture[i-1]
                 with np.errstate(divide = 'ignore', invalid = 'ignore'):
-                    scores[i] = np.log(ss.N)
+                    if ss.N > 0:
+                        scores[i] = np.log(ss.N - self.sigma)
+                    else:
+                        scores[i] = -np.inf
             if np.isfinite(scores[i]):
                 scores[i] += self._log_predictive_likelihood(x, ss)
             else:
@@ -1023,7 +1054,8 @@ class DPGMM(density):
         """
         self.stored_pts[len(list(self.stored_pts.keys()))] = np.atleast_2d(x)
         self._assign_to_cluster(np.atleast_2d(x))
-        self.alpha = _update_alpha(self.alpha, self.n_pts, self.n_cl, self.alpha_0)
+        self.alpha = _update_alpha(self.alpha, self.n_pts, (np.array(self.N_list) > 0).sum(), self.alpha_0, self.sigma)
+#        self.sigma = _update_sigma(self.sigma, self.n_pts, (np.array(self.N_list) > 0).sum(), self.sigma_0)
     
     def _reassign_point(self, id):
         """
@@ -1036,7 +1068,8 @@ class DPGMM(density):
         cid = self.assignations[id]
         self._remove_from_cluster(x, cid)
         self._assign_to_cluster(x, id)
-        self.alpha = _update_alpha(self.alpha, self.n_pts, (np.array(self.N_list) > 0).sum(), self.alpha_0)
+        self.alpha = _update_alpha(self.alpha, self.n_pts, (np.array(self.N_list) > 0).sum(), self.alpha_0, self.sigma)
+#        self.sigma = _update_sigma(self.sigma, self.n_pts, (np.array(self.N_list) > 0).sum(), self.sigma_0)
 
     def build_mixture(self, make_comp = True):
         """
@@ -1061,7 +1094,7 @@ class DPGMM(density):
                 variances[i] = invwishart(df = nu_n, scale = L_n).rvs()
                 means[i]     = mn(mean = mu_n[0], cov = rescale_matrix(variances[i], k_n), allow_singular = True).rvs()
                 i += 1
-        w = dirichlet(self.w[self.w > 0]*self.n_pts+self.alpha/self.n_cl).rvs()[0]
+        w = dirichlet(self.w[self.w > 0]*(self.n_pts-self.sigma)+(self.alpha + n_cl*self.sigma)/self.n_cl).rvs()[0]
         return mixture(means, variances, w, self.bounds, self.dim, n_cl, self.n_pts, self.alpha, probit = self.probit, make_comp = make_comp)
 
     # Methods to overwrite density methods
