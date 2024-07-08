@@ -506,15 +506,15 @@ def _prior_gw(par, samples, cosmology = 'Planck18'):
         dVdz  = dVdz_approx_planck15
     else:
         raise FIGAROException("Cosmology not supported")
-    vol   = omega.ComovingVolume(2.5)/1e9
+    vol   = omega.ComovingVolume(2.3)/1e9
     prior = np.ones(len(samples))
     # Redshift prior (uniform in comoving source frame)
     if 'z' in par:
         prior *= dVdz(samples[GW_par['z']])/((1.+samples[GW_par['z']])*vol)
     # Mass prior (uniform in detector-frame component masses)
     n_mass_pars = np.sum([item in par for item in ['m1','m2','mc','q']])
-    if n_mass_pars > 0:
-        prior *= (1+samples[GW_par['z']])**np.min([n_mass_pars, 2])
+#    if n_mass_pars > 0:
+#        prior *= (1+samples[GW_par['z']])**np.min([n_mass_pars, 2])
     if 'q' in par:
         prior *= samples[GW_par['m1']]
     if ('mc' in par or 'mc_detect' in par):
