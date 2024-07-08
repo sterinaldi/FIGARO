@@ -67,8 +67,18 @@ Planck15 = CosmologicalParameters(0.679, 0.3065, 0.6935, -1, 0, 0)
 
 # Interpolants up to z = 2.5
 z = np.linspace(0,2.5,1000)
-dVdz_approx_planck18 = interp1d(z, Planck18.ComovingVolumeElement(z)/1e9) # In Gpc
-dVdz_approx_planck15 = interp1d(z, Planck15.ComovingVolumeElement(z)/1e9) # In Gpc
+dvdz_planck18 = Planck18.ComovingVolumeElement(z)/1e9 # In Gpc
+dvdz_planck15 = Planck15.ComovingVolumeElement(z)/1e9 # In Gpc
+
+from numba import njit
+
+@njit
+def dVdz_approx_planck15(x):
+    return np.interp(x, z, dvdz_planck15)
+
+@njit
+def dVdz_approx_planck18(x):
+    return np.interp(x, z, dvdz_planck18)
 
 def _decorator_dVdz(func, approx, z_index, z_max):
     reg_const = (1+z_max)/approx(z_max)
