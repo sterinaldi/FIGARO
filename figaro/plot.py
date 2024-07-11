@@ -739,7 +739,7 @@ def pp_plot_cdf(draws, injection, n_points = 1000, out_folder = '.', name = 'eve
         fig.savefig(Path(out_folder, '{0}_ppplot.pdf'.format(name)), bbox_inches = 'tight')
     plt.close()
 
-def pp_plot_levels(CR_levels, median_CR = None, out_folder = '.', name = 'MDC', show = False, save = True, fig = None, color = 'steelblue'):
+def pp_plot_levels(CR_levels, median_CR = None, out_folder = '.', name = 'MDC', show = False, save = True, fig = None, color = 'steelblue', label = None):
     """
     Make pp-plot.
     
@@ -758,14 +758,17 @@ def pp_plot_levels(CR_levels, median_CR = None, out_folder = '.', name = 'MDC', 
         CR_levels = CR_levels.T
     n_evs     = CR_levels.shape[-1]
     L         = np.linspace(0,1,n_evs+2)
-    
+    if label is not None:
+        label = '$'+label+'$'
+    else:
+        label = r'$\\mathrm{Median}$'
     if fig is None:
         fig = plt.figure()
         ax  = fig.add_subplot(111, projection = 'pp_plot')
+        ax.add_confidence_band(n_evs, zorder = n_evs)
+        ax.add_diagonal(zorder = n_evs+1)
     else:
         ax = fig.axes[0]
-    ax.add_confidence_band(n_evs, zorder = n_evs)
-    ax.add_diagonal(zorder = n_evs+1)
     if len(CR_levels.shape) > 1:
         sorted = []
         for cr in CR_levels:
@@ -779,18 +782,18 @@ def pp_plot_levels(CR_levels, median_CR = None, out_folder = '.', name = 'MDC', 
             ax.plot(np.sort(x), L, lw = lw, alpha = 0.5, color = c)
         if median_CR is not None:
             x = np.append(0, np.append(median_CR, 1))
-            ax.plot(np.sort(x), L, lw = 0.8, color = color, label = '$\mathrm{Median}$', zorder = n_evs+2)
+            ax.plot(np.sort(x), L, lw = 0.8, color = color, label = label, zorder = n_evs+2)
         # Add label for draws
         handles, labels = ax.get_legend_handles_labels()
-        line = Line2D([0], [0], label='$\mathrm{Draws}$', lw = lw, color = c)
+        line = Line2D([0], [0], label='$\\mathrm{Draws}$', lw = lw, color = c)
         handles.extend([line])
         ax.legend(handles=handles, loc = 0, frameon = False)
     else:
         x = np.append(0, np.append(CR_levels, 1))
-        ax.plot(np.sort(x), L, lw = 0.8, color = color, zorder = n_evs+2)
+        ax.plot(np.sort(x), L, lw = 0.8, color = color, zorder = n_evs+2, label = label)
     # Maquillage
     ax.set_xlabel('$P$')
-    ax.set_ylabel('$\mathrm{Fraction\ of\ events\ within\ }CR_P$')
+    ax.set_ylabel(r'$\mathrm{Fraction\ of\ events\ within\ }CR_P$')
     if show:
         plt.show()
     if save:
