@@ -7,7 +7,7 @@ from pathlib import Path
 
 from scipy.special import gammaln, logsumexp
 from scipy.stats import multivariate_normal as mn
-from scipy.stats import invwishart, norm, invgamma, dirichlet, gamma
+from scipy.stats import invwishart, norm, invgamma, dirichlet, gamma, qmc
 
 from figaro.decorators import *
 from figaro.transform import *
@@ -1204,16 +1204,25 @@ class HDPGMM(DPGMM):
         """
         Draws MC samples for mu and sigma
         """
-        self.sigma_MC = np.array([self.invgamma.rvs(self.MC_draws)*(self.exp_sigma[i]**2*(self.a+1)) for i in range(self.dim)]).T
-        self.mu_MC    = np.random.uniform(low = self.bounds[:,0], high = self.bounds[:,1], size = (self.MC_draws, self.dim))
+#        self.sigma_MC = np.array([self.invgamma.rvs(self.MC_draws)*(self.exp_sigma[i]**2*(self.a+1)) for i in range(self.dim)]).T
+        self.sigma_MC = np.exp(qmc.scale(qmc.Halton(self.dim).random(self.MC_draws), 2*np.log(self.exp_sigma)-2*np.log(15), 2*np.log(self.exp_sigma)+2*np.log(3)))
+#        self.mu_MC    = np.random.uniform(low = self.bounds[:,0], high = self.bounds[:,1], size = (self.MC_draws, self.dim))
+        self.mu_MC    = qmc.scale(qmc.Halton(self.dim).random(self.MC_draws), *self.bounds.T)
+        idx_u         = np.triu_indices(self.dim, 1)
+        idx_l         = np.tril_indices(self.dim, -1)
         if self.probit:
             self.mu_MC = transform_to_probit(self.mu_MC, self.bounds)
         if self.dim == 1:
             self.sigma_MC = self.sigma_MC.flatten()
             self.mu_MC = self.mu_MC.flatten()
         else:
-            rhos = invwishart(df = self.dim+2, scale = np.identity(self.dim)).rvs(size = self.MC_draws)
-            rhos = np.array([r/outer_jit(np.sqrt(diag_jit(r)), np.sqrt(diag_jit(r))) for r in rhos])
+#            rhos = invwishart(df = self.dim+2, scale = np.identity(self.dim)).rvs(size = self.MC_draws)
+#            rhos = np.array([r/outer_jit(np.sqrt(diag_jit(r)), np.sqrt(diag_jit(r))) for r in rhos])
+            rhos = np.ones((self.MC_draws, self.dim, self.dim))
+            r = qmc.scale(qmc.Halton(int(self.dim*(self.dim-1)/2)).random(self.MC_draws), -1, 1)
+            for i in range(self.MC_draws):
+                rhos[i][idx_u] = r[i]
+                rhos[i][idx_l] = r[i]
             self.sigma_MC = np.array([r*outer_jit(s,s) for r, s in zip(rhos, np.sqrt(self.sigma_MC))])
         if self.selfunc is not None:
             # Approximant
