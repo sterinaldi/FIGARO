@@ -513,8 +513,8 @@ def _prior_gw(par, samples, cosmology = 'Planck18'):
         prior *= dVdz(samples[GW_par['z']])/((1.+samples[GW_par['z']])*vol)
     # Mass prior (uniform in detector-frame component masses)
     n_mass_pars = np.sum([item in par for item in ['m1','m2','mc','q']])
-#    if n_mass_pars > 0:
-#        prior *= (1+samples[GW_par['z']])**np.min([n_mass_pars, 2])
+    if n_mass_pars > 0:
+        prior *= (1+samples[GW_par['z']])**np.min([n_mass_pars, 2])
     if 'q' in par:
         prior *= samples[GW_par['m1']]
     if ('mc' in par or 'mc_detect' in par):
@@ -787,9 +787,9 @@ def _unpack_injections(file, par, far_threshold = 1.):
         if n_spin_pars > 0:
             inj_pdf *= (np.array(data['spin1x_spin1y_spin1z_sampling_pdf'])[idx]*np.array(data['spin2x_spin2y_spin2z_sampling_pdf'])[idx])**(n_spin_pars/6.)
         if 's1' in par or 'chi_eff' in par or 'chi_p' in par:
-            inj_pdf /= 2*np.pi*(s1x**2+s1y**2+s1z**2)
+            inj_pdf *= 2*np.pi*(s1x**2+s1y**2+s1z**2)
         if 's2' in par or 'chi_eff' in par or 'chi_p' in par:
-            inj_pdf /= 2*np.pi*(s2x**2+s2y**2+s2z**2)
+            inj_pdf *= 2*np.pi*(s2x**2+s2y**2+s2z**2)
         # Distance
         if 'z' in par:
             inj_pdf *= np.array(data['redshift_sampling_pdf'])[idx]
