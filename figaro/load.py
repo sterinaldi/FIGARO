@@ -656,7 +656,7 @@ def _load_json(file, make_comp = True):
         return ll[0]
     return ll
 
-def load_selection_function(file, par = None, far_threshold = 1):
+def load_selection_function(file, par = None, far_threshold = 1, snr_threshold = 10):
     """
     Loads the selection function, either from a python module containing a method called 'selection_function' or via injections.
     If injections, it assumes that the last column of a txt/csv/dat file contains the sampling pdf.
@@ -664,7 +664,9 @@ def load_selection_function(file, par = None, far_threshold = 1):
     Arguments:
         str or Path file: selection function file
         list-of-str par:  list with parameter(s) to extract from GW posteriors
-        double threshold: FAR threshold to filter LVK injections
+        double far_threshold: FAR threshold to filter LVK injections
+        double snr_threshold: SNR threshold to filter LVK injections
+
     
     Returns:
         np.ndarray or callable: detected samples or callable with approximant
@@ -697,10 +699,10 @@ def load_selection_function(file, par = None, far_threshold = 1):
             n_total_inj = len(samples)
             duration    = 1.
         else:
-            selfunc, inj_pdf, n_total_inj, duration = _unpack_injections(file, par, far_threshold)
+            selfunc, inj_pdf, n_total_inj, duration = _unpack_injections(file, par, far_threshold, snr_threshold)
     return selfunc, inj_pdf, n_total_inj, duration
 
-def _unpack_injections(file, par, far_threshold = 1.):
+def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10):
     """
     Reads data from .h5/.hdf5 injection file (https://zenodo.org/records/7890437).
     A sample is considered detected if at least one of the searches calls a detection.
@@ -709,6 +711,7 @@ def _unpack_injections(file, par, far_threshold = 1.):
         str event:            file to read
         str par:              parameter to extract
         double far_threshold: FAR threshold for injection filtering
+        double snr_threshold: SNR threshold for injection filtering
     
     Returns:
         np.ndarray:      samples
@@ -724,9 +727,10 @@ def _unpack_injections(file, par, far_threshold = 1.):
         wrong_pars = [p for p in par if p not in loadable_inj_pars]
         raise FIGAROException("The following parameters are not implemented: "+", ".join(wrong_pars))
     with h5py.File(file, 'r') as f:
-        data = f['injections']
-        n_total_inj = int(data.attrs['total_generated'])
-        duration    = data.attrs['analysis_time_s']/(60.*60.*24.*365) # Years
+        data          = f['injections']
+        joint_dataset = 'name' in data.keys()
+        n_total_inj  = int(data.attrs['total_generated'])
+        duration     = data.attrs['analysis_time_s']/(60.*60.*24.*365) # Years
         # Detected injections
         far_cwb    = np.array(data['far_cwb'])
         far_gstlal = np.array(data['far_gstlal'])
@@ -735,10 +739,18 @@ def _unpack_injections(file, par, far_threshold = 1.):
             far_pycbc = np.array(data['far_pycbc_bbh'])
         except:
             far_pycbc = np.array(data['far_pycbc_hyperbank'])
-        idx = np.where((far_cwb < far_threshold) | (far_gstlal < far_threshold) | (far_mbta < far_threshold) | (far_pycbc < far_threshold))[0]
+        far_idx = (far_cwb < far_threshold) | (far_gstlal < far_threshold) | (far_mbta < far_threshold) | (far_pycbc < far_threshold)
+        if joint_dataset:
+            # O1+O2+O3
+            names = np.array(data['name'], dtype = str)
+            snr   = np.array(data['optimal_snr_net'])
+            idx   = np.where(names == 'o3', snr < snr_threshold, far_idx)
+        else:
+            # O3 only
+            idx = np.where(far_idx, True, False)
         # Load samples
-        samples = np.zeros((len(par), len(idx)))
-        inj_pdf = np.ones(len(idx))
+        samples = np.zeros((len(par), np.sum(idx)))
+        inj_pdf = np.ones(np.sum(idx))
         # Parameters
         m1  = np.array(data[inj_par['m1']])[idx]
         m2  = np.array(data[inj_par['m2']])[idx]
@@ -776,26 +788,35 @@ def _unpack_injections(file, par, far_threshold = 1.):
         # Sampling pdf
         n_mass_pars = len([lab for lab in par if lab in mass_parameters])
         n_spin_pars = len([lab for lab in par if lab in spin_parameters])
-        # Masses
-        if n_mass_pars == 1:
-            inj_pdf *= np.array(data['mass1_source_sampling_pdf'])[idx]
-        elif n_mass_pars == 2:
-            inj_pdf *= np.array(data['mass1_source_mass2_source_sampling_pdf'])[idx]
+        if joint_dataset:
+            if not (('z' in par) and (n_mass_pars == 2)):
+                raise FIGAROException("Cannot unpack individual parameter sampling PDF for combined injections")
+            inj_pdf  = np.array(data['sampling_pdf'])[idx]
+            if n_spin_pars == 0:
+                spin_pdf = 1./(4*np.pi*(s1x**2+s1y**2+s1z**2))*1./(4*np.pi*(s2x**2+s2y**2+s2z**2))
+                inj_pdf /= spin_pdf**((6-n_spin_pars)/6.)
+        else:
+            # Masses
+            if n_mass_pars == 1:
+                inj_pdf *= np.array(data['mass1_source_sampling_pdf'])[idx]
+            elif n_mass_pars == 2:
+                inj_pdf *= np.array(data['mass1_source_mass2_source_sampling_pdf'])[idx]
+            # Spins
+            if n_spin_pars > 0:
+                inj_pdf *= (np.array(data['spin1x_spin1y_spin1z_sampling_pdf'])[idx]*np.array(data['spin2x_spin2y_spin2z_sampling_pdf'])[idx])**(n_spin_pars/6.)
+            # Distance
+            if 'z' in par:
+                inj_pdf *= np.array(data['redshift_sampling_pdf'])[idx]
+            # Sky position
+            if 'ra' in par:
+                inj_pdf *= np.array(data['right_ascension_sampling_pdf'])[idx]
+            if 'dec' in par:
+                inj_pdf *= np.array(data['declination_sampling_pdf'])[idx]
+        # Change of variable
         if 'q' in par:
             inj_pdf *= m1
-        # Spins
-        if n_spin_pars > 0:
-            inj_pdf *= (np.array(data['spin1x_spin1y_spin1z_sampling_pdf'])[idx]*np.array(data['spin2x_spin2y_spin2z_sampling_pdf'])[idx])**(n_spin_pars/6.)
         if 's1' in par or 'chi_eff' in par or 'chi_p' in par:
             inj_pdf *= 2*np.pi*(s1x**2+s1y**2+s1z**2)
         if 's2' in par or 'chi_eff' in par or 'chi_p' in par:
             inj_pdf *= 2*np.pi*(s2x**2+s2y**2+s2z**2)
-        # Distance
-        if 'z' in par:
-            inj_pdf *= np.array(data['redshift_sampling_pdf'])[idx]
-        # Sky position
-        if 'ra' in par:
-            inj_pdf *= np.array(data['right_ascension_sampling_pdf'])[idx]
-        if 'dec' in par:
-            inj_pdf *= np.array(data['declination_sampling_pdf'])[idx]
     return samples.T, inj_pdf, n_total_inj, duration
