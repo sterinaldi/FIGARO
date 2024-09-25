@@ -486,14 +486,15 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
             else:
                 return samples
 
-def _prior_gw(par, samples, cosmology = 'Planck18'):
+def _prior_gw(par, samples, cosmology = 'Planck18', uniform_dVdz = False):
     """
     GW prior parameters, following https://docs.ligo.org/RatesAndPopulations/gwpopulation_pipe/_modules/gwpopulation_pipe/data_collection.html#evaluate_prior
     
     Arguments:
         np.ndarray samples: posterior samples
         list-of-str par:    parameter(s)
-        str cosmology:      cosmological parameters.
+        str cosmology:      cosmological parameters
+        bool uniform_dVdz:  assumes a uniform in dVdz prior for z
     
     Returns:
         np.ndarray: prior values
@@ -506,11 +507,15 @@ def _prior_gw(par, samples, cosmology = 'Planck18'):
         dVdz  = dVdz_approx_planck15
     else:
         raise FIGAROException("Cosmology not supported")
-    vol   = omega.ComovingVolume(2.3)/1e9
+    vol    = omega.ComovingVolume(2.3)/1e9
+    DL_max = omega.LuminosityDistance(2.3)
     prior = np.ones(len(samples))
     # Redshift prior (uniform in comoving source frame)
     if 'z' in par:
-        prior *= dVdz(samples[GW_par['z']])/((1.+samples[GW_par['z']])*vol)
+        if uniform_dVdz:
+            prior *= dVdz(samples[GW_par['z']])/((1.+samples[GW_par['z']])*vol)
+        else:
+            prior *= samples[GW_par['luminosity_distance']]**2/omega.dDLdz(samples[GW_par['z']])/((1.+samples[GW_par['z']])*DL_max**3)
     # Mass prior (uniform in detector-frame component masses)
     n_mass_pars = np.sum([item in par for item in ['m1','m2','mc','q']])
     if n_mass_pars > 0:
