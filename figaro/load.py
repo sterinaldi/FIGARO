@@ -744,7 +744,7 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10):
             # O1+O2+O3
             names = np.array(data['name'], dtype = str)
             snr   = np.array(data['optimal_snr_net'])
-            idx   = np.where(names == 'o3', snr < snr_threshold, far_idx)
+            idx   = np.where(names == 'o3', far_idx, snr > snr_threshold)
         else:
             # O3 only
             idx = np.where(far_idx, True, False)
@@ -792,10 +792,11 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10):
             if not (('z' in par) and (n_mass_pars == 2)):
                 raise FIGAROException("Cannot unpack individual parameter sampling PDF for combined injections")
             inj_pdf  = np.array(data['sampling_pdf'])[idx]
-            if n_spin_pars == 0:
-                spin_pdf = 1./(4*np.pi*(s1x**2+s1y**2+s1z**2))*1./(4*np.pi*(s2x**2+s2y**2+s2z**2))
-                inj_pdf /= spin_pdf**((6-n_spin_pars)/6.)
+            # Remove spins if not needed
+            spin_pdf = 1./(4*np.pi*(s1x**2+s1y**2+s1z**2))*1./(4*np.pi*(s2x**2+s2y**2+s2z**2))
+            inj_pdf /= spin_pdf**((6-n_spin_pars)/6.)
         else:
+            inj_pdf = np.ones(np.sum(idx))
             # Masses
             if n_mass_pars == 1:
                 inj_pdf *= np.array(data['mass1_source_sampling_pdf'])[idx]
