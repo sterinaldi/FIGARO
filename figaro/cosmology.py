@@ -3,7 +3,7 @@ import warnings
 warnings.filterwarnings("ignore", "Wswiglal-redir-stdio") # Silence LAL warnings with ipython
 from scipy.optimize import newton
 from scipy.interpolate import interp1d
-from lal._lal import LuminosityDistance, UniformComovingVolumeDensity, ComovingVolumeElement, ComovingVolume, CreateCosmologicalParameters
+from lal._lal import LuminosityDistance, ComovingTransverseDistance, ComovingLOSDistance, HubbleDistance, HubbleParameter, UniformComovingVolumeDensity, ComovingVolumeElement, ComovingVolume, CreateCosmologicalParameters
 
 class CosmologicalParameters:
     """
@@ -24,11 +24,13 @@ class CosmologicalParameters:
         self.h = h
         self.om = om
         self.ol = ol
+        self.ok = 1.-om-ol
         self.w0 = w0
         self.w1 = w1
         self.w2 = w2
         self._CosmologicalParameters = CreateCosmologicalParameters(self.h, self.om, self.ol, self.w0, self.w1, self.w2)
-    
+        self.HubbleDistance = HubbleDistance(self._CosmologicalParameters)
+        
     def _vectorise(func):
         def vectorised_func(self, x):
             if hasattr(x, "__iter__"):
@@ -38,8 +40,20 @@ class CosmologicalParameters:
         return vectorised_func
     
     @_vectorise
+    def HubbleParameter(self, z):
+        return HubbleParameter(z, self._CosmologicalParameters)
+
+    @_vectorise
     def LuminosityDistance(self, z):
         return LuminosityDistance(self._CosmologicalParameters, z)
+    
+    @_vectorise
+    def ComovingTransverseDistance(self, z):
+        return ComovingTransverseDistance(self._CosmologicalParameters, z)
+     
+    @_vectorise
+    def ComovingLOSDistance(self, z):
+        return ComovingLOSDistance(self._CosmologicalParameters, z)
      
     @_vectorise
     def UniformComovingVolumeDensity(self, z):
@@ -52,6 +66,22 @@ class CosmologicalParameters:
     @_vectorise
     def ComovingVolume(self, z):
         return ComovingVolume(self._CosmologicalParameters, z)
+    
+    @_vectorise
+    def dDTdDC(self, DC):
+        if self.ok == 0.:
+            return 1.
+        elif self.ok > 0.:
+            return np.cosh(np.sqrt(self.ok)*DC/self.HubbleDistance)
+        else:
+            return np.cos(np.sqrt(-self.ok)*DC/self.HubbleDistance)
+    
+    @_vectorise
+    def dDLdz(self, z):
+        DC   = self.ComovingLOSDistance(z)
+        DT   = self.ComovingTransverseDistance(z)
+        invE = self.HubbleParameter(z)
+        return DT + (1.+z)*self.dDTdDC(DC)*self.HubbleDistance*invE
     
     @_vectorise
     def Redshift(self, DL):
