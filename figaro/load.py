@@ -478,15 +478,15 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                 samples = samples.T
             if likelihood:
                 inv_prior = 1./_prior_gw(par, ss, cosmology)
-                h         = np.random.uniform(0,1, len(samples))
-                samples   = samples[h < inv_prior/np.max(inv_prior)]
+                h         = np.random.uniform(0, np.max(inv_prior), len(samples))
+                samples   = samples[h < inv_prior]
             if n_samples > -1:
                 s = int(min([n_samples, len(samples)]))
                 return samples[rdstate.choice(np.arange(len(samples)), size = s, replace = False)]
             else:
                 return samples
 
-def _prior_gw(par, samples, cosmology = 'Planck18', uniform_dVdz = True):
+def _prior_gw(par, samples, cosmology = 'Planck15', uniform_dVdz = True):
     """
     GW prior parameters, following https://docs.ligo.org/RatesAndPopulations/gwpopulation_pipe/_modules/gwpopulation_pipe/data_collection.html#evaluate_prior
     
@@ -734,17 +734,12 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10):
     with h5py.File(file, 'r') as f:
         data          = f['injections']
         joint_dataset = 'name' in data.keys()
-        n_total_inj  = int(data.attrs['total_generated'])
-        duration     = data.attrs['analysis_time_s']/(60.*60.*24.*365) # Years
-        # Detected injections
-        far_cwb    = np.array(data['far_cwb'])
-        far_gstlal = np.array(data['far_gstlal'])
-        far_mbta   = np.array(data['far_mbta'])
-        try:
-            far_pycbc = np.array(data['far_pycbc_bbh'])
-        except:
-            far_pycbc = np.array(data['far_pycbc_hyperbank'])
-        far_idx = (far_cwb < far_threshold) | (far_gstlal < far_threshold) | (far_mbta < far_threshold) | (far_pycbc < far_threshold)
+        n_total_inj   = int(data.attrs['total_generated'])
+        duration      = data.attrs['analysis_time_s']/(60.*60.*24.*365) # Years
+        far_idx       = np.zeros(np.array(data['far_cwb']).shape, dtype=bool)
+        for key in data.keys():
+            if 'ifar' in key.lower():
+                far_idx |= data[key][()] > 1./far_threshold
         if joint_dataset:
             # O1+O2+O3
             names = np.array(data['name'], dtype = str)
