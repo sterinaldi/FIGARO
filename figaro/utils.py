@@ -141,7 +141,7 @@ def get_priors(bounds, samples = None, mean = None, std = None, df = None, k = N
             mu_out = transform_to_probit(mean, bounds)
         else:
             mu_out = mean
-    elif samples is not None:
+    elif samples is not None and not hierarchical:
         if probit:
             mu_out = np.atleast_1d(np.mean(probit_samples, axis = 0))
         else:
@@ -194,6 +194,7 @@ def get_priors(bounds, samples = None, mean = None, std = None, df = None, k = N
                 events_avg_cov  = np.diag(np.atleast_2d(np.mean([np.cov(ev.T) for ev in samples], axis = 0)))
             all_samples_cov = np.diag(np.atleast_2d(np.cov(all_samples.T)))
             out_sigma       = (np.sqrt(all_samples_cov - events_avg_cov)/scale).flatten()
+            mu_out          = np.mean(all_samples, axis = 0)
         else:
             out_sigma = np.diff(bounds, axis = -1)/scale
             if probit:
@@ -203,7 +204,7 @@ def get_priors(bounds, samples = None, mean = None, std = None, df = None, k = N
             out_a = a
         else:
             out_a = 2.
-        return (k_out, np.identity(dim)*np.atleast_1d(out_sigma), df_out, np.atleast_1d(np.mean(mu_out, axis = 0))), (out_sigma, out_a)
+        return (k_out, np.identity(dim)*np.atleast_1d(out_sigma), df_out, np.atleast_1d(mu_out)), (out_sigma, out_a)
 
 
 def gradient_median(x, draws):
