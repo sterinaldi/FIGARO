@@ -1162,7 +1162,7 @@ class HDPGMM(DPGMM):
                        selection_function = None,
                        injection_pdf      = None,
                        total_injections   = None,
-                       lower_limit_alpha  = 1e-3,
+                       lower_limit_alpha  = 1e-4,
                        ):
         bounds   = np.atleast_2d(bounds)
         self.dim = len(bounds)
@@ -1410,21 +1410,24 @@ class HDPGMM(DPGMM):
         # Gaussian components parameters
         assignations_array = np.fromiter(self.assignations.values(), dtype = int)
         associations = [np.argwhere(assignations_array == id) for id in range(len(self.N_list))]
-        means        = []
-        covs         = []
+        alphas       = []
         for id in range(len(self.N_list)):
             # Check that the cluster is not empty
             if idx[id]:
-                mu_comp, sigma_comp    = self._draw_mu_sigma([self.stored_pts[i] for i in associations[id].flatten()])
-                self.mixture[id].mu    = mu_comp
-                self.mixture[id].sigma = sigma_comp
+                mu_comp, sigma_comp, alpha_comp = self._draw_mu_sigma([self.stored_pts[i] for i in associations[id].flatten()])
+                self.mixture[id].mu             = mu_comp
+                self.mixture[id].sigma          = sigma_comp
+                alphas.append(alpha_comp)
+            else:
+                alphas.append(1.)
         # Weights and selection function
+        alphas = np.array(alphas)
         if self.selfunc is not None:
             log_w, w           = self.log_w, self.w
             self.log_w         = N_pts - logsumexp_jit(N_pts)
             self.w             = np.exp(self.log_w)
             alpha_factor       = self.compute_alpha_factor()
-            N_pts              = self.w*self.n_pts/alpha_factor
+            N_pts              = self.w*self.n_pts/alphas
             self.log_w, self.w = log_w, w
         else:
             alpha_factor = 1.
@@ -1442,31 +1445,46 @@ class HDPGMM(DPGMM):
         Returns:
             np.ndarray: mean vector
             np.ndarray: covariance matrix
+            float:      alpha
         """
         while True:
-            comp  = _component(pts[0].rvs(), self.prior, N = 1)
+            if probit:
+                x = pts[0]._rvs_probit()
+            else:
+                x = pts[0].rvs()
+            comp  = _component(x, self.prior, N = 1)
             M     = comp.mean
             S     = comp.S
             N     = comp.N
             mu    = comp.mu
             sigma = comp.sigma
             for pt in pts[1:]:
-                M, S, N, mu, sigma = _compute_component_suffstats_add(pt.rvs(), M, S, N, self.prior.mu, self.prior.k, self.prior.nu, self.prior.L)
+                if probit:
+                    x = pt._rvs_probit()
+                else:
+                    x = pt.rvs()
+                M, S, N, mu, sigma = _compute_component_suffstats_add(x, M, S, N, self.prior.mu, self.prior.k, self.prior.nu, self.prior.L)
             k_n, mu_n, nu_n, L_n = _compute_hyperpars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, M, S, N)
             var  = np.atleast_2d(invwishart(df = nu_n, scale = L_n).rvs())
-            mean = mn(mean = mu_n[0], cov = rescale_matrix(var, k_n), allow_singular = True).rvs()
-            if self.selfunc:
+            mean = np.atleast_1d(mn(mean = mu_n[0], cov = rescale_matrix(var, k_n), allow_singular = True).rvs())
+            if self.selfunc is not None:
                 # Approximant
                 if callable(self.selfunc):
-                    alpha_factor = np.mean(self.selfunc(mn(mean, var).rvs(self.MC_draws)))
+                    x = mn(mean, var, allow_singular = True).rvs(self.MC_draws)
+                    if probit:
+                        alpha_factor = np.mean(self.selfunc(transform_from_probit(x, self.bounds)))
+                    else:
+                        alpha_factor = np.mean(self.selfunc(x))
                 # Injections
                 else:
-                    alpha_factor = np.exp(logsumexp_jit(mn(mean, var).logpdf(self.selfunc) - self.log_inj_pdf) - np.log(self.total_inj))
-                if 1./alpha_factor < np.random.uniform()/self.lower_limit_alpha:
-                    break
+                    alpha_factor = np.exp(logsumexp(mn(mean, var).logpdf(self.selfunc_probit) + self.log_jacobian_inj - self.log_inj_pdf) - np.log(self.total_inj))
+                if alpha_factor > self.lower_limit_alpha:
+                    if 1./alpha_factor < np.random.uniform()/self.lower_limit_alpha:
+                        break
             else:
+                alpha_factor = 1.
                 break
-        return mean, var
+        return mean, var, alpha_factor
     
     def compute_alpha_factor(self):
         """
