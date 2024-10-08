@@ -133,11 +133,12 @@ def main():
         selfunc, inj_pdf, n_total_inj, duration = load_selection_function(options.selfunc_file,
                                                                           par           = options.par,
                                                                           far_threshold = options.far_threshold,
+                                                                          snr_threshold = options.snr_threshold,
                                                                           )
-        if not callable(selfunc) and not options.probit:
+        if not callable(selfunc):
             # Keeping only the samples within bounds
-            selfunc = selfunc[np.where((np.prod(options.bounds[:,0] < selfunc, axis = 1) & np.prod(selfunc < options.bounds[:,1], axis = 1)))]
             inj_pdf = inj_pdf[np.where((np.prod(options.bounds[:,0] < selfunc, axis = 1) & np.prod(selfunc < options.bounds[:,1], axis = 1)))]
+            selfunc = selfunc[np.where((np.prod(options.bounds[:,0] < selfunc, axis = 1) & np.prod(selfunc < options.bounds[:,1], axis = 1)))] 
     if options.include_dvdz and not callable(selfunc):
         raise Exception("The inclusion of dV/dz*(1+z)^{-1} is available only with a selection function approximant.")
     if options.include_dvdz:
