@@ -127,7 +127,60 @@ def get_priors(bounds, samples = None, mean = None, std = None, df = None, k = N
                 probit_samples = [transform_to_probit(s, bounds) for s in samples]
             else:
                 probit_samples = transform_to_probit(samples, bounds)
-    if hierarchical:
+    # DF
+    if df is not None and df > dim+2:
+        df_out = df
+    else:
+        df_out = dim+2
+    # Mu
+    if mean is not None:
+        mean = np.atleast_1d(mean)
+        if not np.prod(bounds[:,0] < mean) & np.prod(mean < bounds[:,1]):
+            raise ValueError("Mean is outside of the given bounds")
+        if probit:
+            mu_out = transform_to_probit(mean, bounds)
+        else:
+            mu_out = mean
+    elif samples is not None:
+        if probit:
+            mu_out = np.atleast_1d(np.mean(probit_samples, axis = 0))
+        else:
+            mu_out = np.atleast_1d(np.mean(samples, axis = 0))
+    else:
+        if probit:
+            mu_out = np.zeros(dim)
+        else:
+            mu_out = np.atleast_1d(np.mean(bounds, axis = 1))
+    # L
+    if std is not None:
+        L_out = np.identity(dim)*std**2
+    if samples is not None and not hierarchical:
+        if probit:
+            cov_samples = np.atleast_2d(np.cov(probit_samples.T))
+        else:
+            cov_samples = np.atleast_2d(np.cov(samples.T))
+        L_out = rescale_matrix(cov_samples, scale**2)
+    else:
+        if probit:
+            sigma = transform_to_probit(np.atleast_2d(np.mean(bounds, axis = -1)+np.diff(bounds, axis = -1).flatten()/scale), bounds)[0]
+            L_out = np.identity(dim)*sigma**2
+        else:
+            L_out = np.identity(dim)*(np.diff(bounds, axis = -1).flatten()/scale)**2
+    # k
+    if k is not None:
+        k_out = k
+    else:
+        if samples is not None and not hierarchical:
+            if probit:
+                cov_samples = np.atleast_2d(np.cov(probit_samples.T))
+            else:
+                cov_samples = np.atleast_2d(np.cov(samples.T))
+            k_out = np.min(np.diag(L_out)/np.diag(cov_samples))
+        else:
+            k_out = 1./(scale)
+    if not hierarchical:
+        return (k_out, L_out, df_out, mu_out)
+    else:
         if std is not None:
             out_sigma = np.atleast_2d(std)*np.ones((1, dim))
             if probit:
@@ -150,61 +203,8 @@ def get_priors(bounds, samples = None, mean = None, std = None, df = None, k = N
             out_a = a
         else:
             out_a = 2.
-        return (out_sigma, out_a)
-    else:
-        # DF
-        if df is not None and df > dim+2:
-            df_out = df
-        else:
-            df_out = dim+2
-        # Mu
-        if mean is not None:
-            mean = np.atleast_1d(mean)
-            if not np.prod(bounds[:,0] < mean) & np.prod(mean < bounds[:,1]):
-                raise ValueError("Mean is outside of the given bounds")
-            if probit:
-                mu_out = transform_to_probit(mean, bounds)
-            else:
-                mu_out = mean
-        elif samples is not None:
-            if probit:
-                mu_out = np.atleast_1d(np.mean(probit_samples, axis = 0))
-            else:
-                mu_out = np.atleast_1d(np.mean(samples, axis = 0))
-        else:
-            if probit:
-                mu_out = np.zeros(dim)
-            else:
-                mu_out = np.atleast_1d(np.mean(bounds, axis = 1))
-        # L
-        if std is not None:
-            L_out = np.identity(dim)*std**2
-        elif samples is not None:
-            if probit:
-                cov_samples = np.atleast_2d(np.cov(probit_samples.T))
-            else:
-                cov_samples = np.atleast_2d(np.cov(samples.T))
-            L_out = rescale_matrix(cov_samples, scale**2)
-        else:
-            if probit:
-                sigma = transform_to_probit(np.atleast_2d(np.mean(bounds, axis = -1)+np.diff(bounds, axis = -1).flatten()/scale), bounds)[0]
-                L_out = np.identity(dim)*sigma**2
-            else:
-                L_out = np.identity(dim)*(np.diff(bounds, axis = -1).flatten()/scale)**2
-        # k
-        if k is not None:
-            k_out = k
-        else:
-            if samples is not None:
-                if probit:
-                    cov_samples = np.atleast_2d(np.cov(probit_samples.T))
-                else:
-                    cov_samples = np.atleast_2d(np.cov(samples.T))
-                k_out = np.min(np.diag(L_out)/np.diag(cov_samples))
-            else:
-                k_out = 1./(scale)
+        return (k_out, np.identity(dim)*np.atleast_1d(out_sigma), df_out, np.atleast_1d(np.mean(mu_out, axis = 0))), (out_sigma, out_a)
 
-        return (k_out, L_out, df_out, mu_out)
 
 def gradient_median(x, draws):
     """
