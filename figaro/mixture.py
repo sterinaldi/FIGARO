@@ -1413,14 +1413,11 @@ class HDPGMM(DPGMM):
         alphas       = []
         for id in range(len(self.N_list)):
             # Check that the cluster is not empty
-            if idx[id]:
+            if self.N_list[id] > 0:
                 mu_comp, sigma_comp, alpha_comp = self._draw_mu_sigma([self.stored_pts[i] for i in associations[id].flatten()])
                 self.mixture[id].mu             = mu_comp
                 self.mixture[id].sigma          = sigma_comp
                 alphas.append(alpha_comp)
-            else:
-                alphas.append(1.)
-        # Weights and selection function
         alphas = np.array(alphas)
         if self.selfunc is not None:
             log_w, w           = self.log_w, self.w
