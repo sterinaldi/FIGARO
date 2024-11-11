@@ -77,3 +77,9 @@ gammaln_float64 = functype(addr)
 @njit
 def gammaln_jit(x):
     return gammaln_float64(x)
+
+def _mvn_logpdf(x, means, covs, inv_covs, det_covs):
+    pass
+
+def _mvn_pdf(x, means, covs, inv_covs, det_covs):
+    return np.exp(_mvn_logpdf(x, means, covs, inv_covs, det_covs))
