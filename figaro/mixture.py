@@ -411,7 +411,7 @@ class density:
         Returns:
             np.ndarray: mixture.pdf(x)
         """
-        return np.sum(np.array([w*np.exp(log_norm(x[0], mean, cov)) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
+        return np.sum(self.w*_mvn_pdf(x, self.means, self.covs, self.inv_covs, self.det_covs))
 
     def _fast_logpdf_probit(self, x):
         """
@@ -423,7 +423,7 @@ class density:
         Returns:
             np.ndarray: mixture.logpdf(x)
         """
-        return logsumexp(np.array([w + log_norm(x[0], mean, cov) for mean, cov, w in zip(self.means, self.covs, self.log_w)]), axis = 0)
+        return logsumexp(self.log_w*_mvn_logpdf(x, self.means, self.covs, self.inv_covs, self.det_covs))
 
     @probit
     def _pdf_no_jacobian(self, x):
@@ -498,7 +498,7 @@ class density:
         Returns:
             np.ndarray: component.pdf(x) for each mixture component
         """
-        return np.array([w*np.exp(log_norm(x[0], mean, cov)) for mean, cov, w in zip(self.means, self.covs, self.w)])
+        return self.w*_mvn_pdf(x, self.means, self.covs, self.inv_covs, self.det_covs)
 
     @probit
     def _logpdf_no_jacobian(self, x):
@@ -697,9 +697,11 @@ class mixture(density):
     Returns:
         mixture: instance of mixture class
     """
-    def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, alpha = 1., probit = True, log_w = None, make_comp = True, alpha_factor = 1.):
+    def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, alpha = 1., probit = True, log_w = None, make_comp = True, alpha_factor = 1., **kwargs):
         self.means = means
         self.covs  = covs
+        self.inv_covs = np.array([np.linalg.inv(c) for c in covs])
+        self.det_covs = np.array([np.linalg.det(c) for c in covs])
         if make_comp:
             self.components = [mn(mean, cov, allow_singular = True) for mean, cov in zip(self.means, self.covs)]
         else:
@@ -1121,7 +1123,7 @@ class DPGMM(density):
         Returns:
             np.ndarray: mixture.pdf(x)
         """
-        return np.sum(np.array([w*np.exp(log_norm(x[0], comp.mean, comp.cov)) for comp, w in zip(self.mixture, self.w)]), axis = 0)
+        return np.sum(self.w*_mvn_pdf(x, self.means, self.covs, self.inv_covs, self.det_covs))
 
     def _fast_logpdf_probit(self, x):
         """
@@ -1133,7 +1135,7 @@ class DPGMM(density):
         Returns:
             np.ndarray: mixture.logpdf(x)
         """
-        return logsumexp(np.array([w + log_norm(x[0], comp.mean, comp.cov) for comp, w in zip(self.mixture, self.log_w)]), axis = 0)
+        return logsumexp(self.log_w*_mvn_logpdf(x, self.means, self.covs, self.inv_covs, self.det_covs))
 
 class HDPGMM(DPGMM):
     """

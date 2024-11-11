@@ -83,41 +83,32 @@ def gammaln_jit(x):
 
 
 def _mvn_logpdf(x, means, covs, inv_covs, det_covs):
-
     """
     Compute the probability density function of multiple multivariate Gaussian distributions for multiple samples.
     
-    Parameters:
-    samples (ndarray) : A 2D array where each row represents a sample point (shape: [n_samples, n_dimensions]).
-    means (ndarray)   : A 2D array where each row represents a mean vector for a distribution (shape: [n_distributions, n_dimensions]).
-    covs (ndarray)    : A 3D array where each subarray is a covariance matrix for a distribution (shape: [n_distributions, n_dimensions, n_dimensions]).
-    inv_covs (ndarray): A 3D array where each subarray is an inverse covariance matrix for a distribution (shape: [n_distributions, n_dimensions, n_dimensions]).
-    det_covs (ndarray): A 1D array with the determinants of each covariance matrix.
+    Arguments:
+    np.ndarray samples:  2D array where each row represents a sample point (shape: [n_samples, n_dimensions]).
+    np.ndarray means:    2D array where each row represents a mean vector for a distribution (shape: [n_distributions, n_dimensions]).
+    np.ndarray covs:     3D array where each subarray is a covariance matrix for a distribution (shape: [n_distributions, n_dimensions, n_dimensions]).
+    np.ndarray inv_covs: 3D array where each subarray is an inverse covariance matrix for a distribution (shape: [n_distributions, n_dimensions, n_dimensions]).
+    np.ndarray det_covs: 1D array with the determinants of each covariance matrix.
 
     
     Returns:
-    ndarray: A 2D array of log_PDF values where each row corresponds to a sample and each column to a distribution.
+        np.ndarray: 2D array of log_PDF values where each row corresponds to a sample and each column to a distribution.
     """
-    n_distributions, k = means.shape  # number of distributions and dimensions
-    n_samples = x.shape[0]      # number of samples
-
-
+    n_distributions, k = means.shape # number of distributions and dimensions
+    n_samples          = x.shape[0]  # number of samples
     # Normalization constants for each distribution
     norm_consts = 1 / ((2 * np.pi) ** (k / 2) * np.sqrt(det_covs))  # Shape: (n_distributions,)
-
     # Center each sample relative to each mean (broadcasted subtraction)
     centered_samples = x[:, np.newaxis, :] - means[np.newaxis, :, :]  # Shape: (n_samples, n_distributions, k)
-
     # Compute the exponent term using einsum for vectorized matrix multiplication
     # Result shape after einsum: (n_samples, n_distributions)
     exponent = -0.5 * np.einsum('sdi,dij,sdj->sd', centered_samples, inv_covs, centered_samples)
-
     # Calculate the PDF values for each sample against each distribution
     log_pdf_values = np.log(norm_consts) + (exponent)  # Shape: (n_samples, n_distributions)
-
     return log_pdf_values
-
-
 
 def _mvn_pdf(x, means, covs, inv_covs, det_covs):
     return np.exp(_mvn_logpdf(x, means, covs, inv_covs, det_covs))
