@@ -78,10 +78,6 @@ gammaln_float64 = functype(addr)
 def gammaln_jit(x):
     return gammaln_float64(x)
 
-
-
-
-
 def _mvn_logpdf(x, means, covs, inv_covs, det_covs):
     """
     Compute the probability density function of multiple multivariate Gaussian distributions for multiple samples.

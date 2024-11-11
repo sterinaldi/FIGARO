@@ -12,6 +12,7 @@ from scipy.stats import invwishart, norm, invgamma, dirichlet, gamma
 from figaro.decorators import *
 from figaro.transform import *
 from figaro._numba_functions import *
+from figaro._numba_functions import _mvn_logpdf
 from figaro._likelihood import evaluate_mixture_MC_draws, evaluate_mixture_MC_draws_1d, log_norm
 from figaro.exceptions import except_hook, FIGAROException
 from figaro.utils import get_priors
@@ -698,8 +699,8 @@ class mixture(density):
         mixture: instance of mixture class
     """
     def __init__(self, means, covs, w, bounds, dim, n_cl, n_pts, alpha = 1., probit = True, log_w = None, make_comp = True, alpha_factor = 1., **kwargs):
-        self.means = means
-        self.covs  = covs
+        self.means    = means
+        self.covs     = covs
         self.inv_covs = np.array([np.linalg.inv(c) for c in covs])
         self.det_covs = np.array([np.linalg.det(c) for c in covs])
         if make_comp:
