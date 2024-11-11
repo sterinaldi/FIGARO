@@ -424,7 +424,7 @@ class density:
         Returns:
             np.ndarray: mixture.logpdf(x)
         """
-        return logsumexp(self.log_w*_mvn_logpdf(x, self.means, self.covs, self.inv_covs, self.det_covs))
+        return logsumexp(self.log_w+_mvn_logpdf(x, self.means, self.covs, self.inv_covs, self.det_covs))
 
     @probit
     def _pdf_no_jacobian(self, x):
@@ -1136,7 +1136,7 @@ class DPGMM(density):
         Returns:
             np.ndarray: mixture.logpdf(x)
         """
-        return logsumexp(self.log_w*_mvn_logpdf(x, self.means, self.covs, self.inv_covs, self.det_covs))
+        return logsumexp(self.log_w+_mvn_logpdf(x, self.means, self.covs, self.inv_covs, self.det_covs))
 
 class HDPGMM(DPGMM):
     """
