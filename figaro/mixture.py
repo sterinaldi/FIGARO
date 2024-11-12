@@ -1426,14 +1426,17 @@ class HDPGMM(DPGMM):
             log_w, w           = self.log_w, self.w
             self.log_w         = N_pts - logsumexp_jit(N_pts)
             self.w             = np.exp(self.log_w)
-            alpha_factor       = self.compute_alpha_factor()
             N_pts              = self.w*self.n_pts/alphas
+            new_w              = dirichlet(N_pts+self.alpha/self.n_cl).rvs()[0]
+            self.w             = new_w
+            self.log_w         = np.log(new_w)
+            alpha_factor       = self.compute_alpha_factor()
             self.log_w, self.w = log_w, w
         else:
             alpha_factor = 1.
             N_pts = np.exp(N_pts)
-        w = dirichlet(N_pts+self.alpha/self.n_cl).rvs()[0]
-        return mixture(np.array([comp.mu.flatten() for comp in np.array(self.mixture)[idx]]), np.array([comp.sigma for comp in np.array(self.mixture)[idx]]), w, self.bounds, self.dim, self.n_cl, self.n_pts, self.alpha, probit = self.probit, make_comp = make_comp, alpha_factor = alpha_factor)
+            new_w = dirichlet(N_pts+self.alpha/self.n_cl).rvs()[0]
+        return mixture(np.array([comp.mu.flatten() for comp in np.array(self.mixture)[idx]]), np.array([comp.sigma for comp in np.array(self.mixture)[idx]]), new_w, self.bounds, self.dim, self.n_cl, self.n_pts, self.alpha, probit = self.probit, make_comp = make_comp, alpha_factor = alpha_factor)
 
     def _draw_mu_sigma(self, pts):
         """
