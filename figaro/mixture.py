@@ -1437,8 +1437,6 @@ class HDPGMM(DPGMM):
             double: value of the integral
         """
         # Approximant
-        print(idx)
-        print(self.N_list)
         if callable(self.selfunc):
             alpha_factors = np.array([np.mean(self.selfunc(mn(comp.mu, comp.sigma, allow_singular = True).rvs(self.MC_draws))) for comp in np.array(self.mixture)[idx]])
         # Injections
