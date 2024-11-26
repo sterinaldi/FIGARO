@@ -1169,12 +1169,12 @@ class HDPGMM(DPGMM):
                        ):
         bounds   = np.atleast_2d(bounds)
         self.dim = len(bounds)
+        super().__init__(bounds = bounds, alpha0 = alpha0, probit = probit, n_reassignments = n_reassignments)
         if prior_pars is not None:
-            priors_NIW, (self.exp_sigma, self.a) = prior_pars
+            self.exp_sigma, self.a = prior_pars
         else:
-            priors_NIW, (self.exp_sigma, self.a) = get_priors(bounds = self.bounds, probit = self.probit, hierarchical = True)
+            self.exp_sigma, self.a = get_priors(bounds = self.bounds, probit = self.probit, hierarchical = True)
         self.invgamma = invgamma(self.a)
-        super().__init__(bounds = bounds, alpha0 = alpha0, probit = probit, n_reassignments = n_reassignments, prior_pars = priors_NIW)
         if MC_draws is None:
             self.MC_draws = int((self.dim+1)*1e3)
         else:
@@ -1235,7 +1235,7 @@ class HDPGMM(DPGMM):
                 self.log_alpha_factor = np.array([logsumexp_jit(mn(m,s, allow_singular = True).logpdf(self.selfunc_probit) + self.log_jacobian_inj - self.log_inj_pdf) - np.log(self.total_inj) for m, s in zip(self.mu_MC, self.sigma_MC)])
             # Numerical stability: mu+sigma ignored if p_det too small (not enough predicted points to have a reliable value for alpha)
             self.log_alpha_factor      = np.nan_to_num(self.log_alpha_factor, nan = np.inf, posinf = np.inf, neginf = np.inf)
-            self.log_alpha_factor[self.log_alpha_factor < np.log(3e-7)] = np.inf
+            self.log_alpha_factor[self.log_alpha_factor < np.log(3e-5)] = np.inf
             self.full_log_alpha_factor = np.copy(self.log_alpha_factor)
             self.log_alpha_factor[self.log_alpha_factor < np.log(self.lower_limit_alpha)] = np.inf
         else:
@@ -1410,23 +1410,11 @@ class HDPGMM(DPGMM):
         idx       = np.where(np.array(self.N_list) > 0)[0]
         N_pts     = np.array([comp.log_N_true for comp in np.array(self.mixture)[idx]])
         self.n_cl = (np.array(self.N_list) > 0).sum()
-        # Gaussian components parameters
-        assignations_array = np.fromiter(self.assignations.values(), dtype = int)
-        associations = [np.argwhere(assignations_array == id) for id in range(len(self.N_list))]
-        alphas       = []
-        for id in range(len(self.N_list)):
-            # Check that the cluster is not empty
-            if self.N_list[id] > 0:
-                mu_comp, sigma_comp, alpha_comp = self._draw_mu_sigma([self.stored_pts[i] for i in associations[id].flatten()])
-                self.mixture[id].mu             = mu_comp
-                self.mixture[id].sigma          = sigma_comp
-                alphas.append(alpha_comp)
-        alphas = np.array(alphas)
         if self.selfunc is not None:
             log_w, w           = self.log_w, self.w
             self.log_w         = N_pts - logsumexp_jit(N_pts)
             self.w             = np.exp(self.log_w)
-            N_pts              = self.w*self.n_pts/alphas
+            N_pts              = self.w*self.n_pts/self._compute_individual_alpha_factors(idx)
             new_w              = dirichlet(N_pts+self.alpha/self.n_cl).rvs()[0]
             self.w             = new_w
             self.log_w         = np.log(new_w)
@@ -1438,56 +1426,25 @@ class HDPGMM(DPGMM):
             new_w = dirichlet(N_pts+self.alpha/self.n_cl).rvs()[0]
         return mixture(np.array([comp.mu.flatten() for comp in np.array(self.mixture)[idx]]), np.array([comp.sigma for comp in np.array(self.mixture)[idx]]), new_w, self.bounds, self.dim, self.n_cl, self.n_pts, self.alpha, probit = self.probit, make_comp = make_comp, alpha_factor = alpha_factor)
 
-    def _draw_mu_sigma(self, pts):
+    def _compute_individual_alpha_factors(self, idx):
         """
-        Draws a value for mu and sigma from a Normal-Inverse-Wishart distribution (potentially filtered with selection effects)
+        Compute the integral \\int pdet(theta)p(theta|lambda) dtheta conditioned on the specific DPGMM parameters
         
-        Arguments:
-            list of figaro.mixture.mixture pts: points associated with the specific component
+        Argiments:
+            list idx: non-empty components
         
         Returns:
-            np.ndarray: mean vector
-            np.ndarray: covariance matrix
-            float:      alpha
+            double: value of the integral
         """
-        while True:
-            if probit:
-                x = pts[0]._rvs_probit()
-            else:
-                x = pts[0].rvs()
-            comp  = _component(x, self.prior, N = 1)
-            M     = comp.mean
-            S     = comp.S
-            N     = comp.N
-            mu    = comp.mu
-            sigma = comp.sigma
-            for pt in pts[1:]:
-                if probit:
-                    x = pt._rvs_probit()
-                else:
-                    x = pt.rvs()
-                M, S, N, mu, sigma = _compute_component_suffstats_add(x, M, S, N, self.prior.mu, self.prior.k, self.prior.nu, self.prior.L)
-            k_n, mu_n, nu_n, L_n = _compute_hyperpars(self.prior.k, self.prior.mu, self.prior.nu, self.prior.L, M, S, N)
-            var  = np.atleast_2d(invwishart(df = nu_n, scale = L_n).rvs())
-            mean = np.atleast_1d(mn(mean = mu_n[0], cov = rescale_matrix(var, k_n), allow_singular = True).rvs())
-            if self.selfunc is not None:
-                # Approximant
-                if callable(self.selfunc):
-                    x = mn(mean, var, allow_singular = True).rvs(self.MC_draws)
-                    if probit:
-                        alpha_factor = np.mean(self.selfunc(transform_from_probit(x, self.bounds)))
-                    else:
-                        alpha_factor = np.mean(self.selfunc(x))
-                # Injections
-                else:
-                    alpha_factor = np.exp(logsumexp(mn(mean, var).logpdf(self.selfunc_probit) + self.log_jacobian_inj - self.log_inj_pdf) - np.log(self.total_inj))
-                if alpha_factor > self.lower_limit_alpha:
-                    if 1./alpha_factor < np.random.uniform()/self.lower_limit_alpha:
-                        break
-            else:
-                alpha_factor = 1.
-                break
-        return mean, var, alpha_factor
+        # Approximant
+        print(idx)
+        print(self.N_list)
+        if callable(self.selfunc):
+            alpha_factors = np.array([np.mean(self.selfunc(mn(comp.mu, comp.sigma, allow_singular = True).rvs(self.MC_draws))) for comp in np.array(self.mixture)[idx]])
+        # Injections
+        else:
+            alpha_factors = np.array([np.exp(logsumexp_jit(mn(comp.mu, comp.sigma, allow_singular = True).logpdf(self.selfunc) - self.log_inj_pdf) - np.log(self.total_inj)) for comp in np.array(self.mixture)[idx]])
+        return alpha_factors
     
     def compute_alpha_factor(self):
         """

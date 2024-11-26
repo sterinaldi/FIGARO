@@ -204,7 +204,7 @@ def get_priors(bounds, samples = None, mean = None, std = None, df = None, k = N
             out_a = a
         else:
             out_a = 2.
-        return (k_out, np.identity(dim)*np.atleast_1d(out_sigma), df_out, np.atleast_1d(mu_out)), (out_sigma, out_a)
+        return out_sigma, out_a
 
 
 def gradient_median(x, draws):
