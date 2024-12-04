@@ -1438,7 +1438,10 @@ class HDPGMM(DPGMM):
         """
         # Approximant
         if callable(self.selfunc):
-            alpha_factors = np.array([np.mean(self.selfunc(mn(comp.mu, comp.sigma, allow_singular = True).rvs(self.MC_draws))) for comp in np.array(self.mixture)[idx]])
+            if probit:
+                alpha_factors = np.array([np.mean(self.selfunc(transform_from_probit(mn(comp.mu, comp.sigma, allow_singular = True).rvs(self.MC_draws), self.bounds))) for comp in np.array(self.mixture)[idx]])
+            else:
+                alpha_factors = np.array([np.mean(self.selfunc(mn(comp.mu, comp.sigma, allow_singular = True).rvs(self.MC_draws))) for comp in np.array(self.mixture)[idx]])
         # Injections
         else:
             alpha_factors = np.array([np.exp(logsumexp_jit(mn(comp.mu, comp.sigma, allow_singular = True).logpdf(self.selfunc) - self.log_inj_pdf) - np.log(self.total_inj)) for comp in np.array(self.mixture)[idx]])
