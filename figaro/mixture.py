@@ -1239,7 +1239,8 @@ class HDPGMM(DPGMM):
             self.full_log_alpha_factor = np.copy(self.log_alpha_factor)
             self.log_alpha_factor[self.log_alpha_factor < np.log(self.lower_limit_alpha)] = np.inf
         else:
-            self.log_alpha_factor = np.zeros(self.MC_draws)
+            self.log_alpha_factor      = np.zeros(self.MC_draws)
+            self.log_full_alpha_factor = np.zeros(self.MC_draws)
         
     def add_new_point(self, ev):
         """
