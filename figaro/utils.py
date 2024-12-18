@@ -193,7 +193,10 @@ def get_priors(bounds, samples = None, mean = None, std = None, df = None, k = N
                 all_samples     = np.concatenate(samples, axis = 0)
                 events_avg_cov  = np.diag(np.atleast_2d(np.mean([np.cov(ev.T) for ev in samples], axis = 0)))
             all_samples_cov = np.diag(np.atleast_2d(np.cov(all_samples.T)))
-            out_sigma       = (np.sqrt(np.diag(np.cov(np.array([np.median(ev, axis = 0) for ev in probit_samples]).T)))/scale).flatten()#(np.sqrt(all_samples_cov - events_avg_cov)/scale).flatten()
+            if probit:
+                out_sigma       = (np.sqrt(np.diag(np.cov(np.array([np.median(ev, axis = 0) for ev in probit_samples]).T)))/scale).flatten()#(np.sqrt(all_samples_cov - events_avg_cov)/scale).flatten()
+            else:
+                out_sigma       = (np.sqrt(np.diag(np.cov(np.array([np.median(ev, axis = 0) for ev in samples]).T)))/scale).flatten()#(np.sqrt(all_samples_cov - events_avg_cov)/scale).flatten()
             mu_out          = np.mean(all_samples, axis = 0)
         else:
             out_sigma = np.diff(bounds, axis = -1)/scale
