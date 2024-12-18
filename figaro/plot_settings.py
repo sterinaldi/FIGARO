@@ -1,6 +1,15 @@
 from matplotlib import rcParams
-from matplotlib.pyplot import hist
+import matplotlib
 from distutils.spawn import find_executable
+import inspect
+
+def get_default_args(func):
+    signature = inspect.signature(func)
+    return {
+        k: v.default
+        for k, v in signature.parameters.items()
+        if v.default is not inspect.Parameter.empty
+    }
 
 tex_flag = False
 if find_executable('latex'):
@@ -22,8 +31,13 @@ rcParams["hist.bins"]       = "sqrt"
 rcParams["savefig.bbox"]    = "tight"
 rcParams["contour.negative_linestyle"] = "solid"
 
-# Better way of doing this?
-histdefaults = list(hist.__defaults__)
-histdefaults[2] = True   # density
-histdefaults[6] = 'step' # histtype
-hist.__defaults__ = tuple(histdefaults)
+def nicer_hist(func):
+    def decorated_func(*args, **kwargs):
+        if not 'density' in kwargs.keys():
+            kwargs['density'] = True
+        if not 'histtype' in kwargs.keys():
+            kwargs['histtype'] = 'step'
+        return func(*args, **kwargs)
+    return decorated_func
+
+matplotlib.pyplot.hist = nicer_hist(matplotlib.pyplot.hist)
