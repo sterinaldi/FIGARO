@@ -1,5 +1,5 @@
 from matplotlib import rcParams
-import matplotlib
+from matplotlib import pyplot as plt
 from distutils.spawn import find_executable
 import inspect
 
@@ -40,4 +40,4 @@ def nicer_hist(func):
         return func(*args, **kwargs)
     return decorated_func
 
-matplotlib.pyplot.hist = nicer_hist(matplotlib.pyplot.hist)
+plt.hist = nicer_hist(plt.hist)
