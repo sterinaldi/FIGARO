@@ -14,7 +14,7 @@ packages = ['figaro', 'figaro._pipelines']
 name = 'figaro'
 description = 'FIGARO: Fast Inference for GW Astronomy, Research & Observations'
 version = '1.7.2'
-requires-python = '< 3.12'
+requires-python = '>= 3.9, < 3.13'
 readme = {file = "README.md", content-type = "text/markdown"}
 license = {file = "LICENSE"}
 keywords = ['DPGMM', 'HDPGMM', 'figaro', 'hierarchical', 'inference']
@@ -29,18 +29,16 @@ classifiers = [
   "Intended Audience :: Science/Research",
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.6",
-  "Programming Language :: Python :: 3.7",
-  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
   'Topic :: Scientific/Engineering :: Astronomy',
   'Topic :: Scientific/Engineering :: Physics',
 ]
 
 dependencies = [
-    "numpy > 1.22, < 2",
+    "numpy > 1.22, < 2.2",
     "scipy",
     "matplotlib != 3.6.3",
     "dill",
