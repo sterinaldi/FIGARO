@@ -189,8 +189,8 @@ def main():
     else:
         hier_name = 'intrinsic_'+options.hier_name
 
-    if options.config is None  and options.save_config:
-        if options.config_output is  not None:
+    if options.config is None or options.save_config:
+        if options.config_output is not None:
             config_output = options.config_output
         else:
             config_output = options.output

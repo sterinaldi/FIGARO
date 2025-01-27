@@ -352,9 +352,9 @@ def save_options(options, out_folder, name = None):
     dd = {key:str(val) for (key, val) in vars(options).items() if not key == 'config'}
     config = configparser.ConfigParser()
     config.read_dict({'DEFAULT':dd})
-    with open(filename, 'w') as f:
+    with open(Path(out_folder, filename), 'w') as f:
         config.write(f)
-
+g
 def load_options(opts, parser):
     """
     Loads options for the run (reproducibility)
