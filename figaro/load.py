@@ -661,7 +661,7 @@ def _load_json(file, make_comp = True):
         return ll[0]
     return ll
 
-def load_selection_function(file, par = None, far_threshold = 1, snr_threshold = 10):
+def load_selection_function(file, par = None, far_threshold = 1, snr_threshold = 10, use_snr_treshold = False):
     """
     Loads the selection function, either from a python module containing a method called 'selection_function' or via injections.
     If injections, it assumes that the last column of a txt/csv/dat file contains the sampling pdf.
@@ -704,10 +704,10 @@ def load_selection_function(file, par = None, far_threshold = 1, snr_threshold =
             n_total_inj = len(samples)
             duration    = 1.
         else:
-            selfunc, inj_pdf, n_total_inj, duration = _unpack_injections(file, par, far_threshold, snr_threshold)
+            selfunc, inj_pdf, n_total_inj, duration = _unpack_injections(file, par, far_threshold, snr_threshold, use_snr_treshold)
     return selfunc, inj_pdf, n_total_inj, duration
 
-def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10):
+def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, use_snr_treshold = False):
     """
     Reads data from .h5/.hdf5 injection file (https://zenodo.org/records/7890437).
     A sample is considered detected if at least one of the searches calls a detection.
@@ -734,6 +734,7 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10):
     with h5py.File(file, 'r') as f:
         data          = f['injections']
         joint_dataset = 'name' in data.keys()
+        
         n_total_inj   = int(data.attrs['total_generated'])
         duration      = data.attrs['analysis_time_s']/(60.*60.*24.*365) # Years
         far_idx       = np.zeros(np.array(data['far_cwb']).shape, dtype=bool)
@@ -745,10 +746,20 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10):
             names = np.array(data['name'], dtype = str)
             snr   = np.array(data['optimal_snr_net'])
             idx   = np.where(names == 'o3', far_idx, snr > snr_threshold)
+            #GD: Before O3 the threshold was only on SNR
         else:
             # O3 only
             idx = np.where(far_idx, True, False)
-        # Load samples
+       
+        if use_snr_treshold:
+            # GD: Load samples
+            # GD: For my purposes, I will select event based only on SNR
+        #   GD: The following line will overwrite the previous idx
+            snr   = np.array(data['optimal_snr_net'])
+            idx = np.where(snr > snr_threshold, True, False)
+            print('Computing selection function based on SNR threshold of', snr_threshold)
+        #    GD: End of my modifications
+    
         samples = np.zeros((len(par), np.sum(idx)))
         inj_pdf = np.ones(np.sum(idx))
         # Parameters
