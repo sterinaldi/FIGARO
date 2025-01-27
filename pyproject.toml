@@ -48,7 +48,7 @@ dependencies = [
     "numba",
     "h5py",
     "tqdm",
-    "lalsuite",
+    "astropy",
     "ray",
     ]
 
