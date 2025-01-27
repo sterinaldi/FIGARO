@@ -143,8 +143,11 @@ def main():
     parser.add_option("--mc_draws", dest = "mc_draws", type = "int", help = "Number of draws for assignment MC integral", default = None)
     parser.add_option("--far_threshold", dest = "far_threshold", type = "float", help = "FAR threshold for LVK sensitivity estimate injections", default = 1.)
     parser.add_option("--snr_threshold", dest = "snr_threshold", type = "float", help = "SNR threshold for LVK sensitivity estimate injections", default = 10.)
+    parser.add_option("--use_snr_threshold", dest = "use_snr_threshold", type = "store_true", help = "use only SNR threshold for LVK sensitivity estimate injections", default = False)
     parser.add_option("--no_probit", dest = "probit", action = 'store_false', help = "Disable probit transformation", default = True)
     parser.add_option("--config", dest = "config", type = "string", help = "Config file. Warning: command line options override config options", default = None)
+    parser.add_option("--save_config", dest = "save_config", type = "store_true", help = "Wheter to save config file or not ", default = True)
+    parser.add_option("--config_output", dest = "config_output", type = "string", help = "Output config file. Default is same directory as output", default = None)
     parser.add_option("--rate", dest = "rate", action = 'store_true', help = "Compute rate", default = False)
     parser.add_option("--include_dvdz", dest = "include_dvdz", action = 'store_true', help = "Include dV/dz*(1+z)^{-1} term in selection effects.", default = False)
     parser.add_option("-l", "--likelihood", dest = "likelihood", action = 'store_true', help = "Resample posteriors to get likelihood samples (only for GW data)", default = False)
@@ -186,8 +189,12 @@ def main():
     else:
         hier_name = 'intrinsic_'+options.hier_name
 
-    if options.config is None:
-        save_options(options, options.output, name = options.hier_name)
+    if options.config is None  and options.save_config:
+        if options.config_output is  not None:
+            config_output = options.config_output
+        else:
+            config_output = options.output
+        save_options(options, config_output, name = options.hier_name)
 
     # Read bounds
     if options.bounds is not None:
@@ -227,9 +234,10 @@ def main():
     duration    = 1.
     if options.selfunc_file is not None:
         selfunc, inj_pdf, n_total_inj, duration = load_selection_function(options.selfunc_file,
-                                                                          par           = options.par,
-                                                                          far_threshold = options.far_threshold,
-                                                                          snr_threshold = options.snr_threshold,
+                                                                          par              = options.par,
+                                                                          far_threshold    = options.far_threshold,
+                                                                          snr_threshold    = options.snr_threshold,
+                                                                          use_snr_treshold =options.use_snr_threshold,
                                                                           )
         if not callable(selfunc):
             # Keeping only the samples within bounds
