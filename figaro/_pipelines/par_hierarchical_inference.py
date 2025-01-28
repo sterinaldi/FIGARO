@@ -188,8 +188,8 @@ def main():
         hier_name = 'observed_'+options.hier_name
     else:
         hier_name = 'intrinsic_'+options.hier_name
-
-    if options.config is None or options.save_config:
+    # Save config
+    if options.config is not None and options.save_config:
         if options.config_output is not None:
             config_output = options.config_output
         else:
@@ -341,6 +341,7 @@ def main():
         # Load posteriors
         for s in pool.map(lambda a, v: a.load_posteriors.remote(v), [posteriors for _ in range(options.n_parallel)]):
             pass
+        #
         # Run hierarchical analysis
         draws = []
         for s in tqdm(pool.map_unordered(lambda a, v: a.draw_hierarchical.remote(), [_ for _ in range(options.draws)]), total = options.draws, desc = 'Sampling'):

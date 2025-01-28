@@ -354,7 +354,7 @@ def save_options(options, out_folder, name = None):
     config.read_dict({'DEFAULT':dd})
     with open(Path(out_folder, filename), 'w') as f:
         config.write(f)
-g
+
 def load_options(opts, parser):
     """
     Loads options for the run (reproducibility)
