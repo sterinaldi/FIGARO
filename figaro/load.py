@@ -649,6 +649,7 @@ def _load_json(file, make_comp = True):
         draws = []
         for dict_ in list_of_dict:
             dict_.pop('log_w')
+            #dict_.pop('inv_covs')
             for key in dict_.keys():
                 value = dict_[key]
                 if isinstance(value, list):
@@ -661,7 +662,7 @@ def _load_json(file, make_comp = True):
         return ll[0]
     return ll
 
-def load_selection_function(file, par = None, far_threshold = 1, snr_threshold = 10, use_snr_treshold = False):
+def load_selection_function(file, par = None, far_threshold = 1, snr_threshold = 10, use_snr_treshold = False, add_extra_par = False):
     """
     Loads the selection function, either from a python module containing a method called 'selection_function' or via injections.
     If injections, it assumes that the last column of a txt/csv/dat file contains the sampling pdf.
@@ -705,6 +706,8 @@ def load_selection_function(file, par = None, far_threshold = 1, snr_threshold =
             duration    = 1.
         else:
             selfunc, inj_pdf, n_total_inj, duration = _unpack_injections(file, par, far_threshold, snr_threshold, use_snr_treshold)
+            if add_extra_par == True:
+                selfunc = np.append(selfunc, np.atleast_2d(np.zeros(len(selfunc))).T, axis=1)
     return selfunc, inj_pdf, n_total_inj, duration
 
 def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, use_snr_treshold = False):
@@ -741,6 +744,7 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, use_sn
         for key in data.keys():
             if 'ifar' in key.lower():
                 far_idx |= data[key][()] > 1./far_threshold
+                print(data[key][()])
         if joint_dataset:
             # O1+O2+O3
             names = np.array(data['name'], dtype = str)
@@ -756,7 +760,7 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, use_sn
             # GD: For my purposes, I will select event based only on SNR
         #   GD: The following line will overwrite the previous idx
             snr   = np.array(data['optimal_snr_net'])
-            idx = np.where(snr > snr_threshold, True, False)
+            idx = np.where(snr > snr_threshold , idx, False)
             print('Computing selection function based on SNR threshold of', snr_threshold)
         #    GD: End of my modifications
     

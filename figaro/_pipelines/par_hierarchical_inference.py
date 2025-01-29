@@ -144,6 +144,7 @@ def main():
     parser.add_option("--far_threshold", dest = "far_threshold", type = "float", help = "FAR threshold for LVK sensitivity estimate injections", default = 1.)
     parser.add_option("--snr_threshold", dest = "snr_threshold", type = "float", help = "SNR threshold for LVK sensitivity estimate injections", default = 10.)
     parser.add_option("--use_snr_threshold", dest = "use_snr_threshold", action = "store_true", help = "use only SNR threshold for LVK sensitivity estimate injections", default = False)
+    parser.add_option("--add_extra_par", dest = "add_extra_par", help = "Extra parameters to be added to the selection function", default = False)
     parser.add_option("--no_probit", dest = "probit", action = 'store_false', help = "Disable probit transformation", default = True)
     parser.add_option("--config", dest = "config", type = "string", help = "Config file. Warning: command line options override config options", default = None)
     parser.add_option("--save_config", dest = "save_config", action = "store_true", help = "Wheter to save config file or not ", default = True)
@@ -237,7 +238,8 @@ def main():
                                                                           par              = options.par,
                                                                           far_threshold    = options.far_threshold,
                                                                           snr_threshold    = options.snr_threshold,
-                                                                          use_snr_treshold =options.use_snr_threshold,
+                                                                          use_snr_treshold = options.use_snr_threshold,
+                                                                          add_extra_par    = options.add_extra_par,
                                                                           )
         if not callable(selfunc):
             # Keeping only the samples within bounds
