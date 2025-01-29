@@ -136,7 +136,16 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         else:
             median_label = '\mathrm{DPGMM}'
     
-    color_med, color_68, color_90 = colors
+    if len(colors) == 3:
+        color_med, color_68, color_90 = colors
+    else:
+        if colors == ['blue_palette']:
+            color_med, color_68, color_90 = ['steelblue', 'darkturquoise', 'mediumturquoise']
+        if colors == ['red_palette']:
+            color_med, color_68, color_90 = ['firebrick', 'indianred', 'lightcoral']
+
+            
+
     
     all_bounds = np.atleast_2d([d.bounds[0] for d in draws])
     x_min = np.max(all_bounds[:,0])
