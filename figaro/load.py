@@ -707,7 +707,7 @@ def load_selection_function(file, par = None, far_threshold = 1, snr_threshold =
         else:
             selfunc, inj_pdf, n_total_inj, duration = _unpack_injections(file, par, far_threshold, snr_threshold, use_snr_treshold)
             if add_extra_par == True:
-                selfunc = np.append(selfunc, np.atleast_2d(np.zeros(len(selfunc))).T, axis=1)
+                selfunc = np.append(selfunc, np.atleast_2d(np.random.uniform(-1,1, len(selfunc))).T, axis=1)
     return selfunc, inj_pdf, n_total_inj, duration
 
 def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, use_snr_treshold = False):
@@ -744,13 +744,14 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, use_sn
         for key in data.keys():
             if 'ifar' in key.lower():
                 far_idx |= data[key][()] > 1./far_threshold
-                print(data[key][()])
+                
         if joint_dataset:
             # O1+O2+O3
             names = np.array(data['name'], dtype = str)
             snr   = np.array(data['optimal_snr_net'])
             idx   = np.where(names == 'o3', far_idx, snr > snr_threshold)
             #GD: Before O3 the threshold was only on SNR
+            print('ciao')
         else:
             # O3 only
             idx = np.where(far_idx, True, False)
@@ -761,7 +762,7 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, use_sn
         #   GD: The following line will overwrite the previous idx
             snr   = np.array(data['optimal_snr_net'])
             idx = np.where(snr > snr_threshold , idx, False)
-            print('Computing selection function based on SNR threshold of', snr_threshold)
+            print('Computing selection function based on FAR and SNR threshold of', snr_threshold)
         #    GD: End of my modifications
     
         samples = np.zeros((len(par), np.sum(idx)))
