@@ -1,6 +1,6 @@
 from matplotlib import rcParams
 from matplotlib import pyplot as plt
-from distutils.spawn import find_executable
+from shutil import which
 import inspect
 
 def get_default_args(func):
@@ -12,7 +12,7 @@ def get_default_args(func):
     }
 
 tex_flag = False
-if find_executable('latex'):
+if which('latex') is not None:
     tex_flag = True
     rcParams["text.usetex"] = True
 rcParams["xtick.labelsize"] = 14
