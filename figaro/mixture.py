@@ -1165,7 +1165,7 @@ class HDPGMM(DPGMM):
                        selection_function = None,
                        injection_pdf      = None,
                        total_injections   = None,
-                       lower_limit_alpha  = 1e-4,
+                       lower_limit_alpha  = 1e-3,
                        ):
         bounds   = np.atleast_2d(bounds)
         self.dim = len(bounds)
@@ -1226,19 +1226,19 @@ class HDPGMM(DPGMM):
                 n_samples = self.MC_draws
                 with np.errstate(divide = 'ignore', invalid = 'ignore'):
                     if self.probit:
-                        self.log_alpha_factor = np.array([np.log(np.median(self.selfunc(transform_from_probit(mn(m,s, allow_singular = True).rvs(self.MC_draws), self.bounds)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
+                        self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(transform_from_probit(mn(m,s, allow_singular = True).rvs(self.MC_draws), self.bounds)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
                     else:
-                        self.log_alpha_factor = np.array([np.log(np.median(self.selfunc(mn(m,s, allow_singular = True).rvs(self.MC_draws)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
+                        self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(mn(m,s, allow_singular = True).rvs(self.MC_draws)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
             # Injections
             else:
                 n_samples = self.total_inj
                 self.log_alpha_factor = np.array([logsumexp_jit(mn(m,s, allow_singular = True).logpdf(self.selfunc_probit) + self.log_jacobian_inj - self.log_inj_pdf) - np.log(self.total_inj) for m, s in zip(self.mu_MC, self.sigma_MC)])
-                log_var = np.array([logsumexp([logsumexp_jit(2*mn(m,s, allow_singular = True).logpdf(self.selfunc_probit) + 2*self.log_jacobian_inj - 2*self.log_inj_pdf) - np.log(self.total_inj), 2*a], b = -1) for a, m, s in zip(self.log_alpha_factor, self.mu_MC, self.sigma_MC)])
-                print(np.exp(0.5*(log_var-np.log(len(self.selfunc_probit))) - self.log_alpha_factor > np.log(0.05)))
+#                log_var = np.array([logsumexp([logsumexp_jit(2*mn(m,s, allow_singular = True).logpdf(self.selfunc_probit) + 2*self.log_jacobian_inj - 2*self.log_inj_pdf) - np.log(self.total_inj), 2*a], b = -1) for a, m, s in zip(self.log_alpha_factor, self.mu_MC, self.sigma_MC)])
+#                print(np.exp(0.5*(log_var-np.log(len(self.selfunc_probit))) - self.log_alpha_factor > np.log(0.05)))
             # Numerical stability: mu+sigma ignored if p_det too small (not enough predicted points to have a reliable value for alpha)
             self.log_alpha_factor      = np.nan_to_num(self.log_alpha_factor, nan = np.inf, posinf = np.inf, neginf = np.inf)
-            self.log_alpha_factor[0.5*(log_var-np.log(len(self.selfunc_probit))) - self.log_alpha_factor > np.log(0.05)] = np.inf
-            self.log_alpha_factor[self.log_alpha_factor < np.log(3e-5)] = np.inf
+#            self.log_alpha_factor[0.5*(log_var-np.log(len(self.selfunc_probit))) - self.log_alpha_factor > np.log(0.05)] = np.inf
+            self.log_alpha_factor[self.log_alpha_factor < np.log(3e-3)] = np.inf
             self.full_log_alpha_factor = np.copy(self.log_alpha_factor)
             self.log_alpha_factor[self.log_alpha_factor < np.log(self.lower_limit_alpha)] = np.inf
         else:
@@ -1443,9 +1443,9 @@ class HDPGMM(DPGMM):
         # Approximant
         if callable(self.selfunc):
             if probit:
-                alpha_factors = np.array([np.median(self.selfunc(transform_from_probit(mn(comp.mu, comp.sigma, allow_singular = True).rvs(self.MC_draws), self.bounds))) for comp in np.array(self.mixture)[idx]])
+                alpha_factors = np.array([np.mean(self.selfunc(transform_from_probit(mn(comp.mu, comp.sigma, allow_singular = True).rvs(self.MC_draws), self.bounds))) for comp in np.array(self.mixture)[idx]])
             else:
-                alpha_factors = np.array([np.median(self.selfunc(mn(comp.mu, comp.sigma, allow_singular = True).rvs(self.MC_draws))) for comp in np.array(self.mixture)[idx]])
+                alpha_factors = np.array([np.mean(self.selfunc(mn(comp.mu, comp.sigma, allow_singular = True).rvs(self.MC_draws))) for comp in np.array(self.mixture)[idx]])
         # Injections
         else:
             alpha_factors = np.array([np.exp(logsumexp_jit(mn(comp.mu, comp.sigma, allow_singular = True).logpdf(self.selfunc) - self.log_inj_pdf) - np.log(self.total_inj)) for comp in np.array(self.mixture)[idx]])
@@ -1460,11 +1460,11 @@ class HDPGMM(DPGMM):
         """
         # Approximant
         if callable(self.selfunc):
-            alpha_factor = np.median(self.selfunc(self.rvs(self.MC_draws)))
+            alpha_factor = np.mean(self.selfunc(self.rvs(self.MC_draws)))
         # Injections
         else:
-#            alpha_factor = np.exp(logsumexp_jit(self.logpdf(self.selfunc) - self.log_inj_pdf) - np.log(self.total_inj))
-            alpha_factor = np.exp(np.median(self.logpdf(self.selfunc) - self.log_inj_pdf) + np.log(len(self.selfunc)) - np.log(self.total_inj))
+            alpha_factor = np.exp(logsumexp_jit(self.logpdf(self.selfunc) - self.log_inj_pdf) - np.log(self.total_inj))
+#            alpha_factor = np.exp(np.median(self.logpdf(self.selfunc) - self.log_inj_pdf) + np.log(len(self.selfunc)) - np.log(self.total_inj))
         return alpha_factor
 
     def density_from_samples(self, events, make_comp = True):
