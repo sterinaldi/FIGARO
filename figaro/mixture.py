@@ -1226,9 +1226,9 @@ class HDPGMM(DPGMM):
                 n_samples = self.MC_draws
                 with np.errstate(divide = 'ignore', invalid = 'ignore'):
                     if self.probit:
-                        self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(transform_from_probit(mn(m,s, allow_singular = True).rvs(self.MC_draws), self.bounds)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
+                        self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(transform_from_probit(mn(m,s, allow_singular = True).rvs(self.MC_draws*100), self.bounds)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
                     else:
-                        self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(mn(m,s, allow_singular = True).rvs(self.MC_draws)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
+                        self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(mn(m,s, allow_singular = True).rvs(self.MC_draws*100)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
             # Injections
             else:
                 n_samples = self.total_inj
@@ -1238,7 +1238,7 @@ class HDPGMM(DPGMM):
             # Numerical stability: mu+sigma ignored if p_det too small (not enough predicted points to have a reliable value for alpha)
             self.log_alpha_factor      = np.nan_to_num(self.log_alpha_factor, nan = np.inf, posinf = np.inf, neginf = np.inf)
 #            self.log_alpha_factor[0.5*(log_var-np.log(len(self.selfunc_probit))) - self.log_alpha_factor > np.log(0.05)] = np.inf
-            self.log_alpha_factor[self.log_alpha_factor < np.log(3e-3)] = np.inf
+            self.log_alpha_factor[self.log_alpha_factor < np.log(1e-3)] = np.inf
             self.full_log_alpha_factor = np.copy(self.log_alpha_factor)
             self.log_alpha_factor[self.log_alpha_factor < np.log(self.lower_limit_alpha)] = np.inf
         else:
@@ -1443,12 +1443,15 @@ class HDPGMM(DPGMM):
         # Approximant
         if callable(self.selfunc):
             if probit:
-                alpha_factors = np.array([np.mean(self.selfunc(transform_from_probit(mn(comp.mu, comp.sigma, allow_singular = True).rvs(self.MC_draws), self.bounds))) for comp in np.array(self.mixture)[idx]])
+                alpha_factors = np.array([np.mean(self.selfunc(transform_from_probit(mn(comp.mu, comp.sigma, allow_singular = True).rvs(self.MC_draws*100), self.bounds))) for comp in np.array(self.mixture)[idx]])
             else:
-                alpha_factors = np.array([np.mean(self.selfunc(mn(comp.mu, comp.sigma, allow_singular = True).rvs(self.MC_draws))) for comp in np.array(self.mixture)[idx]])
+                alpha_factors = np.array([np.mean(self.selfunc(mn(comp.mu, comp.sigma, allow_singular = True).rvs(self.MC_draws*100))) for comp in np.array(self.mixture)[idx]])
         # Injections
         else:
-            alpha_factors = np.array([np.exp(logsumexp_jit(mn(comp.mu, comp.sigma, allow_singular = True).logpdf(self.selfunc) - self.log_inj_pdf) - np.log(self.total_inj)) for comp in np.array(self.mixture)[idx]])
+            if probit:
+                alpha_factors = np.array([np.exp(logsumexp_jit(mn(comp.mu, comp.sigma, allow_singular = True).logpdf(self.selfunc_probit) + self.log_jacobian_inj - self.log_inj_pdf) - np.log(self.total_inj)) for comp in np.array(self.mixture)[idx]])
+            else:
+                alpha_factors = np.array([np.exp(logsumexp_jit(mn(comp.mu, comp.sigma, allow_singular = True).logpdf(self.selfunc)) - np.log(self.total_inj)) for comp in np.array(self.mixture)[idx]])
         return alpha_factors
     
     def compute_alpha_factor(self):
