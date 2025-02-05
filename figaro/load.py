@@ -707,7 +707,10 @@ def load_selection_function(file, par = None, far_threshold = 1, snr_threshold =
         else:
             selfunc, inj_pdf, n_total_inj, duration = _unpack_injections(file, par, far_threshold, snr_threshold, use_snr_treshold)
             if add_extra_par == True:
-                selfunc = np.append(selfunc, np.atleast_2d(np.random.uniform(-1,1, len(selfunc))).T, axis=1)
+                print(len(selfunc))
+                selfunc = np.append(selfunc, np.atleast_2d(np.random.uniform(-10,10 , len(selfunc))).T, axis=1)
+                print(selfunc.shape)
+                print(selfunc)
     return selfunc, inj_pdf, n_total_inj, duration
 
 def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, use_snr_treshold = False):
