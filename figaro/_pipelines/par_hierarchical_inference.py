@@ -36,6 +36,7 @@ class worker:
                        selfunc     = None,
                        inj_pdf     = None,
                        n_total_inj = None,
+                       lower_limit_alpha = None,
                        ):
         self.dim                  = bounds.shape[0]
         self.bounds               = bounds
@@ -53,6 +54,7 @@ class worker:
                                                                            probit       = probit,
                                                                            hierarchical = True,
                                                                            ),
+                                           lower_limit_alpha=lower_limit_alpha,
                                            )
         self.out_folder_plots = out_folder_plots
         self.out_folder_draws = out_folder_draws
@@ -152,6 +154,7 @@ def main():
     parser.add_option("--rate", dest = "rate", action = 'store_true', help = "Compute rate", default = False)
     parser.add_option("--include_dvdz", dest = "include_dvdz", action = 'store_true', help = "Include dV/dz*(1+z)^{-1} term in selection effects.", default = False)
     parser.add_option("-l", "--likelihood", dest = "likelihood", action = 'store_true', help = "Resample posteriors to get likelihood samples (only for GW data)", default = False)
+    parser.add_option("--lower_limit_alpha", dest = "lower_limit_alpha", type = "float", help = "Lower limit for alpha", default = None)
 
     (options, args) = parser.parse_args()
 
@@ -228,6 +231,9 @@ def main():
         inj_module    = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(inj_module)
         inj_density   = inj_module.density
+
+
+    
     # If provided, load selecton function
     selfunc     = None
     inj_pdf     = None
@@ -258,6 +264,11 @@ def main():
         dec_selfunc = _decorator_dVdz(selfunc, approx_dVdz, z_index, options.bounds[z_index][1])
     else:
         dec_selfunc = selfunc
+
+    if options.lower_limit_alpha is not None:
+        lower_limit_alpha = options.lower_limit_alpha
+    else:
+        lower_limit_alpha = 1e-3
     # If provided, load true values
     hier_samples = None
     if options.hier_samples is not None:
@@ -325,6 +336,7 @@ def main():
                                         selfunc          = dec_selfunc,
                                         inj_pdf          = inj_pdf,
                                         n_total_inj      = n_total_inj,
+                                        lower_limit_alpha= lower_limit_alpha,
                                         )
                           for _ in range(options.n_parallel)])
         
