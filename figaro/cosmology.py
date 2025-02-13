@@ -33,7 +33,7 @@ class CosmologicalParameters:
         return self.Cosmology.H(z).value
 
     def LuminosityDistance(self, z):
-        return self.cosmology.luminosity_distance(z).value
+        return self.Cosmology.luminosity_distance(z).value
     
     def ComovingTransverseDistance(self, z):
         return self.Cosmology.comoving_transverse_distance(z).value
