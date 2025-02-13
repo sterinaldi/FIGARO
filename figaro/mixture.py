@@ -1236,6 +1236,7 @@ class HDPGMM(DPGMM):
             self.log_alpha_factor = np.nan_to_num(self.log_alpha_factor, nan = np.inf, posinf = np.inf, neginf = np.inf)
             # Censored regions
             self.log_alpha_factor[self.log_alpha_factor < np.log(self.lower_limit_alpha)] = np.inf
+            self.log_alpha_factor[(self.log_alpha_factor > 0.) & (np.isfinite(self.log_alpha_factor))] = 0.
         else:
             self.log_alpha_factor = np.zeros(self.MC_draws)
         
