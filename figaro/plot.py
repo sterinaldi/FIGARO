@@ -802,7 +802,7 @@ def pp_plot_levels(CR_levels, median_CR = None, out_folder = '.', name = 'MDC', 
         plt.close()
     return fig
 
-def joyplot(draws, x_values, y_values, credible_regions = False, fill = True, solid = False, overlap = 1., xlabel = None, ylabel = None, xunit = None, yunit = None, colormap = 'coolwarm', out_folder = '.', name = 'joyplot', subfolder = False, show = False, save = True, joy = False, colorbar = True):
+def joyplot(draws, x_values, y_values, credible_regions = False, fill = True, solid = False, overlap = 1., xlabel = None, ylabel = None, xunit = None, yunit = None, colormap = 'coolwarm', out_folder = '.', name = 'joyplot', subfolder = False, show = False, save = True, joy = False, colorbar = True, histogram = False):
     """
     Make a joyplot (also known as ridgeline plot) of a set of distributions.
     Heavily inspired by leotac's JoyPy (https://github.com/leotac/joypy).
@@ -872,26 +872,36 @@ def joyplot(draws, x_values, y_values, credible_regions = False, fill = True, so
             c = next(color)
         else:
             c = 'w'
-        percentiles = [50, 16, 84]
-        p = {}
-        if len(np.shape(draws)) == 3:
-            for perc in percentiles:
-                p[perc] = np.percentile(dd, perc, axis = 0)
-            if credible_regions and not joy:
-                ax.fill_between(x_values, p[84], p[16], color = c, alpha = 0.25)
+        if not histogram:
+            percentiles = [50, 16, 84]
+            p = {}
+            if len(np.shape(draws)) == 3:
+                for perc in percentiles:
+                    p[perc] = np.percentile(dd, perc, axis = 0)
+                if credible_regions and not joy:
+                    ax.fill_between(x_values, p[84], p[16], color = c, alpha = 0.25)
+            else:
+                p[50] = dd
+            if fill and not credible_regions:
+                if solid:
+                    alpha = 1
+                else:
+                    alpha = 0.25
+                if not joy:
+                    ax.fill_between(x_values, p[50], np.zeros(len(x_values)), color = c, alpha = alpha)
+                else:
+                    ax.fill_between(x_values, p[50], np.zeros(len(x_values)), color = 'k', alpha = 1)
+            ax.plot(x_values, p[50], clip_on = True, c = c)
         else:
-            p[50] = dd
-        if fill and not credible_regions:
-            if solid:
-                alpha = 1
-            else:
-                alpha = 0.25
-            if not joy:
-                ax.fill_between(x_values, p[50], np.zeros(len(x_values)), color = c, alpha = alpha)
-            else:
-                ax.fill_between(x_values, p[50], np.zeros(len(x_values)), color = 'k', alpha = 1)
-        ax.plot(x_values, p[50], clip_on = True, c = c)
-
+            if fill:
+                histtype = 'stepfilled'
+                if solid:
+                    alpha = 1
+                else:
+                    alpha = 0.25
+                ax.hist(dd, histtype = histtype, alpha = alpha, density = True, color = c)
+            ax.hist(dd, histtype = 'step', alpha = 1, density = True, color = c)
+            ax.plot(x_values, np.zeros(len(x_values)), alpha = 1, color = c, marker = '', lw = 1.)
         # Setup the current axis: transparency, labels, spines.
         ax.yaxis.grid(False)
         ax.patch.set_alpha(0)
