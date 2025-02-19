@@ -802,7 +802,7 @@ def pp_plot_levels(CR_levels, median_CR = None, out_folder = '.', name = 'MDC', 
         plt.close()
     return fig
 
-def joyplot(draws, x_values, y_values, credible_regions = False, fill = True, solid = False, overlap = 1., xlabel = None, ylabel = None, xunit = None, yunit = None, colormap = 'coolwarm', out_folder = '.', name = 'joyplot', subfolder = False, show = False, save = True, joy = False):
+def joyplot(draws, x_values, y_values, credible_regions = False, fill = True, solid = False, overlap = 1., xlabel = None, ylabel = None, xunit = None, yunit = None, colormap = 'coolwarm', out_folder = '.', name = 'joyplot', subfolder = False, show = False, save = True, joy = False, colorbar = True):
     """
     Make a joyplot (also known as ridgeline plot) of a set of distributions.
     Heavily inspired by leotac's JoyPy (https://github.com/leotac/joypy).
@@ -859,7 +859,7 @@ def joyplot(draws, x_values, y_values, credible_regions = False, fill = True, so
     gs = GridSpec(len(y_values), 17, figure = fig)
     _axes = []
     [_axes.append(fig.add_subplot(gs[i, :-1])) for i in range(len(y_values))]
-    if not joy:
+    if not joy and colorbar:
         _axes.append(fig.add_subplot(gs[:, -1]))
         # Global colorbar
         cbar    = fig.colorbar(cmappable, cax = _axes[-1])
