@@ -14,7 +14,7 @@ from tqdm import tqdm
 supported_extensions = ['h5', 'hdf5', 'txt', 'dat', 'csv']
 supported_waveforms  = ['combined', 'imr', 'seob']
 injected_pars        = ['m1', 'm2', 'z', 's1x', 's1y', 's1z', 's2x', 's2y', 's2z', 'ra', 'dec']
-loadable_inj_pars    = injected_pars + ['q', 'chi_eff', 'chi_p', 's1', 's2']
+loadable_inj_pars    = injected_pars + ['q', 'chi_eff', 'chi_p', 's1', 's2', 'log_z']
 mass_parameters      = ['m1', 'm2', 'm1_detect', 'm2_detect', 'mc', 'mt', 'q']
 spin_parameters      = ['s1x', 's1y', 's1z', 's2x', 's2y', 's2z', 's1', 's2', 'chi_eff', 'chi_p']
 
@@ -26,6 +26,7 @@ GW_par = {'m1'                 : 'mass_1_source',
           'mc_detect'          : 'chirp_mass',
           'mt'                 : 'total_mass_source',
           'z'                  : 'redshift',
+          'log_z'              : 'log_redshift',
           'q'                  : 'mass_ratio',
           'eta'                : 'symmetric_mass_ratio',
           'chi_eff'            : 'chi_eff',
@@ -382,6 +383,8 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                             samples.append(data[lab])
                         except:
                             samples.append(np.exp(data['logdistance']))
+                    elif name == 'log_z':
+                        samples.append(np.log(data['redshift']))
                     else:
                         samples.append(data[lab])
                     loaded_pars.append(name)
@@ -448,6 +451,7 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
 
             # Derived quantities
             ss['z']       = omega.Redshift(ss['luminosity_distance'])
+            ss['log_z']   = np.log(ss['z'])
             ss['m1']      = ss['m1_detect']/(1+ss['z'])
             ss['m2']      = ss['m2_detect']/(1+ss['z'])
             ss['mc']      = (ss['m1']*ss['m2'])**(3./5.)/(ss['m1']+ss['m2'])**(1./5.)
@@ -509,21 +513,23 @@ def _prior_gw(par, samples, cosmology = 'Planck15', uniform_dVdz = True):
         raise FIGAROException("Cosmology not supported")
     vol    = omega.ComovingVolume(2.3)/1e9
     DL_max = omega.LuminosityDistance(2.3)
-    prior  = np.ones(len(samples))
+    prior  = np.ones(len(samples[GW_par['z']]))
     # Redshift prior (uniform in comoving source frame)
-    if 'z' in par:
+    if ('z' in par) or ('log_z' in par):
         if uniform_dVdz:
-            prior *= dVdz(samples[GW_par['z']])/((1.+samples[GW_par['z']])*vol)
+            prior *= dVdz(np.array(samples[GW_par['z']]))/((1.+np.array(samples[GW_par['z']]))*vol)
         else:
-            prior *= (samples[GW_par['luminosity_distance']]**2/DL_max**3)*omega.dDLdz(samples[GW_par['z']])
+            prior *= (np.array(samples[GW_par['luminosity_distance']])**2/DL_max**3)*omega.dDLdz(np.array(samples[GW_par['z']]))
+        if 'log_z' in par:
+            prior *= samples[GW_par['z']]
     # Mass prior (uniform in detector-frame component masses)
     n_mass_pars = np.sum([item in par for item in ['m1','m2','mc','q']])
     if n_mass_pars > 0:
-        prior *= (1+samples[GW_par['z']])**np.min([n_mass_pars, 2])
+        prior *= (1+np.array(samples[GW_par['z']]))**np.min([n_mass_pars, 2])
     if 'q' in par:
-        prior *= samples[GW_par['m1']]
+        prior *= np.array(samples[GW_par['m1']])
     if ('mc' in par or 'mc_detect' in par):
-        prior *= (1 + samples[GW_par['q']]) ** 0.2 / samples[GW_par['q']] ** 0.6
+        prior *= (1 + np.array(samples[GW_par['q']])) ** 0.2 / np.array(samples[GW_par['q']]) ** 0.6
     return prior
     
 def save_density(draws, folder = '.', name = 'density', ext = 'json'):
@@ -661,7 +667,7 @@ def _load_json(file, make_comp = True):
         return ll[0]
     return ll
 
-def load_selection_function(file, par = None, far_threshold = 1, snr_threshold = 10):
+def load_selection_function(file, par = None, far_threshold = 1, snr_threshold = 10, cosmology = 'Planck15'):
     """
     Loads the selection function, either from a python module containing a method called 'selection_function' or via injections.
     If injections, it assumes that the last column of a txt/csv/dat file contains the sampling pdf.
@@ -704,10 +710,10 @@ def load_selection_function(file, par = None, far_threshold = 1, snr_threshold =
             n_total_inj = len(samples)
             duration    = 1.
         else:
-            selfunc, inj_pdf, n_total_inj, duration = _unpack_injections(file, par, far_threshold, snr_threshold)
+            selfunc, inj_pdf, n_total_inj, duration = _unpack_injections(file, par, far_threshold, snr_threshold, cosmology)
     return selfunc, inj_pdf, n_total_inj, duration
 
-def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10):
+def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmology = 'Planck15'):
     """
     Reads data from .h5/.hdf5 injection file (https://zenodo.org/records/7890437).
     A sample is considered detected if at least one of the searches calls a detection.
@@ -724,6 +730,10 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10):
         int or NoneType: total number of injections
         double duration: duration of the observation
     """
+    if cosmology == 'Planck18':
+        omega = Planck18
+    elif cosmology == 'Planck15':
+        omega = Planck15
     # Check that a list of parameters is passed
     if par is None:
         raise TypeError("Please provide a list of parameter names you want to load (e.g. ['m1']).")
@@ -746,8 +756,13 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10):
             snr   = np.array(data['optimal_snr_net'])
             idx   = np.where(names == 'o3', far_idx, snr > snr_threshold)
         else:
-            # O3 only
-            idx = np.where(far_idx, True, False)
+            if np.sum(far_idx) > 0:
+                # O3 only
+                idx = np.where(far_idx, True, False)
+            else:
+                # Simulated dataset (SNR filter)
+                snr = np.array(data['snr'])
+                idx = np.where(snr > snr_threshold, True, False)
         # Load samples
         samples = np.zeros((len(par), np.sum(idx)))
         inj_pdf = np.ones(np.sum(idx))
@@ -755,12 +770,15 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10):
         m1  = np.array(data[inj_par['m1']])[idx]
         m2  = np.array(data[inj_par['m2']])[idx]
         q   = m2/m1
-        s1x = np.array(data[inj_par['s1x']])[idx]
-        s1y = np.array(data[inj_par['s1y']])[idx]
-        s1z = np.array(data[inj_par['s1z']])[idx]
-        s2x = np.array(data[inj_par['s2x']])[idx]
-        s2y = np.array(data[inj_par['s2y']])[idx]
-        s2z = np.array(data[inj_par['s2z']])[idx]
+        try:
+            s1x = np.array(data[inj_par['s1x']])[idx]
+            s1y = np.array(data[inj_par['s1y']])[idx]
+            s1z = np.array(data[inj_par['s1z']])[idx]
+            s2x = np.array(data[inj_par['s2x']])[idx]
+            s2y = np.array(data[inj_par['s2y']])[idx]
+            s2z = np.array(data[inj_par['s2z']])[idx]
+        except:
+            pass
         for i, lab in enumerate(par):
             # Already available parameters:
             if lab in injected_pars:
@@ -785,6 +803,9 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10):
                     samples[i] = (s1z + q*s2z)/(1+q)
                 if lab == 'chi_p':
                     samples[i] = np.maximum(np.sqrt(s1x**2+s1y**2), np.sqrt(s2x**2+s2y**2)*q*(4*q+3)/(4+3*q))
+                # log redshift
+                if lab == 'log_z':
+                    samples[i] = np.log(data[inj_par['z']])[idx]
         # Sampling pdf
         n_mass_pars = len([lab for lab in par if lab in mass_parameters])
         n_spin_pars = len([lab for lab in par if lab in spin_parameters])
@@ -808,6 +829,13 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10):
             # Distance
             if 'z' in par:
                 inj_pdf *= np.array(data['redshift_sampling_pdf'])[idx]
+            if 'log_z' in par:
+                inj_pdf *= np.array(data['redshift_sampling_pdf'])[idx]*np.array(data[inj_par['z']])[idx]
+            if 'luminosity_distance' in par:
+                try:
+                    inj_pdf *= np.array(data['luminosity_distance_sampling_pdf'])[idx]
+                except:
+                    inj_pdf *= np.array(data['redshift_sampling_pdf'])[idx]/omega.dDLdz(np.array(data[inj_par['z']])[idx])
             # Sky position
             if 'ra' in par:
                 inj_pdf *= np.array(data['right_ascension_sampling_pdf'])[idx]
