@@ -28,7 +28,8 @@ class CosmologicalParameters:
         self.w1 = w1
         self.w2 = w2
         self.Cosmology = wCDM(H0 = self.h*100, Om0 = self.om, Ode0 = self.ol, w0 = self.w0)
-
+        self.HubbleDistance = 2.99792458e5/(100*self.h)
+    
     def HubbleParameter(self, z):
         return self.Cosmology.H(z).value
 
@@ -48,10 +49,21 @@ class CosmologicalParameters:
         return self.Cosmology.comoving_volume(z).value
     
     def Redshift(self, DL):
-        if DL == 0.:
-            return 0.
+        return z_at_value(self.Cosmology.luminosity_distance, Quantity(DL, 'Mpc')).value
+    
+    def dDLdz(self, z):
+        DC   = self.ComovingLOSDistance(z)
+        DT   = self.ComovingTransverseDistance(z)
+        invE = self.HubbleParameter(z)
+        return DT + (1.+z)*self.dDTdDC(DC)*self.HubbleDistance*invE
+    
+    def dDTdDC(self, DC):
+        if self.ok == 0.:
+            return 1.
+        elif self.ok > 0.:
+            return np.cosh(np.sqrt(self.ok)*DC/self.HubbleDistance)
         else:
-            return z_at_value(self.Cosmology.luminosity_distance, Quantity(DL, 'Mpc'))
+            return np.cos(np.sqrt(-self.ok)*DC/self.HubbleDistance)
 
 Planck18 = CosmologicalParameters(0.674, 0.315, 0.685, -1)
 Planck15 = CosmologicalParameters(0.679, 0.3065, 0.6935, -1)
