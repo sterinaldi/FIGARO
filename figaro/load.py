@@ -14,7 +14,7 @@ from tqdm import tqdm
 supported_extensions = ['h5', 'hdf5', 'txt', 'dat', 'csv']
 supported_waveforms  = ['combined', 'imr', 'seob']
 injected_pars        = ['m1', 'm2', 'z', 's1x', 's1y', 's1z', 's2x', 's2y', 's2z', 'ra', 'dec']
-loadable_inj_pars    = injected_pars + ['q', 'chi_eff', 'chi_p', 's1', 's2', 'log_z', 'm1_detect', 'm2_detect']
+loadable_inj_pars    = injected_pars + ['q', 'chi_eff', 'chi_p', 's1', 's2', 'luminosity_distance', 'log_z', 'm1_detect', 'm2_detect']
 mass_parameters      = ['m1', 'm2', 'm1_detect', 'm2_detect', 'mc', 'mt', 'q']
 spin_parameters      = ['s1x', 's1y', 's1z', 's2x', 's2y', 's2z', 's1', 's2', 'chi_eff', 'chi_p']
 detector_parameters  = ['m1_detect', 'm2_detect']
