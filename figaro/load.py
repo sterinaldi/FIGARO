@@ -14,9 +14,10 @@ from tqdm import tqdm
 supported_extensions = ['h5', 'hdf5', 'txt', 'dat', 'csv']
 supported_waveforms  = ['combined', 'imr', 'seob']
 injected_pars        = ['m1', 'm2', 'z', 's1x', 's1y', 's1z', 's2x', 's2y', 's2z', 'ra', 'dec']
-loadable_inj_pars    = injected_pars + ['q', 'chi_eff', 'chi_p', 's1', 's2', 'log_z']
+loadable_inj_pars    = injected_pars + ['q', 'chi_eff', 'chi_p', 's1', 's2', 'log_z', 'm1_detect', 'm2_detect']
 mass_parameters      = ['m1', 'm2', 'm1_detect', 'm2_detect', 'mc', 'mt', 'q']
 spin_parameters      = ['s1x', 's1y', 's1z', 's2x', 's2y', 's2z', 's1', 's2', 'chi_eff', 'chi_p']
+detector_parameters  = ['m1_detect', 'm2_detect']
 
 GW_par = {'m1'                 : 'mass_1_source',
           'm2'                 : 'mass_2_source',
@@ -773,6 +774,7 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
         m1  = np.array(data[inj_par['m1']])[idx]
         m2  = np.array(data[inj_par['m2']])[idx]
         q   = m2/m1
+        z   = np.array(data[inj_par['z']])[idx]
         try:
             s1x = np.array(data[inj_par['s1x']])[idx]
             s1y = np.array(data[inj_par['s1y']])[idx]
@@ -797,6 +799,10 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
                     samples[i] = m1 + m2
                 if lab == 'mc':
                     samples[i] = m1*m2**(3./5.)/(m1+m2)**(1./5.)
+                if lab == 'm1_detect':
+                    samples[i] = m1*(1+z)
+                if lab == 'm2_detect':
+                    samples[i] = m2*(1+z)
                 # Spins
                 if lab == 's1':
                     samples[i] = np.sqrt(s1x**2+s1y**2+s1z**2)
@@ -811,6 +817,7 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
                     samples[i] = np.log(data[inj_par['z']])[idx]
         # Sampling pdf
         n_mass_pars = len([lab for lab in par if lab in mass_parameters])
+        n_det_pars  = len([lab for lab in par if lab in detector_parameters])
         n_spin_pars = len([lab for lab in par if lab in spin_parameters])
         if joint_dataset:
             if not (('z' in par) and (n_mass_pars == 2)):
@@ -851,4 +858,6 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
             inj_pdf *= 2*np.pi*(s1x**2+s1y**2+s1z**2)
         if 's2' in par or 'chi_eff' in par or 'chi_p' in par:
             inj_pdf *= 2*np.pi*(s2x**2+s2y**2+s2z**2)
+        if n_det_pars > 0:
+            inj_pdf /= (1+z)**n_det_pars
     return samples.T, inj_pdf, n_total_inj, duration
