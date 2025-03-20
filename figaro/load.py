@@ -812,9 +812,11 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
                     samples[i] = (s1z + q*s2z)/(1+q)
                 if lab == 'chi_p':
                     samples[i] = np.maximum(np.sqrt(s1x**2+s1y**2), np.sqrt(s2x**2+s2y**2)*q*(4*q+3)/(4+3*q))
-                # log redshift
+                # Distance
+                if lab == 'luminosity_distance':
+                    samples[i] = omega.LuminosityDistance(z)
                 if lab == 'log_z':
-                    samples[i] = np.log(data[inj_par['z']])[idx]
+                    samples[i] = np.log(z)
         # Sampling pdf
         n_mass_pars = len([lab for lab in par if lab in mass_parameters])
         n_det_pars  = len([lab for lab in par if lab in detector_parameters])
