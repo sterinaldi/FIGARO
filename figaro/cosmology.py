@@ -54,7 +54,7 @@ class CosmologicalParameters:
     def dDLdz(self, z):
         DC   = self.ComovingLOSDistance(z)
         DT   = self.ComovingTransverseDistance(z)
-        invE = self.HubbleParameter(z)
+        invE = 1./self.HubbleParameter(z)
         return DT + (1.+z)*self.dDTdDC(DC)*self.HubbleDistance*invE
     
     def dDTdDC(self, DC):
