@@ -746,7 +746,10 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
         joint_dataset = 'name' in data.keys()
         n_total_inj   = int(data.attrs['total_generated'])
         duration      = data.attrs['analysis_time_s']/(60.*60.*24.*365) # Years
-        far_idx       = np.zeros(np.array(data['far_cwb']).shape, dtype=bool)
+        try:
+            far_idx = np.zeros(np.array(data['far_cwb']).shape, dtype = bool)
+        except KeyError:
+            far_idx = np.zeros(np.array(data['snr']).shape, dtype = bool)
         for key in data.keys():
             if 'ifar' in key.lower():
                 far_idx |= data[key][()] > 1./far_threshold
