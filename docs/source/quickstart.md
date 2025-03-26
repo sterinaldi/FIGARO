@@ -5,8 +5,16 @@ In this page we will describe how to use the CLI (the easiest way to use FIGARO)
 FIGARO comes with two main CLI:
  * `figaro-density`: reconstructs a probability density given a set of samples;
  * `figaro-hierarchical`: performs a hierarchical inference given different probability densities (each represented by a set of samples).
- 
- Both CLIs are automatically installed with FIGARO. You can check it by running `figaro-density -h` and `figaro-hierarchical -h`: this will print the help pages for the scripts.
+
+Both CLIs are automatically installed with FIGARO. You can check it by running `figaro-density -h` and `figaro-hierarchical -h`: this will print the help pages for the scripts.
+
+### HTCondor
+If you execute the FIGARO CLI via a HTCondor `.sub` file, you may run into issues.
+The following is a workaround (`/Path/to/figaro/` points at the installation folder):
+```
+executable = /Path/to/figaro/figaro/_pipelines/par_hierarchical_inference.py
+arguments = --config config.ini # All the required arguments 
+```
 
 ## `figaro-density`
 
