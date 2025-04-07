@@ -31,7 +31,7 @@ class CosmologicalParameters:
         self.HubbleDistance = 2.99792458e5/(100*self.h)
     
     def HubbleParameter(self, z):
-        return self.Cosmology.H(z).value
+        return self.Cosmology.H(z).value / (self.h*100)
 
     def LuminosityDistance(self, z):
         return self.Cosmology.luminosity_distance(z).value
