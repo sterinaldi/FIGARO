@@ -516,11 +516,13 @@ def _prior_gw(par, samples, cosmology = 'Planck15', uniform_dVdz = True):
     DL_max = omega.LuminosityDistance(2.3)
     prior  = np.ones(len(samples[GW_par['z']]))
     # Redshift prior (uniform in comoving source frame)
-    if ('z' in par) or ('log_z' in par):
+    if ('z' in par) or ('log_z' in par) or ('luminosity_distance' in par):
         if uniform_dVdz:
             prior *= dVdz(np.array(samples[GW_par['z']]))/((1.+np.array(samples[GW_par['z']]))*vol)
         else:
             prior *= (np.array(samples[GW_par['luminosity_distance']])**2/DL_max**3)*omega.dDLdz(np.array(samples[GW_par['z']]))
+        if 'luminosity_distance' in par:
+            prior /= omega.dDLdz(np.array(samples[GW_par['z']]))
         if 'log_z' in par:
             prior *= samples[GW_par['z']]
     # Mass prior (uniform in detector-frame component masses)
@@ -862,4 +864,8 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
             inj_pdf *= 2*np.pi*(s2x**2+s2y**2+s2z**2)
         if n_det_pars > 0:
             inj_pdf /= (1+z)**n_det_pars
+
+#    import matplotlib.pyplot as plt
+#    plt.hist(np.log(inj_pdf))
+#    plt.show()
     return samples.T, inj_pdf, n_total_inj, duration
