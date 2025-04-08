@@ -39,6 +39,9 @@ class worker:
 
     def draw_sample(self):
         return self.mixture.density_from_samples(self.samples, make_comp = False)
+    
+    def initialise_new_event(self, prior_pars = None):
+        self.mixture.initialise(prior_pars = prior_pars)
 
 def main():
 
@@ -171,13 +174,13 @@ def main():
             # Actual analysis
             desc = name + ' ({0}/{1})'.format(i+1, len(files))
             draws = []
-            [w.mixture.initialise(get_priors(bounds       = options.bounds,
-                                             samples      = samples,
-                                             std          = options.sigma_prior,
-                                             scale        = options.fraction,
-                                             probit       = options.probit,
-                                             hierarchical = False,
-                                            )) for w in pool._idle_actors[:-2]]
+            [w.initialise_new_event.remote(get_priors(bounds        = options.bounds,
+                                                       samples      = samples,
+                                                       std          = options.sigma_prior,
+                                                       scale        = options.fraction,
+                                                       probit       = options.probit,
+                                                       hierarchical = False,
+                                                       )) for w in pool._idle_actors[:-2]]
             for s in tqdm(pool.map_unordered(lambda a, v: a.draw_sample.remote(), [_ for _ in range(options.draws)]), total = options.draws, desc = desc):
                 draws.append(s)
             draws = np.array(draws)
