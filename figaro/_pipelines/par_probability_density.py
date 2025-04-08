@@ -32,14 +32,15 @@ class worker:
                                                      hierarchical = False,
                                                      ),
                             )
-
-    def draw_sample(self):
-        return self.mixture.density_from_samples(self.samples, make_comp = False)
+        self.samples = None
     
     def initialise_new_event(self, samples, prior_pars = None):
         self.samples = np.copy(samples)
         self.samples.setflags(write = True)
         self.mixture.initialise(prior_pars = prior_pars)
+    
+    def draw_sample(self):
+        return self.mixture.density_from_samples(self.samples, make_comp = False)
 
 def main():
 
@@ -137,12 +138,13 @@ def main():
     
     if not options.postprocess:
         ray.init(num_cpus = options.n_parallel)
-        pool = ActorPool([worker.remote(bounds  = options.bounds,
+        actors = [worker.remote(bounds  = options.bounds,
                                         sigma   = options.sigma_prior,
                                         scale   = options.fraction,
                                         probit  = options.probit,
                                         )
-                                        for _ in range(options.n_parallel)])
+                                        for _ in range(options.n_parallel)]
+        pool = ActorPool(actors)
     
     for i, file in enumerate(files):
         # Load samples
@@ -179,7 +181,7 @@ def main():
                                                       scale        = options.fraction,
                                                       probit       = options.probit,
                                                       hierarchical = False,
-                                                      )) for w in pool._idle_actors[:-2]]
+                                                      )) for w in actors]
             for s in tqdm(pool.map_unordered(lambda a, v: a.draw_sample.remote(), [_ for _ in range(options.draws)]), total = options.draws, desc = desc):
                 draws.append(s)
             draws = np.array(draws)
