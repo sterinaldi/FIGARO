@@ -138,7 +138,7 @@ def main():
         ray.init(num_cpus = options.n_parallel)
         pool = ActorPool([worker.remote(bounds  = options.bounds,
                                         sigma   = options.sigma_prior,
-                                        scale   = options.fraction
+                                        scale   = options.fraction,
                                         probit  = options.probit,
                                         )
                                         for _ in range(options.n_parallel)])
