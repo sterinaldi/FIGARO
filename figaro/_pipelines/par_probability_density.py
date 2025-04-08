@@ -136,6 +136,12 @@ def main():
     
     if not options.postprocess:
         ray.init(num_cpus = options.n_parallel)
+        pool = ActorPool([worker.remote(bounds  = options.bounds,
+                                        sigma   = options.sigma_prior,
+                                        scale   = options.fraction
+                                        probit  = options.probit,
+                                        )
+                                        for _ in range(options.n_parallel)])
     
     for i, file in enumerate(files):
         # Load samples
@@ -164,14 +170,14 @@ def main():
         if not options.postprocess:
             # Actual analysis
             desc = name + ' ({0}/{1})'.format(i+1, len(files))
-            pool = ActorPool([worker.remote(bounds  = options.bounds,
-                                            sigma   = options.sigma_prior,
-                                            scale   = options.fraction,
-                                            samples = samples,
-                                            probit  = options.probit,
-                                            )
-                              for _ in range(options.n_parallel)])
             draws = []
+            [w.mixture.initialise(get_priors(bounds       = options.bounds,
+                                             samples      = samples,
+                                             std          = options.sigma_prior,
+                                             scale        = options.fraction,
+                                             probit       = options.probit,
+                                             hierarchical = False,
+                                            )) for w in pool]
             for s in tqdm(pool.map_unordered(lambda a, v: a.draw_sample.remote(), [_ for _ in range(options.draws)]), total = options.draws, desc = desc):
                 draws.append(s)
             draws = np.array(draws)
