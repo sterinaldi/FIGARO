@@ -177,7 +177,7 @@ def main():
                                              scale        = options.fraction,
                                              probit       = options.probit,
                                              hierarchical = False,
-                                            )) for w in pool]
+                                            )) for w in pool._idle_actors[:-2]]
             for s in tqdm(pool.map_unordered(lambda a, v: a.draw_sample.remote(), [_ for _ in range(options.draws)]), total = options.draws, desc = desc):
                 draws.append(s)
             draws = np.array(draws)
