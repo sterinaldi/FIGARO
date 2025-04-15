@@ -1231,8 +1231,9 @@ class HDPGMM(DPGMM):
             # Injections
             else:
                 self.log_alpha_factor = np.array([logsumexp(mn(m,s, allow_singular = True).logpdf(self.selfunc_probit) + self.log_jacobian_inj - self.log_inj_pdf) - np.log(self.total_inj) for m, s in zip(self.mu_MC, self.sigma_MC)])
-                std = np.array([np.sqrt(np.exp(logsumexp(2*(mn(m,s, allow_singular = True).logpdf(self.selfunc_probit) + self.log_jacobian_inj - self.log_inj_pdf)) - 2*np.log(self.total_inj)) - np.exp(2*a - np.log(self.total_inj))) for a, m, s in zip(self.log_alpha_factor, self.mu_MC, self.sigma_MC)])
-                self.log_alpha_factor[(np.log(std) - self.log_alpha_factor > np.log(0.05)) & (self.log_alpha_factor < 0)] = np.inf
+                # TODO: fix std for small gaussians
+                # std = np.array([np.sqrt(np.exp(logsumexp(2*(mn(m,s, allow_singular = True).logpdf(self.selfunc_probit) + self.log_jacobian_inj - self.log_inj_pdf)) - 2*np.log(self.total_inj)) - np.exp(2*a - np.log(self.total_inj))) for a, m, s in zip(self.log_alpha_factor, self.mu_MC, self.sigma_MC)])
+                # self.log_alpha_factor[(np.log(std) - self.log_alpha_factor > np.log(0.05)) & (self.log_alpha_factor < 0)] = np.inf
             self.log_alpha_factor = np.nan_to_num(self.log_alpha_factor, nan = np.inf, posinf = np.inf, neginf = np.inf)
             # Censored regions
             self.log_alpha_factor[self.log_alpha_factor < np.log(self.lower_limit_alpha)] = np.inf
