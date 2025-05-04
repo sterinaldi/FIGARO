@@ -14,7 +14,7 @@ packages = ['figaro', 'figaro._pipelines']
 name = 'figaro'
 description = 'FIGARO: Fast Inference for GW Astronomy, Research & Observations'
 version = '1.8.1'
-requires-python = '>= 3.9, < 3.13'
+requires-python = '>= 3.9'
 readme = {file = "README.md", content-type = "text/markdown"}
 license = {file = "LICENSE"}
 keywords = ['DPGMM', 'HDPGMM', 'figaro', 'hierarchical', 'inference']
