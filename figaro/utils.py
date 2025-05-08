@@ -313,11 +313,12 @@ def make_gaussian_mixture(mu, cov, bounds, out_folder = '.', names = None, save 
                     if ss.shape[0] == 1:
                         ss = ss.T
                     samples = np.concatenate((samples, ss))
-        if save_samples:
+        if save_samples or save:
             if names is not None:
                 name = names[i]
             else:
                 name = 'event_{0}'.format(i+1)
+        if save_samples:
             np.savetxt(Path(events_folder, name+'.txt'), samples[1:])
         mix = mixture(np.atleast_2d(mm), np.atleast_3d(cc), np.ones(len(means))/len(means), bounds, len(bounds), len(means), 0, probit = probit, alpha = 1., make_comp = make_comp)
         if save:
