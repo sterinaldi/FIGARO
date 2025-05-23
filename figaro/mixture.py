@@ -1238,7 +1238,7 @@ class HDPGMM(DPGMM):
 #                    std.append(np.sqrt(np.sum((np.exp(x)-np.exp(a))**2)/self.total_inj**2))
                     std.append(np.sqrt(np.sum(np.exp(2*x)/self.total_inj**2) - np.exp(2*a)/self.total_inj))
                 std = np.array(std)
-                self.log_alpha_factor[100*(np.log(std) - self.log_alpha_factor) > np.log(70)] = np.inf
+#                self.log_alpha_factor[100*(np.log(std) - self.log_alpha_factor) > np.log(70)] = np.inf
                 
             self.log_alpha_factor = np.nan_to_num(self.log_alpha_factor, nan = np.inf, posinf = np.inf, neginf = np.inf)
             # Censored regions
