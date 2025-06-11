@@ -11,7 +11,7 @@ from figaro.cosmology import Planck18, Planck15, dVdz_approx_planck18, dVdz_appr
 from pathlib import Path
 from tqdm import tqdm
 
-supported_extensions = ['h5', 'hdf5', 'hdf', 'txt', 'dat', 'csv']
+supported_extensions = ['h5', 'hdf5', 'hdf', 'txt', 'dat', 'csv', 'json']
 supported_waveforms  = ['combined', 'imr', 'seob']
 injected_pars        = ['m1', 'm2', 'z', 's1x', 's1y', 's1z', 's2x', 's2y', 's2z', 'ra', 'dec']
 loadable_inj_pars    = injected_pars + ['q', 'chi_eff', 'chi_p', 's1', 's2', 'luminosity_distance', 'log_z', 'm1_detect', 'm2_detect']
@@ -79,6 +79,21 @@ def available_gw_pars():
     """
     print(supported_pars)
 
+class openfile:
+    def __init__(self, file):
+        self.file = Path(file)
+    
+    def __enter__(self):
+        if self.file.suffix == '.json':
+            self.openfile = open(self.file)
+            return json.load(self.openfile)
+        else:
+            self.openfile = h5py.File(self.file, 'r')
+            return self.openfile
+    
+    def __exit__(self, exception_type, exception_value, exception_traceback):
+        self.openfile.close()
+
 def load_single_event(event, seed = False, par = None, n_samples = -1, cosmology = 'Planck18', volume = False, waveform = 'combined', snr_threshold = None, far_threshold = None, likelihood = False):
     '''
     Loads the data from .txt/.dat files (for simulations) or .h5/.hdf5 files (posteriors from GWTC) for a single event.
@@ -111,7 +126,7 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, cosmology
         par = ['ra', 'dec', 'luminosity_distance']
     if ext not in supported_extensions:
         raise TypeError("File {0}.{1} is not supported".format(name, ext))
-    if ext not in ['h5', 'hdf5']:
+    if ext not in ['h5', 'hdf5', 'json']:
         if par is not None:
             warnings.warn("Par names (or volume keyword) are ignored for .txt/.dat/.csv files")
         if n_samples > -1:
@@ -180,7 +195,7 @@ def load_data(path, seed = False, par = None, n_samples = -1, cosmology = 'Planc
         names.append(name)
         if ext not in supported_extensions:
             raise TypeError("File {0}.{1} is not supported".format(name, ext))
-        if ext not in ['h5', 'hdf5']:
+        if ext not in ['h5', 'hdf5', 'json']:
             if par is not None:
                 warnings.warn("Par names (or volume keyword) are ignored for .txt/.dat/.csv files")
             if n_samples > -1:
@@ -269,7 +284,7 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
         if 'snr' not in par:
             par = np.append(par, 'snr')
     
-    with h5py.File(Path(event), 'r') as f:
+    with openfile(event) as f:
         samples     = []
         loaded_pars = []
         flag_filter = False
@@ -278,9 +293,13 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                 # LVK injections
                 try:
                     data = f['MDC']['posterior_samples']
-                # Playground
                 except:
-                    data = f['posterior_samples']
+                    try:
+                        # Nessai .json file
+                        data = f['posterior']['content']
+                    except:
+                        # Playground
+                        data = f['posterior_samples']
                 MDC_flag = True
             # GWTC-2, GWTC-3
             except:
