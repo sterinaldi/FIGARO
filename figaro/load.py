@@ -46,6 +46,7 @@ GW_par = {'m1'                 : 'mass_1_source',
           's2z'                : 'spin_2z',
           's1'                 : 'spin_1',
           's2'                 : 'spin_2',
+          'phi_12'             : 'phi_12',
           'psi'                : 'psi',
           'cos_iota'           : 'cos_iota',
           'phase'              : 'phase',
@@ -549,7 +550,7 @@ def _prior_gw(par, samples, cosmology = 'Planck15', uniform_dVdz = True):
     if n_mass_pars > 0:
         prior *= (1+np.array(samples[GW_par['z']]))**np.min([n_mass_pars, 2])
     if 'q' in par:
-        prior *= np.array(samples[GW_par['m1']])
+        prior *= np.array(samples[GW_par['m1']])/(1+np.array(samples[GW_par['z']]))
     if ('mc' in par or 'mc_detect' in par):
         prior *= (1 + np.array(samples[GW_par['q']])) ** 0.2 / np.array(samples[GW_par['q']]) ** 0.6
     return prior
