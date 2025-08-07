@@ -4,7 +4,7 @@ from figaro._numba_functions import *
 
 LOG2PI = np.log(2*np.pi)
 
-@njit
+@njit(cache=True)
 def scalar_product(v, M, n):
     """
     Scalar product: v*M*v^T
@@ -23,7 +23,7 @@ def scalar_product(v, M, n):
             res = res + M[i,j]*v[i]*v[j]
     return res
 
-@njit
+@njit(cache=True)
 def log_norm_1d(x, m, s):
     """
     1D Normal logpdf
@@ -38,7 +38,7 @@ def log_norm_1d(x, m, s):
     """
     return -(x-m)**2/(2*s) - 0.5*np.log(2*np.pi*s)
 
-@njit
+@njit(cache=True)
 def log_norm(x, mu, cov):
     """
     Multivariate Normal logpdf
@@ -56,7 +56,7 @@ def log_norm(x, mu, cov):
     lognorm  = 0.5*len(mu)*LOG2PI+0.5*logdet_jit(cov)
     return -lognorm+exponent
 
-@njit
+@njit(cache=True)
 def log_norm_int(x, mu, cov_1, inv_cov_1, cov_2):
     """
     Multivariate Normal logpdf (tailored to this problem!)
@@ -82,7 +82,7 @@ def log_norm_int(x, mu, cov_1, inv_cov_1, cov_2):
 # 1D methods #
 #------------#
 
-@njit
+@njit(cache=True)
 def eval_mix_1d(mu, sigma, means, covs):
     """
     Computes N(mu_k| mu, (sigma_k^2+sigma^2) for all the components of a mixture (for predictive likelihood, 1D).
@@ -98,7 +98,7 @@ def eval_mix_1d(mu, sigma, means, covs):
     """
     return np.array([log_norm_1d(means[i,0], mu, sigma+covs[i,0,0]) for i in prange(len(means))])
 
-@njit
+@njit(cache=True)
 def evaluate_mixture_MC_draws_1d(mu, sigma, means, vars, w):
     """
     Computes N(mu_k| mu, (sigma_k^2+sigma^2) for a set of MC draws for mu and sigma.
@@ -122,7 +122,7 @@ def evaluate_mixture_MC_draws_1d(mu, sigma, means, vars, w):
 # ND methods #
 #------------#
 
-@njit
+@njit(cache=True)
 def eval_mix(mu, sigma, means, covs):
     """
     Computes N(mu_k| mu, (sigma_k^2+sigma^2) for all the components of a mixture (for predictive likelihood, ND).
@@ -139,7 +139,7 @@ def eval_mix(mu, sigma, means, covs):
     inv_sigma = inv_jit(sigma)
     return np.array([log_norm_int(means[i], mu, sigma, inv_sigma, covs[i]) for i in prange(len(means))])
 
-@njit
+@njit(cache=True)
 def evaluate_mixture_MC_draws(mu, sigma, means, covs, w):
     """
     Computes N(mu_k| mu, (sigma_k^2+sigma^2) for a set of MC draws for mu and sigma.

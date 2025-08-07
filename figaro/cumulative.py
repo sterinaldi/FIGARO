@@ -2,7 +2,7 @@ import numpy as np
 from numba import njit, prange
 from figaro._numba_functions import log_add
 
-@njit
+@njit(cache=True)
 def fast_log_cumulative(f):
     """
     Compute log cdf of probability density f
@@ -20,7 +20,7 @@ def fast_log_cumulative(f):
         h[i] = log_add(h[i-1],f[i])
     return h
 
-@njit
+@njit(cache=True)
 def fast_cumulative(f):
     """
     Compute cdf of probability density f

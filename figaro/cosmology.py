@@ -175,11 +175,11 @@ z = np.linspace(0,2.5,1000)
 dvdz_planck18 = Planck18.ComovingVolumeElement(z)/1e9 # In Gpc
 dvdz_planck15 = Planck15.ComovingVolumeElement(z)/1e9 # In Gpc
 
-@njit
+@njit(cache=True)
 def dVdz_approx_planck15(x):
     return np.interp(x, z, dvdz_planck15)
 
-@njit
+@njit(cache=True)
 def dVdz_approx_planck18(x):
     return np.interp(x, z, dvdz_planck18)
 

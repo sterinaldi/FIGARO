@@ -25,7 +25,7 @@ sys.excepthook = except_hook
 #-----------#
 # Functions #
 #-----------#
-@njit
+@njit(cache=True)
 def _student_t(df, t, mu, sigma, dim):
     """
     Multivariate student-t pdf.
@@ -56,7 +56,7 @@ def _student_t(df, t, mu, sigma, dim):
 
     return (A - B - C - D + E)[0]
 
-@njit
+@njit(cache=True)
 def _update_alpha(alpha, n, K, alpha0, burnin = 1000):
     """
     Update concentration parameter using a Metropolis-Hastings sampling scheme.
@@ -81,7 +81,7 @@ def _update_alpha(alpha, n, K, alpha0, burnin = 1000):
                 a_old = a_new
     return a_old
 
-@njit
+@njit(cache=True)
 def _compute_t_pars(k, mu, nu, L, mean, S, N, dim):
     """
     Compute parameters for student-t distribution.
@@ -108,7 +108,7 @@ def _compute_t_pars(k, mu, nu, L, mean, S, N, dim):
     t_shape = rescale_matrix(L_n, 1./((k_n+1.)/(k_n*t_df)))
     return t_df, t_shape, mu_n
 
-@njit
+@njit(cache=True)
 def _compute_hyperpars(k, mu, nu, L, mean, S, N):
     """
     Update hyperparameters for Normal Inverse Gamma/Wishart (NIG/NIW).
@@ -138,7 +138,7 @@ def _compute_hyperpars(k, mu, nu, L, mean, S, N):
         L_n = L + S
     return k_n, mu_n, nu_n, L_n
 
-@njit
+@njit(cache=True)
 def _compute_component_suffstats_add(x, mean, S, N, p_mu, p_k, p_nu, p_L):
     """
     Update mean, covariance, number of samples and maximum a posteriori for mean and covariance.
@@ -168,7 +168,7 @@ def _compute_component_suffstats_add(x, mean, S, N, p_mu, p_k, p_nu, p_L):
     
     return new_mean, new_S, new_N, new_mu, new_sigma
 
-@njit
+@njit(cache=True)
 def _compute_component_suffstats_remove(x, mean, S, N, p_mu, p_k, p_nu, p_L):
     """
     Update mean, covariance, number of samples and maximum a posteriori for mean and covariance.

@@ -6,7 +6,7 @@ from figaro._likelihood import log_norm
 from figaro._numba_functions import inv_jit
 from figaro.decorators import probit
 
-@njit
+@njit(cache=True)
 def _cond_mean_cov(vals, mu1, mu2, s11, s22, s12):
     """
     Compute mean and covariance for conditional Normal distribution.
