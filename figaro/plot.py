@@ -577,7 +577,7 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
         plt.close()
     return fig
     
-def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', name = 'density', label = None, unit = None, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}', median_label = '\mathrm{Median}', logx = False, logy = False, colors = ['steelblue','darkturquoise','mediumturquoise'], fig = None):
+def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', name = 'density', label = None, unit = None, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}', median_label = '\mathrm{Median}', logx = False, logy = False, colors = ['steelblue','darkturquoise','mediumturquoise'], fig = None, large_font = True):
     """
     Plot a 1D distribution along with samples from the true distribution (if available).
     Differently from plot_median_cr, this method requires the distribution to be already evaluated.
@@ -650,14 +650,25 @@ def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', na
     if label is None:
         label = 'x'
     if unit is None or unit == '':
-        ax.set_xlabel('${0}$'.format(label))
+        if large_font:
+            ax.set_xlabel('${0}$'.format(label), fontsize = 20)
+        else:
+            ax.set_xlabel('${0}$'.format(label))
     else:
-        ax.set_xlabel('${0}\ [{1}]$'.format(label, unit))
-    ax.set_ylabel('$p({0})$'.format(label))
+        if large_font:
+            ax.set_xlabel('${0}\ [{1}]$'.format(label, unit), fontsize = 20)
+        else:
+            ax.set_xlabel('${0}\ [{1}]$'.format(label, unit))
+    if large_font:
+        ax.set_ylabel('$p({0})$'.format(label), fontsize = 20)
+    else:
+        ax.set_ylabel('$p({0})$'.format(label))
     if samples is not None:
         ax.set_xlim(xlim)
     ax.set_ylim(bottom = 1e-5, top = np.max(p[95])*1.1)
     ax.legend(loc = 0)
+    if large_font:
+        ax.tick_params(axis='both', which='both', labelsize=18)
     if logy:
         ax.set_yscale('log')
     if logx:
