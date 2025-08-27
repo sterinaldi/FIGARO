@@ -77,19 +77,22 @@ def MC_integral(p, q, n_draws = 1e4, error = True):
     figaro_error = means.var()/len(means)
     return I, np.sqrt(mc_error + figaro_error)
 
-def KL_divergence(p, q, n_draws = 1e4):
+def KL_divergence(p, q, n_draws = 1e4, base = 'e'):
     if np.iterable(p) and np.iterable(q):
-        return np.array([_KL_divergence(pi, qi, n_draws = n_draws) for pi, qi in zip(p, q)])
+        return np.array([_KL_divergence(pi, qi, n_draws = n_draws, base = base) for pi, qi in zip(p, q)])
     elif np.iterable(p):
-        return np.array([_KL_divergence(pi, q, n_draws = n_draws) for pi in p])
+        return np.array([_KL_divergence(pi, q, n_draws = n_draws, base = base) for pi in p])
     elif np.iterable(q):
-        return np.array([_KL_divergence(p, qi, n_draws = n_draws) for qi in q])
+        return np.array([_KL_divergence(p, qi, n_draws = n_draws, base = base) for qi in q])
     else:
-        return _KL_divergence(p, q, n_draws = n_draws)
+        return _KL_divergence(p, q, n_draws = n_draws, base = base)
 
-def _KL_divergence(p, q, n_draws = 1e4):
+log_dict = {'e': np.log, '10': np.log10, '2': np.log2}
+
+def _KL_divergence(p, q, n_draws = 1e4, base = 'e'):
+    log = log_dict[str(base)]
     if hasattr(p, 'logpdf') and hasattr(q, 'logpdf'):
-        R = lambda x: p.logpdf(x)-q.logpdf(x)
+        R = lambda x: (p.logpdf(x)-q.logpdf(x))*log(np.e)
     else:
         if hasattr(p, 'pdf'):
             p_pdf = p.pdf
@@ -99,20 +102,20 @@ def _KL_divergence(p, q, n_draws = 1e4):
             q_pdf = q.pdf
         else:
             q_pdf = q
-        R = lambda x: np.log(p_pdf(x))-np.log(q_pdf(x))
+        R = lambda x: log(p_pdf(x))-log(q_pdf(x))
     return MC_integral(R, p, n_draws = n_draws, error = False)
 
-def JS_distance(p, q, n_draws = 1e4):
+def JS_distance(p, q, n_draws = 1e4, base = 'e'):
     if np.iterable(p) and np.iterable(q):
-        return np.array([_JS_distance(pi, qi, n_draws = n_draws) for pi, qi in zip(p, q)])
+        return np.array([_JS_distance(pi, qi, n_draws = n_draws, base = base) for pi, qi in zip(p, q)])
     elif np.iterable(p):
-        return np.array([_JS_distance(pi, q, n_draws = n_draws) for pi in p])
+        return np.array([_JS_distance(pi, q, n_draws = n_draws, base = base) for pi in p])
     elif np.iterable(q):
-        return np.array([_JS_distance(p, qi, n_draws = n_draws) for qi in q])
+        return np.array([_JS_distance(p, qi, n_draws = n_draws, base = base) for qi in q])
     else:
-        return _JS_distance(p, q, n_draws = n_draws)
+        return _JS_distance(p, q, n_draws = n_draws, base = base)
 
-def _JS_distance(p, q, n_draws = 1e4):
+def _JS_distance(p, q, n_draws = 1e4, base = 'e'):
     if hasattr(p, 'pdf') and hasattr(q, 'pdf'):
         m = lambda x: 0.5*(p.pdf(x) + q.pdf(x))
     else:
