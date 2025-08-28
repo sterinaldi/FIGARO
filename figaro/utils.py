@@ -154,7 +154,7 @@ def get_priors(bounds, samples = None, mean = None, std = None, df = None, k = N
     # L
     if std is not None:
         L_out = np.identity(dim)*std**2
-    if samples is not None and not hierarchical:
+    elif samples is not None and not hierarchical:
         if probit:
             cov_samples = np.atleast_2d(np.cov(probit_samples.T))
         else:
