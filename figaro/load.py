@@ -314,10 +314,14 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                         try:
                             data = f['C01:Mixed']['posterior_samples']
                         except:
+                            # GWTC-4 v1
                             try:
-                                data = f['IMRPhenomXPHM']['posterior_samples']
+                                data = f['C00:Mixed']['posterior_samples']
                             except:
-                                data = f['SEOBNRv4PHM']['posterior_samples']
+                                try:
+                                    data = f['IMRPhenomXPHM']['posterior_samples']
+                                except:
+                                    data = f['SEOBNRv4PHM']['posterior_samples']
                 else:
                     if waveform == 'imr':
                         try:
