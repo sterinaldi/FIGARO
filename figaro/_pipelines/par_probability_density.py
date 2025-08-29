@@ -117,7 +117,7 @@ def main():
     #If provided, load selecton function
     selfunc = None
     if options.selfunc_file is not None:
-        selfunc, _, _, _ = load_selection_function(options.selfunc_file, par = options.par)
+        selfunc, _, _, _, _ = load_selection_function(options.selfunc_file, par = options.par)
         if not callable(selfunc):
             raise Exception("Only .py files with callable approximants are allowed for DPGMM reconstruction")
         

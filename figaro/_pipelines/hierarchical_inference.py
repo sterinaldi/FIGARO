@@ -130,17 +130,20 @@ def main():
     selfunc     = None
     inj_pdf     = None
     n_total_inj = None
+    weights_inj = None
     duration    = 1.
     if options.selfunc_file is not None:
-        selfunc, inj_pdf, n_total_inj, duration = load_selection_function(options.selfunc_file,
-                                                                          par           = options.par,
-                                                                          far_threshold = options.far_threshold,
-                                                                          snr_threshold = options.snr_threshold,
-                                                                          )
+        selfunc, inj_pdf, n_total_inj, duration, weights_inj = load_selection_function(options.selfunc_file,
+                                                                                       par           = options.par,
+                                                                                       far_threshold = options.far_threshold,
+                                                                                       snr_threshold = options.snr_threshold,
+                                                                                       )
         if not callable(selfunc):
             # Keeping only the samples within bounds
-            inj_pdf = inj_pdf[np.where((np.prod(options.bounds[:,0] < selfunc, axis = 1) & np.prod(selfunc < options.bounds[:,1], axis = 1)))]
-            selfunc = selfunc[np.where((np.prod(options.bounds[:,0] < selfunc, axis = 1) & np.prod(selfunc < options.bounds[:,1], axis = 1)))] 
+            idx         = np.where((np.prod(options.bounds[:,0] < selfunc, axis = 1) & np.prod(selfunc < options.bounds[:,1], axis = 1)))
+            inj_pdf     = inj_pdf[idx]
+            selfunc     = selfunc[idx]
+            weights_inj = weights_inj[idx]
     if options.include_dvdz and not callable(selfunc):
         raise Exception("The inclusion of dV/dz*(1+z)^{-1} is available only with a selection function approximant.")
     if options.include_dvdz:
@@ -269,6 +272,7 @@ def main():
                      selection_function = dec_selfunc,
                      injection_pdf      = inj_pdf,
                      total_injections   = n_total_inj,
+                     weights_inj        = weights_inj,
                      )
         draws = np.array([mix.density_from_samples(posteriors, make_comp = False) for _ in tqdm(range(options.draws), desc = 'Hierarchical')])
         if options.include_dvdz:
