@@ -1165,6 +1165,7 @@ class HDPGMM(DPGMM):
                        selection_function = None,
                        injection_pdf      = None,
                        total_injections   = None,
+                       weights_inj        = None
                        lower_limit_alpha  = 1e-3,
                        ):
         bounds   = np.atleast_2d(bounds)
@@ -1187,6 +1188,10 @@ class HDPGMM(DPGMM):
             try:
                 self.log_inj_pdf = np.log(injection_pdf)
                 self.total_inj   = int(total_injections)
+                if weights_inj is not None:
+                    self.weights_inj = weights_inj
+                else:
+                    self.weights_inj = np.ones(len(self.log_inj_pdf))
             except TypeError:
                 raise FIGAROException("Please provide injection pdf")
             self.selfunc_probit   = self.selfunc
@@ -1230,11 +1235,11 @@ class HDPGMM(DPGMM):
                         self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(mn(m,s, allow_singular = True).rvs(self.MC_draws*1)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
             # Injections
             else:
-                self.log_alpha_factor = np.array([logsumexp(mn(m,s, allow_singular = True).logpdf(self.selfunc_probit) + self.log_jacobian_inj - self.log_inj_pdf) - np.log(self.total_inj) for m, s in zip(self.mu_MC, self.sigma_MC)])
+                self.log_alpha_factor = np.array([logsumexp(mn(m,s, allow_singular = True).logpdf(self.selfunc_probit) + self.log_jacobian_inj - self.log_inj_pdf, b = self.weights_inj) - np.log(self.total_inj) for m, s in zip(self.mu_MC, self.sigma_MC)])
                 # TODO: make more efficient
                 std = []
                 for m, s, a in zip(self.mu_MC, self.sigma_MC, self.log_alpha_factor):
-                    x = mn(m,s, allow_singular = True).logpdf(self.selfunc_probit) + self.log_jacobian_inj - self.log_inj_pdf
+                    x = self.weights_inj*(mn(m,s, allow_singular = True).logpdf(self.selfunc_probit) + self.log_jacobian_inj - self.log_inj_pdf)
 #                    std.append(np.sqrt(np.sum((np.exp(x)-np.exp(a))**2)/self.total_inj**2))
                     std.append(np.sqrt(np.sum(np.exp(2*x)/self.total_inj**2) - np.exp(2*a)/self.total_inj))
                 std = np.array(std)
@@ -1454,7 +1459,7 @@ class HDPGMM(DPGMM):
                 alpha_factors = np.array([np.mean(self.selfunc(mn(comp.mu, comp.sigma, allow_singular = True).rvs(self.MC_draws*1))) for comp in np.array(self.mixture)[idx]])
         # Injections
         else:
-            alpha_factors = np.array([np.exp(logsumexp_jit(mn(comp.mu, comp.sigma, allow_singular = True).logpdf(self.selfunc_probit) + self.log_jacobian_inj - self.log_inj_pdf) - np.log(self.total_inj)) for comp in np.array(self.mixture)[idx]])
+            alpha_factors = np.array([np.exp(logsumexp(mn(comp.mu, comp.sigma, allow_singular = True).logpdf(self.selfunc_probit) + self.log_jacobian_inj - self.log_inj_pdf, b = self.weights_inj) - np.log(self.total_inj)) for comp in np.array(self.mixture)[idx]])
         return alpha_factors
     
     def compute_alpha_factor(self):
@@ -1469,7 +1474,7 @@ class HDPGMM(DPGMM):
             alpha_factor = np.mean(self.selfunc(self.rvs(self.MC_draws)))
         # Injections
         else:
-            alpha_factor = np.exp(logsumexp_jit(self.logpdf(self.selfunc) + self.log_jacobian_inj - self.log_inj_pdf) - np.log(self.total_inj))
+            alpha_factor = np.exp(logsumexp(self.logpdf(self.selfunc) + self.log_jacobian_inj - self.log_inj_pdf, b = self.weights_inj) - np.log(self.total_inj))
         return alpha_factor
 
     def density_from_samples(self, events, make_comp = True):
