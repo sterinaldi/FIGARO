@@ -835,7 +835,7 @@ def pp_plot_levels(CR_levels, median_CR = None, out_folder = '.', name = 'MDC', 
         plt.close()
     return fig
 
-def joyplot(draws, x_values, y_values, credible_regions = False, fill = True, solid = False, overlap = 1., xlabel = None, ylabel = None, xunit = None, yunit = None, colormap = 'coolwarm', out_folder = '.', name = 'joyplot', subfolder = False, show = False, save = True, joy = False, colorbar = True, histogram = False):
+def joyplot(draws, x_values, y_values, credible_regions = False, fill = True, solid = False, overlap = 1., xlabel = None, ylabel = None, xunit = None, yunit = None, colormap = 'coolwarm', out_folder = '.', name = 'joyplot', subfolder = False, show = False, save = True, joy = False, colorbar = True, histogram = False, large_font = True):
     """
     Make a joyplot (also known as ridgeline plot) of a set of distributions.
     Heavily inspired by leotac's JoyPy (https://github.com/leotac/joypy).
@@ -896,7 +896,11 @@ def joyplot(draws, x_values, y_values, credible_regions = False, fill = True, so
         _axes.append(fig.add_subplot(gs[:, -1]))
         # Global colorbar
         cbar    = fig.colorbar(cmappable, cax = _axes[-1])
-        cbar.set_label(ylabel)
+        if large_font:
+            cbar.set_label(ylabel, fontsize = 20)
+            _axes[-1].tick_params(axis='both', which='both', labelsize=18)
+        else:
+            cbar.set_label(ylabel)
     if joy:
         [ax.set_facecolor('k') for ax in _axes]
     for i, dd in enumerate(draws[::-1]):
@@ -956,6 +960,8 @@ def joyplot(draws, x_values, y_values, credible_regions = False, fill = True, so
     # so they have the same lims and ticks
     last_axis.set_xlim(_axes[0].get_xlim())
     last_axis.set_xticks(np.array(_axes[0].get_xticks()[1:-1]))
+    if large_font:
+        last_axis.tick_params(axis='both', which='both', labelsize=18)
     for t in last_axis.get_xticklabels():
         if not joy:
             t.set_visible(True)
@@ -972,7 +978,10 @@ def joyplot(draws, x_values, y_values, credible_regions = False, fill = True, so
     # Last axis on the back
     last_axis.zorder = min(a.zorder for a in _axes) - 1
     _axes = list(_axes) + [last_axis]
-    last_axis.set_xlabel(xlabel)
+    if large_font:
+        last_axis.set_xlabel(xlabel, fontsize = 20)
+    else:
+        last_axis.set_xlabel(xlabel)
 
     # The magic overlap happens here.
     h_pad = 5 + (-5*(1+overlap))
