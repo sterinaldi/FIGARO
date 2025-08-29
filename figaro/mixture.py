@@ -1165,7 +1165,7 @@ class HDPGMM(DPGMM):
                        selection_function = None,
                        injection_pdf      = None,
                        total_injections   = None,
-                       weights_inj        = None
+                       weights_inj        = None,
                        lower_limit_alpha  = 1e-3,
                        ):
         bounds   = np.atleast_2d(bounds)
