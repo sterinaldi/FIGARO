@@ -302,7 +302,7 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                         # Playground
                         data = f['posterior_samples']
                 MDC_flag = True
-            # GWTC-2, GWTC-3
+            # GWTC-2, GWTC-3, GWTC-4
             except:
                 MDC_flag = False
                 if waveform == 'combined':
@@ -724,21 +724,23 @@ def load_selection_function(file, par = None, far_threshold = 1, snr_threshold =
         selfunc           = selfunc_module.selection_function
         inj_pdf           = None
         n_total_inj       = None
+        weights           = None
         try:
             duration      = selfunc_module.duration
         except:
             duration      = 1.
     else:
-        if ext not in ['h5','hdf5']:
+        if ext not in ['h5','hdf','hdf5']:
             samples     = np.loadtxt(file)
             det_idx     = samples[:,-1]
             selfunc     = samples[:,:-2][det_idx == 1]
             inj_pdf     = samples[:,-2][det_idx == 1]
             n_total_inj = len(samples)
+            weights     = np.ones(len(samples))
             duration    = 1.
         else:
-            selfunc, inj_pdf, n_total_inj, duration = _unpack_injections(file, par, far_threshold, snr_threshold, cosmology)
-    return selfunc, inj_pdf, n_total_inj, duration
+            selfunc, inj_pdf, n_total_inj, duration, weights = _unpack_injections(file, par, far_threshold, snr_threshold, cosmology)
+    return selfunc, inj_pdf, n_total_inj, duration, weights
 
 def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmology = 'Planck15'):
     """
@@ -769,33 +771,53 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
         wrong_pars = [p for p in par if p not in loadable_inj_pars]
         raise FIGAROException("The following parameters are not implemented: "+", ".join(wrong_pars))
     with h5py.File(file, 'r') as f:
-        data          = f['injections']
-        joint_dataset = 'name' in data.keys()
-        n_total_inj   = int(data.attrs['total_generated'])
-        duration      = data.attrs['analysis_time_s']/(60.*60.*24.*365) # Years
         try:
-            far_idx = np.zeros(np.array(data['far_cwb']).shape, dtype = bool)
+            # O1, O2, O3 injections
+            data          = f['injections']
+            O4            = False
+            joint_dataset = 'name' in data.keys()
+            n_total_inj   = int(data.attrs['total_generated'])
+            duration      = data.attrs['analysis_time_s']/(60.*60.*24.*365) # Years
         except KeyError:
-            far_idx = np.zeros(np.array(data['snr']).shape, dtype = bool)
-        for key in data.keys():
-            if 'ifar' in key.lower():
-                far_idx |= data[key][()] > 1./far_threshold
-        if joint_dataset:
-            # O1+O2+O3
-            names = np.array(data['name'], dtype = str)
-            snr   = np.array(data['optimal_snr_net'])
-            idx   = np.where(names == 'o3', far_idx, snr > snr_threshold)
+            # O4 injections
+            data      = f['events']
+            O4        = True
+            n_total_inj   = int(f.attrs['total_generated'])
+            duration      = np.float64(f.attrs['total_analysis_time'])/(60.*60.*24.*365) # Years
+        if O4:
+            snr = data['semianalytic_observed_phase_maximized_snr_net'][:]
+            far = np.min([data['%s_far'%search][:] for search in f.attrs['searches']], axis=0)
+            idx = (snr > snr_threshold) | (far < far_threshold)
         else:
-            if np.sum(far_idx) > 0:
-                # O3 only
-                idx = np.where(far_idx, True, False)
+            try:
+                far_idx = np.zeros(np.array(data['far_cwb']).shape, dtype = bool)
+            except KeyError:
+                far_idx = np.zeros(np.array(data['snr']).shape, dtype = bool)
+            for key in data.keys():
+                if 'ifar' in key.lower():
+                    far_idx |= data[key][()] > 1./far_threshold
+            if joint_dataset:
+                # O1+O2+O3
+                names = np.array(data['name'], dtype = str)
+                snr   = np.array(data['optimal_snr_net'])
+                idx   = np.where(names == 'o3', far_idx, snr > snr_threshold)
             else:
-                # Simulated dataset (SNR filter)
-                snr = np.array(data['snr'])
-                idx = np.where(snr > snr_threshold, True, False)
+                if np.sum(far_idx) > 0:
+                    # O3 only
+                    idx = np.where(far_idx, True, False)
+                else:
+                    # Simulated dataset (SNR filter)
+                    snr = np.array(data['snr'])
+                    idx = np.where(snr > snr_threshold, True, False)
         # Load samples
         samples = np.zeros((len(par), np.sum(idx)))
         inj_pdf = np.ones(np.sum(idx))
+        if O4:
+            # O4
+            weights = np.array(data['weights'])[idx]
+        else:
+            # O1, O2, O3
+            weights = np.array(data['mixture_weight'])[idx]
         # Parameters
         m1  = np.array(data[inj_par['m1']])[idx]
         m2  = np.array(data[inj_par['m2']])[idx]
@@ -847,7 +869,15 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
         n_mass_pars = len([lab for lab in par if lab in mass_parameters])
         n_det_pars  = len([lab for lab in par if lab in detector_parameters])
         n_spin_pars = len([lab for lab in par if lab in spin_parameters])
-        if joint_dataset:
+        if O4:
+            if not (('z' in par) and (n_mass_pars == 2)):
+                raise FIGAROException("Cannot unpack individual parameter sampling PDF for O4 injections")
+            log_inj_pdf = np.array(data['lnpdraw_mass1_source_mass2_source_redshift_spin1x_spin1y_spin1z_spin2x_spin2y_spin2z'])[idx]
+            inj_pdf     = np.exp(log_inj_pdf)
+            # Remove spins if not needed
+            spin_pdf = 1./(4*np.pi*(s1x**2+s1y**2+s1z**2))*1./(4*np.pi*(s2x**2+s2y**2+s2z**2))
+            inj_pdf /= spin_pdf**((6-n_spin_pars)/6.)
+        elif joint_dataset:
             if not (('z' in par) and (n_mass_pars == 2)):
                 raise FIGAROException("Cannot unpack individual parameter sampling PDF for combined injections")
             inj_pdf  = np.array(data['sampling_pdf'])[idx]
@@ -889,7 +919,4 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
         if n_det_pars > 0:
             inj_pdf /= (1+z)**n_det_pars
 
-#    import matplotlib.pyplot as plt
-#    plt.hist(np.log(inj_pdf))
-#    plt.show()
-    return samples.T, inj_pdf, n_total_inj, duration
+    return samples.T, inj_pdf, n_total_inj, duration, weights
