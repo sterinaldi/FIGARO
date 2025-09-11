@@ -1264,6 +1264,7 @@ class HDPGMM(DPGMM):
             iterable ev: set of single-event draws from a DPGMM inference
         """
         x = np.random.choice(ev)
+        x.samples = x.rvs(self.MC_draws)
         self.stored_pts[len(list(self.stored_pts.keys()))] = x
         self._assign_to_cluster(x)
         self.alpha = _update_alpha(self.alpha, self.n_pts, self.n_cl, self.alpha_0)
@@ -1283,9 +1284,11 @@ class HDPGMM(DPGMM):
         logL_N = np.zeros((self.n_cl+1, self.MC_draws))
         if logL_x is None:
             if self.dim == 1:
-                logL_x = evaluate_mixture_MC_draws_1d(self.mu_MC, self.sigma_MC, x.means, x.covs, x.w) - self.log_alpha_factor
+                logL_x = evaluate_mixture_MC_draws_1d(self.mu_MC, self.sigma_MC, x.samples) - self.log_alpha_factor
+#                logL_x = evaluate_mixture_MC_draws_1d(self.mu_MC, self.sigma_MC, x.means, x.covs, x.w) - self.log_alpha_factor
             else:
-                logL_x = evaluate_mixture_MC_draws(self.mu_MC, self.sigma_MC, x.means, x.covs, x.w) - self.log_alpha_factor
+                logL_x = evaluate_mixture_MC_draws(self.mu_MC, self.sigma_MC, x.samples) - self.log_alpha_factor
+#                logL_x = evaluate_mixture_MC_draws(self.mu_MC, self.sigma_MC, x.means, x.covs, x.w) - self.log_alpha_factor
         for i in range(self.n_cl+1):
             if i == 0:
                 ss = None

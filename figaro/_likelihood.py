@@ -99,7 +99,8 @@ def eval_mix_1d(mu, sigma, means, covs):
     return np.array([log_norm_1d(means[i,0], mu, sigma+covs[i,0,0]) for i in prange(len(means))])
 
 @njit
-def evaluate_mixture_MC_draws_1d(mu, sigma, means, vars, w):
+def evaluate_mixture_MC_draws_1d(mu, sigma, samples):
+#def evaluate_mixture_MC_draws_1d(mu, sigma, means, vars, w):
     """
     Computes N(mu_k| mu, (sigma_k^2+sigma^2) for a set of MC draws for mu and sigma.
     
@@ -115,7 +116,8 @@ def evaluate_mixture_MC_draws_1d(mu, sigma, means, vars, w):
     """
     logP = np.zeros(len(mu), dtype = np.float64)
     for i in prange(len(mu)):
-        logP[i] = logsumexp_jit_weighted(eval_mix_1d(mu[i], sigma[i], means, vars), b = w)
+        logP[i] = logsumexp_jit(log_norm_1d(samples, mu[i], sigma[i])) - np.log(len(samples))
+#        logP[i] = logsumexp_jit_weighted(eval_mix_1d(mu[i], sigma[i], means, vars), b = w)
     return logP
 
 #------------#
@@ -139,8 +141,11 @@ def eval_mix(mu, sigma, means, covs):
     inv_sigma = inv_jit(sigma)
     return np.array([log_norm_int(means[i], mu, sigma, inv_sigma, covs[i]) for i in prange(len(means))])
 
-@njit
-def evaluate_mixture_MC_draws(mu, sigma, means, covs, w):
+
+from scipy.stats import multivariate_normal as mn
+#@njit
+def evaluate_mixture_MC_draws(mu, sigma, samples):
+#def evaluate_mixture_MC_draws(mu, sigma, means, covs, w):
     """
     Computes N(mu_k| mu, (sigma_k^2+sigma^2) for a set of MC draws for mu and sigma.
     
@@ -156,5 +161,6 @@ def evaluate_mixture_MC_draws(mu, sigma, means, covs, w):
     """
     logP = np.zeros(len(mu), dtype = np.float64)
     for i in prange(len(mu)):
-        logP[i] = logsumexp_jit_weighted(eval_mix(mu[i], sigma[i], means, covs), b = w)
+#        logP[i] = logsumexp_jit_weighted(eval_mix(mu[i], sigma[i], means, covs), b = w)
+        logP[i] = logsumexp_jit(mn(mu[i], sigma[i]).logpdf(samples)) - np.log(len(samples))
     return logP
