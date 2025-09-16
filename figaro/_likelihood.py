@@ -142,7 +142,36 @@ def eval_mix(mu, sigma, means, covs):
     return np.array([log_norm_int(means[i], mu, sigma, inv_sigma, covs[i]) for i in prange(len(means))])
 
 
-from scipy.stats import multivariate_normal as mn
+def multiple_logpdfs_vec_input(xs, means, covs):
+    """`multiple_logpdfs` assuming `xs` has shape (N samples, P features).
+    """
+    # NumPy broadcasts `eigh`.
+    vals, vecs = np.linalg.eigh(covs)
+
+    # Compute the log determinants across the second axis.
+    logdets = np.sum(np.log(vals), axis=1)
+
+    # Invert the eigenvalues.
+    valsinvs = 1./vals
+    
+    # Add a dimension to `valsinvs` so that NumPy broadcasts appropriately.
+    Us   = vecs * np.sqrt(valsinvs)[:, None]
+    devs = xs[:, None, :] - means[None, :, :]
+
+    # Use `einsum` for matrix-vector multiplications across the first dimension.
+    devUs = np.einsum('jnk,nki->jni', devs, Us)
+
+    # Compute the Mahalanobis distance by squaring each term and summing.
+    mahas = np.sum(np.square(devUs), axis=2)
+    
+    # Compute and broadcast scalar normalizers.
+    dim    = xs.shape[1]
+    log2pi = np.log(2 * np.pi)
+
+    out = -0.5 * (dim * log2pi + mahas + logdets[None, :])
+    return out.T
+
+from scipy.special import logsumexp
 #@njit
 def evaluate_mixture_MC_draws(mu, sigma, samples):
 #def evaluate_mixture_MC_draws(mu, sigma, means, covs, w):
@@ -159,8 +188,6 @@ def evaluate_mixture_MC_draws(mu, sigma, samples):
     Returns:
         np.ndarray: probability for each MC draw
     """
-    logP = np.zeros(len(mu), dtype = np.float64)
-    for i in prange(len(mu)):
-#        logP[i] = logsumexp_jit_weighted(eval_mix(mu[i], sigma[i], means, covs), b = w)
-        logP[i] = logsumexp_jit(mn(mu[i], sigma[i]).logpdf(samples)) - np.log(len(samples))
+    logP = multiple_logpdfs_vec_input(samples, mu, sigma)#np.eros(len(mu), dtype = np.float64)
+    logP = logsumexp(logP, axis = 1) - np.log(len(samples))
     return logP

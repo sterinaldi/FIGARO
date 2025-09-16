@@ -12,7 +12,7 @@ from scipy.stats import invwishart, norm, invgamma, dirichlet, gamma
 from figaro.decorators import *
 from figaro.transform import *
 from figaro._numba_functions import *
-from figaro._numba_functions import _mvn_logpdf
+from figaro._numba_functions import _mvn_logpdf, _mvn_pdf
 from figaro._likelihood import evaluate_mixture_MC_draws, evaluate_mixture_MC_draws_1d, log_norm
 from figaro.exceptions import except_hook, FIGAROException
 from figaro.utils import get_priors
@@ -449,7 +449,7 @@ class density:
         Returns:
             np.ndarray: mixture.pdf(x)
         """
-        return np.sum(np.array([w*mn(mean, cov, allow_singular = True).pdf(x) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
+        return np.exp(self._logpdf_probit(x))
     
     @probit
     def _pdf_array(self, x):
@@ -524,7 +524,7 @@ class density:
         Returns:
             np.ndarray: mixture.logpdf(x)
         """
-        return logsumexp(np.array([w + mn(mean, cov, allow_singular = True).logpdf(x) for mean, cov, w in zip(self.means, self.covs, self.log_w)]), axis = 0)
+        return logsumexp(np.array([w + mn(mean, cov, allow_singular = True).logpdf(x, comp.mean, comp.cov_object) for mean, cov, w in zip(self.means, self.covs, self.log_w)]), axis = 0)
 
     def cdf(self, x):
         if self.dim > 1:
@@ -762,7 +762,7 @@ class mixture(density):
             np.ndarray: mixture.logpdf(x)
         """
         if self.components is not None:
-            return logsumexp(np.array([w+comp.logpdf(x) for w, comp in zip(self.log_w, self.components)]), axis = 0)
+            return logsumexp([w+comp._dist._logpdf(x, comp.mean, comp.cov_object) for w, comp in zip(self.log_w, self.components)], axis = 0)
         else:
             return super()._logpdf_probit(x)
 
@@ -777,7 +777,7 @@ class mixture(density):
             np.ndarray: mixture.pdf(x)
         """
         if self.components is not None:
-            return np.sum(np.array([w*comp.pdf(x) for w, comp in zip(self.w, self.components)]), axis = 0)
+            return np.sum(np.exp([w+comp._dist._logpdf(x, comp.mean, comp.cov_object) for w, comp in zip(self.log_w, self.components)]), axis = 0)
         else:
             return super()._pdf_probit(x)
 
@@ -1100,7 +1100,7 @@ class DPGMM(density):
         Returns:
             np.ndarray: mixture.pdf(x)
         """
-        return np.sum(np.array([w*mn(comp.mu, comp.sigma, allow_singular = True).pdf(x) for comp, w in zip(self.mixture, self.w)]), axis = 0)
+        return np.exp(self._logpdf_probit(x))
 
     def _logpdf_probit(self, x):
         """
@@ -1264,7 +1264,10 @@ class HDPGMM(DPGMM):
             iterable ev: set of single-event draws from a DPGMM inference
         """
         x = np.random.choice(ev)
-        x.samples = x.rvs(self.MC_draws)
+        if self.probit:
+            x.samples = x._rvs_probit(500)
+        else:
+            x.samples = x.rvs(500)
         self.stored_pts[len(list(self.stored_pts.keys()))] = x
         self._assign_to_cluster(x)
         self.alpha = _update_alpha(self.alpha, self.n_pts, self.n_cl, self.alpha_0)
@@ -1480,13 +1483,14 @@ class HDPGMM(DPGMM):
             alpha_factor = np.exp(logsumexp(self.logpdf(self.selfunc) + self.log_jacobian_inj - self.log_inj_pdf, b = self.weights_inj) - np.log(self.total_inj))
         return alpha_factor
 
-    def density_from_samples(self, events, make_comp = True):
+    def density_from_samples(self, events, make_comp = True, initialise = True):
         """
         Reconstruct the probability density from a set of samples.
         
         Arguments:
             iterable samples: set of single-event draws from DPGMM
             bool make_comp:   whether to instantiate the scipy.stats.multivariate_normal components or not
+            bool initialise:  whether or not to initialise the mixture at the end (saves computational time)
         
         Returns:
             mixture: the inferred mixture
@@ -1498,7 +1502,8 @@ class HDPGMM(DPGMM):
         for id in np.random.choice(self.n_pts, size = self.n_reassignments, replace = True):
             self._reassign_point(id)
         d = self.build_mixture(make_comp = make_comp)
-        self.initialise()
+        if initialise:
+            self.initialise()
         return d
 
     def _reassign_point(self, id):
