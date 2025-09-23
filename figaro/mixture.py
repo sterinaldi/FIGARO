@@ -1186,8 +1186,9 @@ class HDPGMM(DPGMM):
         self.lower_limit_alpha = lower_limit_alpha
         if not callable(self.selfunc) and self.selfunc is not None:
             try:
-                self.log_inj_pdf = np.log(injection_pdf)
-                self.total_inj   = int(total_injections)
+                self.log_inj_pdf    = np.log(injection_pdf)
+                self.np_log_inj_pdf = np.copy(np.log(injection_pdf))
+                self.total_inj      = int(total_injections)
                 if weights_inj is not None:
                     self.weights_inj = weights_inj
                 else:
@@ -1197,16 +1198,20 @@ class HDPGMM(DPGMM):
             self.selfunc_probit   = self.selfunc
             self.log_jacobian_inj = np.zeros(len(self.selfunc))
             if self.probit:
-                self.selfunc_probit   = transform_to_probit(self.selfunc, self.bounds)
+                self.selfunc_probit   = np.atleast_2d(transform_to_probit(self.selfunc, self.bounds))
+                if self.selfunc_probit.shape[0] == 1:
+                    self.selfunc_probit = self.selfunc_probit.T
                 self.log_jacobian_inj = -probit_logJ(self.selfunc_probit, self.bounds, self.probit)
         # MC samples
         self._draw_MC_samples()
         
-    def initialise(self):
+    def initialise(self, prior_pars = None):
         """
         Initialise the mixture to initial conditions
         """
         super().initialise()
+        if prior_pars is not None:
+            self.exp_sigma, self.a = prior_pars
         self.evaluated_logL = {}
         self._draw_MC_samples()
     
@@ -1429,7 +1434,8 @@ class HDPGMM(DPGMM):
             log_w, w           = self.log_w, self.w
             self.log_w         = N_pts - logsumexp_jit(N_pts)
             self.w             = np.exp(self.log_w)
-            N_pts              = self.w*self.n_pts/self._compute_individual_alpha_factors(idx)
+            aa                 = self.compute_alpha_factor()#self._compute_individual_alpha_factors(idx)
+            N_pts              = (self.w/aa )*self.n_pts
             new_w              = dirichlet(N_pts+self.alpha/self.n_cl).rvs()[0]
             self.w             = new_w
             self.log_w         = np.log(new_w)
@@ -1477,7 +1483,7 @@ class HDPGMM(DPGMM):
             alpha_factor = np.exp(logsumexp(self.logpdf(self.selfunc) + self.log_jacobian_inj - self.log_inj_pdf, b = self.weights_inj) - np.log(self.total_inj))
         return alpha_factor
 
-    def density_from_samples(self, events, make_comp = True):
+    def density_from_samples(self, events, make_comp = True, initialise = True):
         """
         Reconstruct the probability density from a set of samples.
         
@@ -1495,7 +1501,8 @@ class HDPGMM(DPGMM):
         for id in np.random.choice(self.n_pts, size = self.n_reassignments, replace = True):
             self._reassign_point(id)
         d = self.build_mixture(make_comp = make_comp)
-        self.initialise()
+        if initialise:
+            self.initialise()
         return d
 
     def _reassign_point(self, id):
