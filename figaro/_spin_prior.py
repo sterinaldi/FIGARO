@@ -3,6 +3,12 @@
 
 import numpy as np
 from scipy.special import spence
+from scipy.stats import truncnorm
+
+spin_mag_pdf = truncnorm(scale = 0.5, a = 0, b = 2).pdf
+
+def spin_costilt_pdf(cost):
+    return 0.3*(((1+cost)**3)/4.) + 0.7/2.
 
 def I1(chieff, chip, q):
     x1max = np.minimum(
@@ -207,3 +213,9 @@ def chi_effective_prior_from_isotropic_spins(chi_eff, q, amax=1):
 
     return pdfs.squeeze()
 
+def prior_component_spins(s1x, s1y, s1z, s2x, s2y, s2z):
+    s1     = np.sqrt(s1x**2 + s1y**2 + s1z**2)
+    s2     = np.sqrt(s2x**2 + s2y**2 + s2z**2)
+    cos_t1 = s1z/s1
+    cos_t2 = s2z/s2
+    return spin_mag_pdf(s1)*spin_mag_pdf(s2)*spin_costilt_pdf(cos_t1)*spin_costilt_pdf(cos_t2)*4*np.pi**2
