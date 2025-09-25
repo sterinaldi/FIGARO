@@ -8,6 +8,7 @@ import importlib
 from figaro.exceptions import FIGAROException
 from figaro.mixture import mixture
 from figaro.cosmology import Planck18, Planck15, dVdz_approx_planck18, dVdz_approx_planck15
+from figaro._spin_prior import prior_chieff_chip_isotropic, chi_effective_prior_from_isotropic_spins, prior_component_spins, spin_costilt_pdf
 from pathlib import Path
 from tqdm import tqdm
 
@@ -549,12 +550,15 @@ def _prior_gw(par, samples, cosmology = 'Planck15', uniform_dVdz = True):
             prior /= omega.dDLdz(np.array(samples[GW_par['z']]))
         if 'log_z' in par:
             prior *= samples[GW_par['z']]
+    if 'chi_eff' in par:
+        if 'chi_p' in par:
+            prior *= prior_chieff_chip_isotropic(samples[GW_par['chi_eff']], samples[GW_par['chi_p']], samples[GW_par['q']])
+        else:
+            prior *= chi_effective_prior_from_isotropic_spins(samples[GW_par['chi_eff']], samples[GW_par['q']])
     # Mass prior (uniform in detector-frame component masses)
     n_mass_pars = np.sum([item in par for item in ['m1','m2','mc','q']])
     if n_mass_pars > 0:
         prior *= (1+np.array(samples[GW_par['z']]))**np.min([n_mass_pars, 2])
-    if 'q' in par:
-        prior *= np.array(samples[GW_par['m1']])/(1+np.array(samples[GW_par['z']]))
     if ('mc' in par or 'mc_detect' in par):
         prior *= (1 + np.array(samples[GW_par['q']])) ** 0.2 / np.array(samples[GW_par['q']]) ** 0.6
     return prior
@@ -830,6 +834,10 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
             s2x = np.array(data[inj_par['s2x']])[idx]
             s2y = np.array(data[inj_par['s2y']])[idx]
             s2z = np.array(data[inj_par['s2z']])[idx]
+            s1  = np.sqrt(s1x**2+s1y**2+s1z**2)
+            s2  = np.sqrt(s2x**2+s2y**2+s2z**2)
+            cos_tilt_1 = s1z/s1
+            cos_tilt_2 = s2z/s2
         except:
             pass
         for i, lab in enumerate(par):
@@ -853,13 +861,19 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
                     samples[i] = m2*(1+z)
                 # Spins
                 if lab == 's1':
-                    samples[i] = np.sqrt(s1x**2+s1y**2+s1z**2)
+                    samples[i] = s1
                 if lab == 's2':
-                    samples[i] = np.sqrt(s2x**2+s2y**2+s2z**2)
+                    samples[i] = s2
                 if lab == 'chi_eff':
-                    samples[i] = (s1z + q*s2z)/(1+q)
+                    chi_eff    = (s1z + q*s2z)/(1+q)
+                    samples[i] = chi_eff
                 if lab == 'chi_p':
-                    samples[i] = np.maximum(np.sqrt(s1x**2+s1y**2), np.sqrt(s2x**2+s2y**2)*q*(4*q+3)/(4+3*q))
+                    chi_p      = np.maximum(np.sqrt(s1x**2+s1y**2), np.sqrt(s2x**2+s2y**2)*q*(4*q+3)/(4+3*q))
+                    samples[i] = chi_p
+                if lab == 'cos_tilt_1':
+                    samples[i] = cos_tilt_1
+                if lab == 'cos_tilt_2':
+                    samples[i] = cos_tilt_2
                 # Distance
                 if lab == 'luminosity_distance':
                     samples[i] = omega.LuminosityDistance(z)
@@ -874,16 +888,10 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
                 raise FIGAROException("Cannot unpack individual parameter sampling PDF for O4 injections")
             log_inj_pdf = np.array(data['lnpdraw_mass1_source_mass2_source_redshift_spin1x_spin1y_spin1z_spin2x_spin2y_spin2z'])[idx]
             inj_pdf     = np.exp(log_inj_pdf)
-            # Remove spins if not needed
-            spin_pdf = 1./(4*np.pi*(s1x**2+s1y**2+s1z**2))*1./(4*np.pi*(s2x**2+s2y**2+s2z**2))
-            inj_pdf /= spin_pdf**((6-n_spin_pars)/6.)
         elif joint_dataset:
             if not (('z' in par) and (n_mass_pars == 2)):
                 raise FIGAROException("Cannot unpack individual parameter sampling PDF for combined injections")
             inj_pdf  = np.array(data['sampling_pdf'])[idx]
-            # Remove spins if not needed
-            spin_pdf = 1./(4*np.pi*(s1x**2+s1y**2+s1z**2))*1./(4*np.pi*(s2x**2+s2y**2+s2z**2))
-            inj_pdf /= spin_pdf**((6-n_spin_pars)/6.)
         else:
             inj_pdf = np.ones(np.sum(idx))
             # Masses
@@ -909,13 +917,26 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
                 inj_pdf *= np.array(data['right_ascension_sampling_pdf'])[idx]
             if 'dec' in par:
                 inj_pdf *= np.array(data['declination_sampling_pdf'])[idx]
+        # Spin priors
+        spin_pdf    = 4*np.pi**2*s1**2*s2**2
+        if n_spin_pars > 0:
+            if 'chi_eff' in par:
+                spin_pdf *=  4.
+                if not 'q' in par:
+                    raise FIGAROException("Effective spin requires mass ratio")
+                if 'chi_p' in par:
+                    spin_pdf *= prior_chieff_chip_isotropic(chi_eff, chi_p, q)
+                else:
+                    spin_pdf *= chi_effective_prior_from_isotropic_spins(chi_eff, q)
+            if not (('cos_tilt_1' in par) and ('cos_tilt_2' in par)):
+                spin_pdf /= spin_costilt_pdf(cos_tilt_1)*spin_costilt_pdf(cos_tilt_2)
+        else:
+            # Remove spin entirely
+            spin_pdf /= prior_component_spins(s1x, s1y, s1z, s2x, s2y, s2z)*4*np.pi**2*s1**2*s2**2
+        inj_pdf *= spin_pdf
         # Change of variable
         if 'q' in par:
             inj_pdf *= m1
-        if 's1' in par or 'chi_eff' in par or 'chi_p' in par:
-            inj_pdf *= 2*np.pi*(s1x**2+s1y**2+s1z**2)
-        if 's2' in par or 'chi_eff' in par or 'chi_p' in par:
-            inj_pdf *= 2*np.pi*(s2x**2+s2y**2+s2z**2)
         if n_det_pars > 0:
             inj_pdf /= (1+z)**n_det_pars
 
