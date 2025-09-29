@@ -96,7 +96,7 @@ class openfile:
     def __exit__(self, exception_type, exception_value, exception_traceback):
         self.openfile.close()
 
-def load_single_event(event, seed = False, par = None, n_samples = -1, cosmology = 'Planck18', volume = False, waveform = 'combined', snr_threshold = None, far_threshold = None, likelihood = False):
+def load_single_event(event, seed = False, par = None, n_samples = -1, cosmology = 'Planck18', volume = False, waveform = 'combined', snr_threshold = None, far_threshold = None, likelihood = False, keep_dVdz = False):
     '''
     Loads the data from .txt/.dat files (for simulations) or .h5/.hdf5 files (posteriors from GWTC) for a single event.
     Default cosmological parameters from Planck Collaboration (2021) in a flat Universe (https://www.aanda.org/articles/aa/pdf/2020/09/aa33910-18.pdf)
@@ -113,6 +113,7 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, cosmology
         double snr_threhsold: SNR threshold for event filtering. For injection analysis only.
         double far_threshold: FAR threshold for event filtering. For injection analysis only.
         bool likelihood:      resample to get likelihood samples
+        bool keep_dVdz:       do not remove dV/dz from the likelihood (only if the population model do NOT include it)
         
     Returns:
         np.ndarray: samples
@@ -147,7 +148,7 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, cosmology
             raise FIGAROException("The following parameters are not implemented: "+", ".join(wrong_pars)+". Run figaro.load.available_gw_pars() for a list of available parameters.")
         # If everything is ok, load the samples
         else:
-            out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = cosmology, rdstate = rdstate, waveform = waveform, snr_threshold = snr_threshold, far_threshold = far_threshold, likelihood = likelihood)
+            out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = cosmology, rdstate = rdstate, waveform = waveform, snr_threshold = snr_threshold, far_threshold = far_threshold, likelihood = likelihood, keep_dVdz = keep_dVdz)
     
     if out is None:
         return out, name
@@ -156,7 +157,7 @@ def load_single_event(event, seed = False, par = None, n_samples = -1, cosmology
         out = np.atleast_2d(out).T
     return out, name
 
-def load_data(path, seed = False, par = None, n_samples = -1, cosmology = 'Planck18', volume = False, waveform = 'combined', snr_threshold = None, far_threshold = None, verbose = True, likelihood = False):
+def load_data(path, seed = False, par = None, n_samples = -1, cosmology = 'Planck18', volume = False, waveform = 'combined', snr_threshold = None, far_threshold = None, verbose = True, likelihood = False, keep_dVdz = False):
     '''
     Loads the data from .txt files (for simulations) or .h5/.hdf5/.dat files (posteriors from GWTC-x).
     Default cosmological parameters from Planck Collaboration (2021) in a flat Universe (https://www.aanda.org/articles/aa/pdf/2020/09/aa33910-18.pdf)
@@ -173,6 +174,7 @@ def load_data(path, seed = False, par = None, n_samples = -1, cosmology = 'Planc
         double far_threshold: FAR threshold for event filtering. For injection analysis only.
         bool verbose:         show progress bar
         bool likelihood:      resample to get likelihood samples
+        bool keep_dVdz:       do not remove dV/dz from the likelihood (only if the population model do NOT include it)
 
     Returns:
         np.ndarray: samples
@@ -224,7 +226,7 @@ def load_data(path, seed = False, par = None, n_samples = -1, cosmology = 'Planc
                 raise FIGAROException("The following parameters are not implemented: "+", ".join(wrong_pars)+". Run figaro.load.available_gw_pars() for a list of available parameters.")
             # If everything is ok, load the samples
             else:
-                out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = cosmology, rdstate = rdstate, waveform = waveform, snr_threshold = snr_threshold, far_threshold = far_threshold, likelihood = likelihood)
+                out = _unpack_gw_posterior(event, par = par, n_samples = n_samples, cosmology = cosmology, rdstate = rdstate, waveform = waveform, snr_threshold = snr_threshold, far_threshold = far_threshold, likelihood = likelihood, keep_dVdz = keep_dVdz)
                 if out is not None:
                     if out.shape[-1] == len(par):
                         events.append(out)
@@ -237,7 +239,7 @@ def load_data(path, seed = False, par = None, n_samples = -1, cosmology = 'Planc
         warnings.warn("At least one event does not have SNR samples. These events cannot be loaded for this parameter choices.")
     return (events, np.array(names))
 
-def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, waveform = 'combined', snr_threshold = None, far_threshold = None, likelihood = False):
+def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, waveform = 'combined', snr_threshold = None, far_threshold = None, likelihood = False, keep_dVdz = False):
     '''
     Reads data from .h5/.hdf5 GW posterior files.
     For GWTC-3 data release, it uses by default the Mixed posterior samples.
@@ -262,7 +264,8 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
         double snr_threhsold:      SNR threshold for event filtering. For injection analysis only.
         double far_threshold:      FAR threshold for event filtering. For injection analysis only.
         bool likelihood:           resample to get likelihood samples
-    
+        bool keep_dVdz:       do not remove dV/dz from the likelihood (only if the population model do NOT include it)
+        
     Returns:
         np.ndarray: samples
     '''
@@ -433,7 +436,7 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                         samples = samples[:, np.where(snr > snr_threshold)[0]]
                 samples = samples.T
             if likelihood:
-                inv_prior = 1./_prior_gw(par, data, cosmology)
+                inv_prior = 1./_prior_gw(par, data, cosmology, keep_dVdz = keep_dVdz)
                 h         = np.random.uniform(0,1, len(samples))
                 samples   = samples[h < inv_prior/np.max(inv_prior)]
             if n_samples > -1:
@@ -507,7 +510,7 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                 samples = np.array(samples)
                 samples = samples.T
             if likelihood:
-                inv_prior = 1./_prior_gw(par, ss, cosmology)
+                inv_prior = 1./_prior_gw(par, ss, cosmology, keep_dVdz = keep_dVdz)
                 h         = np.random.uniform(0, np.max(inv_prior), len(samples))
                 samples   = samples[h < inv_prior]
             if n_samples > -1:
@@ -516,7 +519,7 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
             else:
                 return samples
 
-def _prior_gw(par, samples, cosmology = 'Planck15', uniform_dVdz = True):
+def _prior_gw(par, samples, cosmology = 'Planck15', uniform_dVdz = True, keep_dVdz = False):
     """
     GW prior parameters, following https://docs.ligo.org/RatesAndPopulations/gwpopulation_pipe/_modules/gwpopulation_pipe/data_collection.html#evaluate_prior
     
@@ -525,6 +528,7 @@ def _prior_gw(par, samples, cosmology = 'Planck15', uniform_dVdz = True):
         list-of-str par:    parameter(s)
         str cosmology:      cosmological parameters
         bool uniform_dVdz:  assumes a uniform in dVdz prior for z
+        bool keep_dVdz:     do not remove dV/dz from the likelihood (only if the population model do NOT include it)
     
     Returns:
         np.ndarray: prior values
@@ -550,6 +554,9 @@ def _prior_gw(par, samples, cosmology = 'Planck15', uniform_dVdz = True):
             prior /= omega.dDLdz(np.array(samples[GW_par['z']]))
         if 'log_z' in par:
             prior *= samples[GW_par['z']]
+        if keep_dVdz:
+            prior /= dVdz(np.array(samples[GW_par['z']]))/vol
+        
     if 'chi_eff' in par:
         if 'chi_p' in par:
             prior *= prior_chieff_chip_isotropic(samples[GW_par['chi_eff']], samples[GW_par['chi_p']], samples[GW_par['q']])
@@ -698,7 +705,7 @@ def _load_json(file, make_comp = True):
         return ll[0]
     return ll
 
-def load_selection_function(file, par = None, far_threshold = 1, snr_threshold = 10, cosmology = 'Planck15'):
+def load_selection_function(file, par = None, far_threshold = 1, snr_threshold = 10, cosmology = 'Planck15', keep_dVdz = False):
     """
     Loads the selection function, either from a python module containing a method called 'selection_function' or via injections.
     If injections, it assumes that the last column of a txt/csv/dat file contains the sampling pdf.
@@ -708,6 +715,7 @@ def load_selection_function(file, par = None, far_threshold = 1, snr_threshold =
         list-of-str par:  list with parameter(s) to extract from GW posteriors
         double far_threshold: FAR threshold to filter LVK injections
         double snr_threshold: SNR threshold to filter LVK injections
+        bool keep_dVdz:     do not remove dV/dz from the likelihood (only if the population model do NOT include it)
 
     
     Returns:
@@ -743,10 +751,10 @@ def load_selection_function(file, par = None, far_threshold = 1, snr_threshold =
             weights     = np.ones(len(samples))
             duration    = 1.
         else:
-            selfunc, inj_pdf, n_total_inj, duration, weights = _unpack_injections(file, par, far_threshold, snr_threshold, cosmology)
+            selfunc, inj_pdf, n_total_inj, duration, weights = _unpack_injections(file, par, far_threshold, snr_threshold, cosmology, keep_dVdz = keep_dVdz)
     return selfunc, inj_pdf, n_total_inj, duration, weights
 
-def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmology = 'Planck15'):
+def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmology = 'Planck15', keep_dVdz = False):
     """
     Reads data from .h5/.hdf5 injection file (https://zenodo.org/records/7890437).
     A sample is considered detected if at least one of the searches calls a detection.
@@ -756,6 +764,7 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
         str par:              parameter to extract
         double far_threshold: FAR threshold for injection filtering
         double snr_threshold: SNR threshold for injection filtering
+        bool keep_dVdz:     do not remove dV/dz from the likelihood (only if the population model do NOT include it)
     
     Returns:
         np.ndarray:      samples
@@ -888,10 +897,14 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
                 raise FIGAROException("Cannot unpack individual parameter sampling PDF for O4 injections")
             log_inj_pdf = np.array(data['lnpdraw_mass1_source_mass2_source_redshift_spin1x_spin1y_spin1z_spin2x_spin2y_spin2z'])[idx]
             inj_pdf     = np.exp(log_inj_pdf)
+            if keep_dVdz:
+                inj_pdf /= omega.ComovingVolumeElement(z)/omega.ComovingVolume(3.)
         elif joint_dataset:
             if not (('z' in par) and (n_mass_pars == 2)):
                 raise FIGAROException("Cannot unpack individual parameter sampling PDF for combined injections")
             inj_pdf  = np.array(data['sampling_pdf'])[idx]
+            if keep_dVdz:
+                inj_pdf /= omega.ComovingVolumeElement(z)/omega.ComovingVolume(2.3)
         else:
             inj_pdf = np.ones(np.sum(idx))
             # Masses
@@ -905,6 +918,8 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
             # Distance
             if 'z' in par:
                 inj_pdf *= np.array(data['redshift_sampling_pdf'])[idx]
+                if keep_dVdz:
+                    inj_pdf /= omega.ComovingVolumeElement(z)/omega.ComovingVolume(2.3)
             if 'log_z' in par:
                 inj_pdf *= np.array(data['redshift_sampling_pdf'])[idx]*np.array(data[inj_par['z']])[idx]
             if 'luminosity_distance' in par:
