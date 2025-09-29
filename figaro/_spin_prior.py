@@ -139,12 +139,14 @@ def Li2(z):
 def prior_chieff_chip_isotropic(chieff, chip, q, amax=1):
     chieff = chieff / amax
     chip = chip / amax
-    return (
+    pdfs = (
         I1(chieff, chip, q)
         + I2(chieff, chip, q)
         + I3(chieff, chip, q)
         + I4(chieff, chip, q)
     ) / amax**2
+    pdfs = np.minimum(pdfs, 1e-3)
+    return pdfs
 
 def chi_effective_prior_from_isotropic_spins(chi_eff, q, amax=1):
     """
@@ -210,8 +212,8 @@ def chi_effective_prior_from_isotropic_spins(chi_eff, q, amax=1):
         ) / (4 * max_primary * max_secondary)
 
     pdfs = np.select([opposite_signs_allowed, same_sign_required], [lower, upper], 0.0)
-
-    return pdfs.squeeze()
+    pdfs = np.minimum(pdfs.squeeze(), 1e-3)
+    return pdfs
 
 def prior_component_spins(s1x, s1y, s1z, s2x, s2y, s2z):
     s1     = np.sqrt(s1x**2 + s1y**2 + s1z**2)
