@@ -145,7 +145,6 @@ def prior_chieff_chip_isotropic(chieff, chip, q, amax=1):
         + I3(chieff, chip, q)
         + I4(chieff, chip, q)
     ) / amax**2
-    pdfs = np.minimum(pdfs, 1e-3)
     return pdfs
 
 def chi_effective_prior_from_isotropic_spins(chi_eff, q, amax=1):
@@ -212,12 +211,14 @@ def chi_effective_prior_from_isotropic_spins(chi_eff, q, amax=1):
         ) / (4 * max_primary * max_secondary)
 
     pdfs = np.select([opposite_signs_allowed, same_sign_required], [lower, upper], 0.0)
-    pdfs = np.minimum(pdfs.squeeze(), 1e-3)
-    return pdfs
+    return pdfs.squeeze()
 
 def prior_component_spins(s1x, s1y, s1z, s2x, s2y, s2z):
     s1     = np.sqrt(s1x**2 + s1y**2 + s1z**2)
     s2     = np.sqrt(s2x**2 + s2y**2 + s2z**2)
     cos_t1 = s1z/s1
     cos_t2 = s2z/s2
-    return spin_mag_pdf(s1)*spin_mag_pdf(s2)*spin_costilt_pdf(cos_t1)*spin_costilt_pdf(cos_t2)*4*np.pi**2
+    return spin_mag_pdf(s1)*spin_mag_pdf(s2)*spin_costilt_pdf(cos_t1)*spin_costilt_pdf(cos_t2)*(4*np.pi**2*s1**2*s2**2)
+
+def prior_polar_spins(s1, s2, cos_t1, cos_t2):
+    return spin_mag_pdf(s1)*spin_mag_pdf(s2)*spin_costilt_pdf(cos_t1)*spin_costilt_pdf(cos_t2)/(4*np.pi**2)
