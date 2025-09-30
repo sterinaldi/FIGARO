@@ -8,16 +8,16 @@ import importlib
 from figaro.exceptions import FIGAROException
 from figaro.mixture import mixture
 from figaro.cosmology import Planck18, Planck15, dVdz_approx_planck18, dVdz_approx_planck15
-from figaro._spin_prior import prior_chieff_chip_isotropic, chi_effective_prior_from_isotropic_spins, prior_component_spins, spin_costilt_pdf
+from figaro._spin_prior import prior_chieff_chip_isotropic, chi_effective_prior_from_isotropic_spins, prior_component_spins, prior_polar_spins, spin_costilt_pdf
 from pathlib import Path
 from tqdm import tqdm
 
 supported_extensions = ['h5', 'hdf5', 'hdf', 'txt', 'dat', 'csv', 'json']
 supported_waveforms  = ['combined', 'imr', 'seob']
 injected_pars        = ['m1', 'm2', 'z', 's1x', 's1y', 's1z', 's2x', 's2y', 's2z', 'ra', 'dec']
-loadable_inj_pars    = injected_pars + ['q', 'chi_eff', 'chi_p', 's1', 's2', 'luminosity_distance', 'log_z', 'm1_detect', 'm2_detect']
+loadable_inj_pars    = injected_pars + ['q', 'chi_eff', 'chi_p', 's1', 's2', 'luminosity_distance', 'log_z', 'm1_detect', 'm2_detect', 'cos_tilt_1', 'cos_tilt_2']
 mass_parameters      = ['m1', 'm2', 'm1_detect', 'm2_detect', 'mc', 'mt', 'q']
-spin_parameters      = ['s1x', 's1y', 's1z', 's2x', 's2y', 's2z', 's1', 's2', 'chi_eff', 'chi_p']
+spin_parameters      = ['s1x', 's1y', 's1z', 's2x', 's2y', 's2z', 's1', 's2', 'chi_eff', 'chi_p', 'cos_tilt_1', 'cos_tilt_2']
 detector_parameters  = ['m1_detect', 'm2_detect']
 
 GW_par = {'m1'                 : 'mass_1_source',
@@ -848,7 +848,12 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
             cos_tilt_1 = s1z/s1
             cos_tilt_2 = s2z/s2
         except:
-            pass
+            s1 = np.array(data['spin1_magnitude'])[idx]
+            s2 = np.array(data['spin2_magnitude'])[idx]
+            cos_tilt_1 = np.cos(np.array(data['spin1_polar_angle'])[idx])
+            cos_tilt_2 = np.cos(np.array(data['spin2_polar_angle'])[idx])
+            s1z = s1*cos_tilt_1
+            s2z = s2*cos_tilt_2
         for i, lab in enumerate(par):
             # Already available parameters:
             if lab in injected_pars:
@@ -896,13 +901,13 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
             if not (('z' in par) and (n_mass_pars == 2)):
                 raise FIGAROException("Cannot unpack individual parameter sampling PDF for O4 injections")
             log_inj_pdf = np.array(data['lnpdraw_mass1_source_mass2_source_redshift_spin1x_spin1y_spin1z_spin2x_spin2y_spin2z'])[idx]
-            inj_pdf     = np.exp(log_inj_pdf)
+            inj_pdf     = np.exp(log_inj_pdf)*4*np.pi**2*s1**2*s2**2
             if keep_dVdz:
                 inj_pdf /= omega.ComovingVolumeElement(z)/omega.ComovingVolume(3.)
         elif joint_dataset:
             if not (('z' in par) and (n_mass_pars == 2)):
                 raise FIGAROException("Cannot unpack individual parameter sampling PDF for combined injections")
-            inj_pdf  = np.array(data['sampling_pdf'])[idx]
+            inj_pdf  = np.array(data['sampling_pdf'])[idx]*4*np.pi*s1**2*s2**2
             if keep_dVdz:
                 inj_pdf /= omega.ComovingVolumeElement(z)/omega.ComovingVolume(2.3)
         else:
@@ -933,21 +938,26 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
             if 'dec' in par:
                 inj_pdf *= np.array(data['declination_sampling_pdf'])[idx]
         # Spin priors
-        spin_pdf    = 4*np.pi**2*s1**2*s2**2
+        spin_pdf = 1.
         if n_spin_pars > 0:
             if 'chi_eff' in par:
-                spin_pdf *=  4.
+                spin_pdf /= 1./4. * 1./(4*np.pi**2)
                 if not 'q' in par:
                     raise FIGAROException("Effective spin requires mass ratio")
                 if 'chi_p' in par:
                     spin_pdf *= prior_chieff_chip_isotropic(chi_eff, chi_p, q)
                 else:
                     spin_pdf *= chi_effective_prior_from_isotropic_spins(chi_eff, q)
-            if not (('cos_tilt_1' in par) and ('cos_tilt_2' in par)):
-                spin_pdf /= spin_costilt_pdf(cos_tilt_1)*spin_costilt_pdf(cos_tilt_2)
+            else:
+                # Fixes spin distribution to isotropic distribution for unavailable pars
+                spin_pdf /= 1./(4*np.pi**2)
+                if not ('cos_tilt_1' in par):
+                    spin_pdf /= 1./2.
+                if not ('cos_tilt_2' in par):
+                    spin_pdf /= 1./2.
         else:
             # Remove spin entirely
-            spin_pdf /= prior_component_spins(s1x, s1y, s1z, s2x, s2y, s2z)*4*np.pi**2*s1**2*s2**2
+            spin_pdf /= prior_polar_spins(s1, s2, cos_tilt_1, cos_tilt_2)
         inj_pdf *= spin_pdf
         # Change of variable
         if 'q' in par:
