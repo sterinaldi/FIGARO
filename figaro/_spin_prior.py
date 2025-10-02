@@ -136,6 +136,7 @@ def Li2(z):
     z = np.atleast_1d(z)
     return spence(1 - z)
 
+@np.errstate(divide = 'ignore')
 def prior_chieff_chip_isotropic(chieff, chip, q, amax=1):
     chieff = chieff / amax
     chip = chip / amax
@@ -147,6 +148,7 @@ def prior_chieff_chip_isotropic(chieff, chip, q, amax=1):
     ) / amax**2
     return pdfs
 
+@np.errstate(divide = 'ignore')
 def chi_effective_prior_from_isotropic_spins(chi_eff, q, amax=1):
     """
     Function defining the conditional priors p(chi_eff|q) corresponding to
