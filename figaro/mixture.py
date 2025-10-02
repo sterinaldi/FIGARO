@@ -1242,12 +1242,12 @@ class HDPGMM(DPGMM):
             else:
                 self.log_alpha_factor = np.array([logsumexp(mn(m,s, allow_singular = True).logpdf(self.selfunc_probit) + self.log_jacobian_inj - self.log_inj_pdf, b = self.weights_inj) - np.log(self.total_inj) for m, s in zip(self.mu_MC, self.sigma_MC)])
                 # TODO: make more efficient
-                std = []
-                for m, s, a in zip(self.mu_MC, self.sigma_MC, self.log_alpha_factor):
-                    x = self.weights_inj*(mn(m,s, allow_singular = True).logpdf(self.selfunc_probit) + self.log_jacobian_inj - self.log_inj_pdf)
-#                    std.append(np.sqrt(np.sum((np.exp(x)-np.exp(a))**2)/self.total_inj**2))
-                    std.append(np.sqrt(np.sum(np.exp(2*x)/self.total_inj**2) - np.exp(2*a)/self.total_inj))
-                std = np.array(std)
+#                std = []
+#                for m, s, a in zip(self.mu_MC, self.sigma_MC, self.log_alpha_factor):
+#                    x = self.weights_inj*(mn(m,s, allow_singular = True).logpdf(self.selfunc_probit) + self.log_jacobian_inj - self.log_inj_pdf)
+##                    std.append(np.sqrt(np.sum((np.exp(x)-np.exp(a))**2)/self.total_inj**2))
+#                    std.append(np.sqrt(np.sum(np.exp(2*x)/self.total_inj**2) - np.exp(2*a)/self.total_inj))
+#                std = np.array(std)
 #                self.log_alpha_factor[100*(np.log(std) - self.log_alpha_factor) > np.log(70)] = np.inf
                 
             self.log_alpha_factor = np.nan_to_num(self.log_alpha_factor, nan = np.inf, posinf = np.inf, neginf = np.inf)
