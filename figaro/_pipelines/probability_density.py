@@ -42,6 +42,7 @@ def main():
     parser.add_option("--no_probit", dest = "probit", action = 'store_false', help = "Disable probit transformation", default = True)
     parser.add_option("--config", dest = "config", type = "string", help = "Config file. Warning: command line options override config options", default = None)
     parser.add_option("-l", "--likelihood", dest = "likelihood", action = 'store_true', help = "Resample posteriors to get likelihood samples (only for GW data)", default = False)
+    parser.add_option("--no_plots", dest = "no_plots", action = 'store_true', help = "Suppress all plots (useful in more than 3-4 dimensions)", default = False)
     
     (options, args) = parser.parse_args()
 
@@ -141,18 +142,19 @@ def main():
             draws = load_density(Path(output_draws, 'draws_'+name+'.'+options.ext))
 
         # Plot
-        if dim == 1:
-            plot_median_cr(draws, injected = inj_density, selfunc = selfunc, samples = samples, out_folder = options.output, name = name, label = options.symbol, unit = options.unit, subfolder = subfolder)
-        else:
-            if options.symbol is not None:
-                symbols = options.symbol.split(',')
+        if not options.no_plots:
+            if dim == 1:
+                plot_median_cr(draws, injected = inj_density, selfunc = selfunc, samples = samples, out_folder = options.output, name = name, label = options.symbol, unit = options.unit, subfolder = subfolder)
             else:
-                symbols = options.symbol
-            if options.unit is not None:
-                units = options.unit.split(',')
-            else:
-                units = options.unit
-            plot_multidim(draws, samples = samples, out_folder = options.output, name = name, labels = symbols, units = units, subfolder = subfolder)
+                if options.symbol is not None:
+                    symbols = options.symbol.split(',')
+                else:
+                    symbols = options.symbol
+                if options.unit is not None:
+                    units = options.unit.split(',')
+                else:
+                    units = options.unit
+                plot_multidim(draws, samples = samples, out_folder = options.output, name = name, labels = symbols, units = units, subfolder = subfolder)
 
 if __name__ == '__main__':
     main()

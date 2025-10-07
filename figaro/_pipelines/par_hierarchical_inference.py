@@ -151,6 +151,7 @@ def main():
     parser.add_option("--rate", dest = "rate", action = 'store_true', help = "Compute rate", default = False)
     parser.add_option("--include_dvdz", dest = "include_dvdz", action = 'store_true', help = "Include dV/dz*(1+z)^{-1} term in selection effects.", default = False)
     parser.add_option("-l", "--likelihood", dest = "likelihood", action = 'store_true', help = "Resample posteriors to get likelihood samples (only for GW data)", default = False)
+    parser.add_option("--no_plots", dest = "no_plots", action = 'store_true', help = "Suppress all plots (useful in more than 3-4 dimensions)", default = False)
 
     (options, args) = parser.parse_args()
 
@@ -315,7 +316,7 @@ def main():
                                         events           = events,
                                         label            = symbols,
                                         unit             = units,
-                                        save_se          = options.save_single_event,
+                                        save_se          = (options.save_single_event and not options.no_plots),
                                         MC_draws         = options.mc_draws,
                                         probit           = options.probit,
                                         selfunc          = dec_selfunc,
@@ -352,25 +353,26 @@ def main():
     else:
         draws = load_density(Path(output_draws, 'draws_'+hier_name+'.'+options.ext))
     # Plot
-    if dim == 1:
-        plot_median_cr(draws,
-                       injected     = inj_density,
-                       samples      = hier_samples,
-                       out_folder   = output_plots,
-                       name         = options.hier_name,
-                       label        = options.symbol,
-                       unit         = options.unit,
-                       hierarchical = True,
-                       )
-    else:
-        plot_multidim(draws,
-                      samples      = hier_samples,
-                      out_folder   = output_plots,
-                      name         = hier_name,
-                      labels       = symbols,
-                      units        = units,
-                      hierarchical = True,
-                      )
+    if not options.no_plots:
+        if dim == 1:
+            plot_median_cr(draws,
+                           injected     = inj_density,
+                           samples      = hier_samples,
+                           out_folder   = output_plots,
+                           name         = options.hier_name,
+                           label        = options.symbol,
+                           unit         = options.unit,
+                           hierarchical = True,
+                           )
+        else:
+            plot_multidim(draws,
+                          samples      = hier_samples,
+                          out_folder   = output_plots,
+                          name         = hier_name,
+                          labels       = symbols,
+                          units        = units,
+                          hierarchical = True,
+                          )
 
     if options.rate:
         R_samples = sample_rate(draws,
@@ -381,10 +383,11 @@ def main():
                                 dvdz    = approx_dVdz,
                                 z_index = z_index,
                                 )
-        plot_integrated_rate(R_samples,
-                             out_folder = output_rate,
-                             name       = options.hier_name,
-                             )
+        if not options.no_plots:
+            plot_integrated_rate(R_samples,
+                                 out_folder = output_rate,
+                                 name       = options.hier_name,
+                                 )
         np.savetxt(Path(output_rate, 'samples_integrated_rate_{}.txt'.format(options.hier_name)), R_samples)
         # Best estimate for rate
         rates = sample_rate(draws,
@@ -401,27 +404,28 @@ def main():
         else:
             names = np.arange(dim)
         # Marginal rates
-        if dim == 1:
-            plot_differential_rate(draws,
-                                   rate         = rates,
-                                   out_folder   = output_rate,
-                                   name         = options.hier_name,
-                                   label        = options.symbol,
-                                   unit         = options.unit,
-                                   hierarchical = True,
-                                   )
-        else:
-            for i in range(dim):
-                dims = list(np.arange(dim))
-                dims.remove(i)
-                dd   = marginalise(draws, dims)
-                plot_differential_rate(dd,
+        if not options.no_plots:
+            if dim == 1:
+                plot_differential_rate(draws,
                                        rate         = rates,
                                        out_folder   = output_rate,
-                                       name         = names[i],
-                                       label        = symbols[i],
-                                       unit         = units[i],
+                                       name         = options.hier_name,
+                                       label        = options.symbol,
+                                       unit         = options.unit,
                                        hierarchical = True,
                                        )
+            else:
+                for i in range(dim):
+                    dims = list(np.arange(dim))
+                    dims.remove(i)
+                    dd   = marginalise(draws, dims)
+                    plot_differential_rate(dd,
+                                           rate         = rates,
+                                           out_folder   = output_rate,
+                                           name         = names[i],
+                                           label        = symbols[i],
+                                           unit         = units[i],
+                                           hierarchical = True,
+                                           )
 if __name__ == '__main__':
     main()
