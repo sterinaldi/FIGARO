@@ -170,10 +170,15 @@ class CosmologicalParameters_astropy:
 Planck18 = CosmologicalParameters(0.674, 0.315, 0.685, -1)
 Planck15 = CosmologicalParameters(0.679, 0.3065, 0.6935, -1)
 
-# Interpolants up to z = 2.5
-z = np.linspace(0,2.5,1000)
-dvdz_planck18 = Planck18.ComovingVolumeElement(z)/1e9 # In Gpc
-dvdz_planck15 = Planck15.ComovingVolumeElement(z)/1e9 # In Gpc
+# Interpolants up to z = 2.5 and dL = 10^6 Mpc
+z  = np.linspace(0, 2.5, 1000)
+dL = np.linspace(0, 3e4, 1000)
+dvdz_planck18     = Planck18.ComovingVolumeElement(z)/1e9 # In Gpc
+dvdz_planck15     = Planck15.ComovingVolumeElement(z)/1e9 # In Gpc
+redshift_planck18 = Planck18.Redshift(dL)
+redshift_planck15 = Planck15.Redshift(dL)
+dDLdz_planck18    = Planck18.dDLdz(z)
+dDLdz_planck15    = Planck15.dDLdz(z)
 
 @njit
 def dVdz_approx_planck15(x):
@@ -183,8 +188,25 @@ def dVdz_approx_planck15(x):
 def dVdz_approx_planck18(x):
     return np.interp(x, z, dvdz_planck18)
 
+@njit
+def dDLdz_approx_planck15(x):
+    return np.interp(x, z, dDLdz_planck15)
+
+@njit
+def dDLdz_approx_planck18(x):
+    return np.interp(x, z, dDLdz_planck18)
+
+@njit
+def redshift_approx_planck15(x):
+    return np.interp(x, dL, redshift_planck15)
+
+@njit
+def redshift_approx_planck18(x):
+    return np.interp(x, dL, redshift_planck18)
+
 def _decorator_dVdz(func, approx, z_index, z_max):
     reg_const = (1+z_max)/approx(z_max)
     def decorated_func(x):
         return func(x)*approx(x[:,z_index])/(1+x[:,z_index]) * reg_const
     return decorated_func
+
