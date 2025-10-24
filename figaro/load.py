@@ -568,6 +568,8 @@ def _prior_gw(par, samples, cosmology = 'Planck15', uniform_dVdz = True, keep_dV
         prior *= (1+np.array(samples[GW_par['z']]))**np.min([n_mass_pars, 2])
     if ('mc' in par or 'mc_detect' in par):
         prior *= (1 + np.array(samples[GW_par['q']])) ** 0.2 / np.array(samples[GW_par['q']]) ** 0.6
+    if 'q' in par:
+        prior *= np.array(samples[GW_par['m1']])
     return prior
     
 def save_density(draws, folder = '.', name = 'density', ext = 'json'):
