@@ -1205,7 +1205,7 @@ class HDPGMM(DPGMM):
         # MC samples
         self._draw_MC_samples()
         
-    def initialise(self, prior_pars = None):
+    def initialise(self, prior_pars = None, update_injections = False):
         """
         Initialise the mixture to initial conditions
         """
@@ -1213,6 +1213,11 @@ class HDPGMM(DPGMM):
         if prior_pars is not None:
             self.exp_sigma, self.a = prior_pars
         self.evaluated_logL = {}
+        if self.probit and update_injections:
+            self.selfunc_probit   = np.atleast_2d(transform_to_probit(self.selfunc, self.bounds))
+            if self.selfunc_probit.shape[0] == 1:
+                self.selfunc_probit = self.selfunc_probit.T
+            self.log_jacobian_inj = -probit_logJ(self.selfunc_probit, self.bounds, self.probit)
         self._draw_MC_samples()
     
     def _draw_MC_samples(self):
