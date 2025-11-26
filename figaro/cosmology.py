@@ -171,14 +171,16 @@ Planck18 = CosmologicalParameters(0.674, 0.315, 0.685, -1)
 Planck15 = CosmologicalParameters(0.679, 0.3065, 0.6935, -1)
 
 # Interpolants up to z = 2.5 and dL = 10^6 Mpc
-z  = np.linspace(0, 2.5, 1000)
-dL = np.linspace(0, 3e4, 1000)
-dvdz_planck18     = Planck18.ComovingVolumeElement(z)/1e9 # In Gpc
-dvdz_planck15     = Planck15.ComovingVolumeElement(z)/1e9 # In Gpc
-redshift_planck18 = Planck18.Redshift(dL)
-redshift_planck15 = Planck15.Redshift(dL)
-dDLdz_planck18    = Planck18.dDLdz(z)
-dDLdz_planck15    = Planck15.dDLdz(z)
+z  = np.linspace(1e-7, 3, 1000)
+dL = np.linspace(1, 3e4, 1000)
+dvdz_planck18     = np.append([0], Planck18.ComovingVolumeElement(z)/1e9) # In Gpc
+dvdz_planck15     = np.append([0], Planck15.ComovingVolumeElement(z)/1e9) # In Gpc
+redshift_planck18 = np.append([0], Planck18.Redshift(dL))
+redshift_planck15 = np.append([0], Planck15.Redshift(dL))
+dDLdz_planck18    = np.append([0], Planck18.dDLdz(z))
+dDLdz_planck15    = np.append([0], Planck15.dDLdz(z))
+z                 = np.append([0], z)
+dL                = np.append([0], dL)
 
 @njit
 def dVdz_approx_planck15(x):
