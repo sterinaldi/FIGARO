@@ -100,7 +100,7 @@ class PPPlot(axes.Axes):
         
 projection_registry.register(PPPlot)
 
-def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}', median_label = None, fig = None, colors = ['steelblue', 'darkturquoise', 'mediumturquoise'], large_font = True):
+def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}', median_label = None, fig = None, colors = ['steelblue', 'darkturquoise', 'mediumturquoise'], large_font = True, samples_color = '#1f77b4'):
     """
     Plot the recovered 1D distribution along with the injected distribution and samples from the true distribution (both if available).
     
@@ -161,7 +161,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
 
     # If samples are available, use them as bounds
     if samples is not None:
-        ax.hist(samples, bins = int(np.sqrt(len(samples))), histtype = 'step', density = True, label = '$\mathrm{Samples}$', log = True)
+        ax.hist(samples, bins = int(np.sqrt(len(samples))), histtype = 'step', density = True, label = '$\mathrm{Samples}$', log = True, color = samples_color)
         if bounds is None:
             x_min_l, x_max_l = ax.get_xlim()
             x_min = np.max((x_min, x_min_l))
@@ -334,7 +334,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         plt.close()
     return fig
 
-def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False, n_pts = 200, true_value = None, levels = [0.5, 0.68, 0.9], scatter_points = False, median_label = None, fig = None, colors = ['steelblue', 'darkturquoise', 'mediumturquoise'], colormap = 'Blues'):
+def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name = 'density', labels = None, units = None, hierarchical = False, show = False, save = True, subfolder = False, n_pts = 200, true_value = None, levels = [0.5, 0.68, 0.9], scatter_points = False, median_label = None, fig = None, colors = ['steelblue', 'darkturquoise', 'mediumturquoise'], colormap = 'Blues', samples_color = '#1f77b4'):
     """
     Plot the recovered multidimensional distribution along with samples from the true distribution (if available) as corner plot.
     
@@ -425,7 +425,7 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
     # Samples (if available)
     if samples is not None:
         bins = np.array([int(np.sqrt(len(samples[:, c]))) for c in range(dim)])
-        corner(samples, color = '#1f77b4', fig = fig, hist_kwargs = {'density': True, 'label':'$\mathrm{Samples}$', 'linewidth':0.7} , plot_density = False, contour_kwargs = {'linewidths':0.3, 'linestyles':'dashed'}, levels = [0.5,0.68,0.9], no_fill_contours = True, hist_bin_factor = bins/20, quiet = True)
+        corner(samples, color = samples_color, fig = fig, hist_kwargs = {'density': True, 'label':'$\mathrm{Samples}$', 'linewidth':0.7} , plot_density = False, contour_kwargs = {'linewidths':0.3, 'linestyles':'dashed'}, levels = [0.5,0.68,0.9], no_fill_contours = True, hist_bin_factor = bins/20, quiet = True)
         
     # 1D plots (diagonal)
     for column in range(K):
