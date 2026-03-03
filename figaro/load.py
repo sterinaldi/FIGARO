@@ -7,7 +7,7 @@ import copy
 import importlib
 from figaro.exceptions import FIGAROException
 from figaro.mixture import mixture
-from figaro.cosmology import Planck18, Planck15, dVdz_approx_planck18, dVdz_approx_planck15
+from figaro.cosmology import Planck18, Planck15, dVdz_approx_planck18, dVdz_approx_planck15, dDLdz_approx_planck15, dDLdz_approx_planck18, luminosity_distance_approx_planck15, luminosity_distance_approx_planck18
 from figaro._spin_prior import prior_chieff_chip_isotropic, chi_effective_prior_from_isotropic_spins, prior_component_spins, prior_polar_spins, spin_costilt_pdf
 from pathlib import Path
 from tqdm import tqdm
@@ -17,6 +17,7 @@ supported_waveforms  = ['combined', 'imr', 'seob']
 injected_pars        = ['m1', 'm2', 'z', 's1x', 's1y', 's1z', 's2x', 's2y', 's2z', 'ra', 'dec']
 loadable_inj_pars    = injected_pars + ['q', 'chi_eff', 'chi_p', 's1', 's2', 'luminosity_distance', 'log_z', 'm1_detect', 'm2_detect', 'cos_tilt_1', 'cos_tilt_2']
 mass_parameters      = ['m1', 'm2', 'm1_detect', 'm2_detect', 'mc', 'mt', 'q']
+dist_parameters      = ['z', 'luminosity_distance']
 spin_parameters      = ['s1x', 's1y', 's1z', 's2x', 's2y', 's2z', 's1', 's2', 'chi_eff', 'chi_p', 'cos_tilt_1', 'cos_tilt_2']
 detector_parameters  = ['m1_detect', 'm2_detect']
 
@@ -536,9 +537,11 @@ def _prior_gw(par, samples, cosmology = 'Planck15', uniform_dVdz = True, keep_dV
     if cosmology == 'Planck18':
         omega = Planck18
         dVdz  = dVdz_approx_planck18
+        dDLdz = dDLdz_approx_planck18
     elif cosmology == 'Planck15':
         omega = Planck15
         dVdz  = dVdz_approx_planck15
+        dDLdz = dDLdz_approx_planck15
     else:
         raise FIGAROException("Cosmology not supported")
     vol    = omega.ComovingVolume(2.3)/1e9
@@ -549,9 +552,9 @@ def _prior_gw(par, samples, cosmology = 'Planck15', uniform_dVdz = True, keep_dV
         if uniform_dVdz:
             prior *= dVdz(np.array(samples[GW_par['z']]))/((1.+np.array(samples[GW_par['z']]))*vol)
         else:
-            prior *= (np.array(samples[GW_par['luminosity_distance']])**2/DL_max**3)*omega.dDLdz(np.array(samples[GW_par['z']]))
+            prior *= (np.array(samples[GW_par['luminosity_distance']])**2/DL_max**3)*dDLdz(np.array(samples[GW_par['z']]))
         if 'luminosity_distance' in par:
-            prior /= omega.dDLdz(np.array(samples[GW_par['z']]))
+            prior /= dDLdz(np.array(samples[GW_par['z']]))
         if 'log_z' in par:
             prior *= samples[GW_par['z']]
         if keep_dVdz:
@@ -776,8 +779,12 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
     """
     if cosmology == 'Planck18':
         omega = Planck18
+        dDLdz = dDLdz_approx_planck18
+        DL_f  = luminosity_distance_approx_planck18
     elif cosmology == 'Planck15':
         omega = Planck15
+        dDLdz = dDLdz_approx_planck15
+        DL_f  = luminosity_distance_approx_planck15
     # Check that a list of parameters is passed
     if par is None:
         raise TypeError("Please provide a list of parameter names you want to load (e.g. ['m1']).")
@@ -839,6 +846,14 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
         q   = m2/m1
         z   = np.array(data[inj_par['z']])[idx]
         try:
+            DL = np.array(data[inj_par['luminosity_distance']])[idx]
+        except:
+            if 'luminosity_distance' in par:
+                DL = DL_f(z)
+            else:
+                pass
+            
+        try:
             s1x = np.array(data[inj_par['s1x']])[idx]
             s1y = np.array(data[inj_par['s1y']])[idx]
             s1z = np.array(data[inj_par['s1z']])[idx]
@@ -892,15 +907,18 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
                     samples[i] = cos_tilt_2
                 # Distance
                 if lab == 'luminosity_distance':
-                    samples[i] = omega.LuminosityDistance(z)
+                    samples[i] = DL
                 if lab == 'log_z':
                     samples[i] = np.log(z)
         # Sampling pdf
         n_mass_pars = len([lab for lab in par if lab in mass_parameters])
         n_det_pars  = len([lab for lab in par if lab in detector_parameters])
+        n_dist_pars = len([lab for lab in par if lab in dist_parameters])
         n_spin_pars = len([lab for lab in par if lab in spin_parameters])
+        if n_dist_pars > 1:
+            raise FIGAROException("Only one distance parameter is allowed")
         if O4:
-            if not (('z' in par) and (n_mass_pars == 2)):
+            if not ((n_dist_pars == 1) and (n_mass_pars == 2)):
                 raise FIGAROException("Cannot unpack individual parameter sampling PDF for O4 injections")
             log_inj_pdf = np.array(data['lnpdraw_mass1_source_mass2_source_redshift_spin1x_spin1y_spin1z_spin2x_spin2y_spin2z'])[idx]
             inj_pdf     = np.exp(log_inj_pdf)*4*np.pi**2*s1**2*s2**2
@@ -923,17 +941,10 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
             if n_spin_pars > 0:
                 inj_pdf *= (np.array(data['spin1x_spin1y_spin1z_sampling_pdf'])[idx]*np.array(data['spin2x_spin2y_spin2z_sampling_pdf'])[idx])**(n_spin_pars/6.)
             # Distance
-            if 'z' in par:
+            if n_dist_pars == 1:
                 inj_pdf *= np.array(data['redshift_sampling_pdf'])[idx]
                 if keep_dVdz:
                     inj_pdf /= omega.ComovingVolumeElement(z)/omega.ComovingVolume(2.3)
-            if 'log_z' in par:
-                inj_pdf *= np.array(data['redshift_sampling_pdf'])[idx]*np.array(data[inj_par['z']])[idx]
-            if 'luminosity_distance' in par:
-                try:
-                    inj_pdf *= np.array(data['luminosity_distance_sampling_pdf'])[idx]
-                except:
-                    inj_pdf *= np.array(data['redshift_sampling_pdf'])[idx]/omega.dDLdz(np.array(data[inj_par['z']])[idx])
             # Sky position
             if 'ra' in par:
                 inj_pdf *= np.array(data['right_ascension_sampling_pdf'])[idx]
@@ -966,5 +977,9 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
             inj_pdf *= m1
         if n_det_pars > 0:
             inj_pdf /= (1+z)**n_det_pars
+        if 'luminosity_distance' in par:
+            inj_pdf /= dDLdz(z)
+        if 'log_z' in par:
+            inj_pdf *= z
 
     return samples.T, inj_pdf, n_total_inj, duration, weights
