@@ -206,6 +206,14 @@ def redshift_approx_planck15(x):
 def redshift_approx_planck18(x):
     return np.interp(x, dL, redshift_planck18)
 
+@njit
+def luminosity_distance_approx_planck15(x):
+    return np.interp(x, redshift_planck15, dL)
+
+@njit
+def luminosity_distance_approx_planck18(x):
+    return np.interp(x, redshift_planck18, dL)
+
 def _decorator_dVdz(func, approx, z_index, z_max):
     reg_const = (1+z_max)/approx(z_max)
     def decorated_func(x):
