@@ -983,3 +983,17 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
             inj_pdf *= z
 
     return samples.T, inj_pdf, n_total_inj, duration, weights
+
+def prior_gw(ev, par):
+    """
+    Computes the PE prior for a single GW event.
+    
+    Arguments:
+        np.ndarray ev: posterior samples
+        list par:      GW parameter list
+    
+    Returns:
+        np.ndarray: the evaluated prior
+    """
+    dd = {GW_par[lab]: ev[:,i] for i, lab in enumerate(par)}
+    return _prior_gw(par, dd)
