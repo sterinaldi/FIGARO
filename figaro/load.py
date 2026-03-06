@@ -546,7 +546,7 @@ def _prior_gw(par, samples, cosmology = 'Planck15', uniform_dVdz = True, keep_dV
         raise FIGAROException("Cosmology not supported")
     vol    = omega.ComovingVolume(2.3)/1e9
     DL_max = omega.LuminosityDistance(2.3)
-    prior  = np.ones(len(samples[GW_par['z']]))
+    prior  = np.ones(len(samples[GW_par[par[0]]]))
     # Redshift prior (uniform in comoving source frame)
     if ('z' in par) or ('log_z' in par) or ('luminosity_distance' in par):
         if uniform_dVdz:
