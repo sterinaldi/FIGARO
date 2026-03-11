@@ -7,7 +7,7 @@ import copy
 import importlib
 from figaro.exceptions import FIGAROException
 from figaro.mixture import mixture
-from figaro.cosmology import Planck18, Planck15, dVdz_approx_planck18, dVdz_approx_planck15, dDLdz_approx_planck15, dDLdz_approx_planck18, luminosity_distance_approx_planck15, luminosity_distance_approx_planck18
+from figaro.cosmology import Planck18, Planck15, dVdz_approx_planck18, dVdz_approx_planck15
 from figaro._spin_prior import prior_chieff_chip_isotropic, chi_effective_prior_from_isotropic_spins, prior_component_spins, prior_polar_spins, spin_costilt_pdf
 from pathlib import Path
 from tqdm import tqdm
@@ -15,11 +15,10 @@ from tqdm import tqdm
 supported_extensions = ['h5', 'hdf5', 'hdf', 'txt', 'dat', 'csv', 'json']
 supported_waveforms  = ['combined', 'imr', 'seob']
 injected_pars        = ['m1', 'm2', 'z', 's1x', 's1y', 's1z', 's2x', 's2y', 's2z', 'ra', 'dec']
-loadable_inj_pars    = injected_pars + ['q', 'chi_eff', 'chi_p', 's1', 's2', 'luminosity_distance', 'log_z', 'm1_detect', 'm2_detect', 'cos_tilt_1', 'cos_tilt_2']
-mass_parameters      = ['m1', 'm2', 'm1_detect', 'm2_detect', 'mc', 'mt', 'q']
-dist_parameters      = ['z', 'luminosity_distance']
+loadable_inj_pars    = injected_pars + ['q', 'mt','mc','chi_eff', 'chi_p', 's1', 's2', 'luminosity_distance', 'log_z', 'm1_detect', 'm2_detect','mc_detect','cos_tilt_1', 'cos_tilt_2']
+mass_parameters      = ['m1', 'm2', 'm1_detect', 'm2_detect', 'mc', 'mc_detect', 'mt', 'q']
 spin_parameters      = ['s1x', 's1y', 's1z', 's2x', 's2y', 's2z', 's1', 's2', 'chi_eff', 'chi_p', 'cos_tilt_1', 'cos_tilt_2']
-detector_parameters  = ['m1_detect', 'm2_detect']
+detector_parameters  = ['m1_detect', 'm2_detect', 'mc_detect']
 
 GW_par = {'m1'                 : 'mass_1_source',
           'm2'                 : 'mass_2_source',
@@ -196,10 +195,27 @@ def load_data(path, seed = False, par = None, n_samples = -1, cosmology = 'Planc
             rdstate = np.random.RandomState(seed = 1)
         else:
             rdstate = np.random.RandomState()
-        name, ext = str(event).split('/')[-1].split('.')
-        names.append(name)
-        if ext not in supported_extensions:
-            raise TypeError("File {0}.{1} is not supported".format(name, ext))
+        # name, ext = str(event).split('/')[-1].split('.')
+        filename = str(event).split('/')[-1]
+        if '.' in filename:
+            name= filename
+            ext = filename.split('.')[-1]
+            if ext not in supported_extensions:
+                print("File {0}.{1} is skipped due to unsupported extension.".format(name, ext))
+                continue  
+            else:
+                if ext == 'txt':
+                    print("skipping txt files...")
+                    continue
+                else:
+                    names.append(name)            
+                         
+        else:
+            print("no extension found. Skipping")
+            continue
+        # if ext not in supported_extensions:
+        #     raise TypeError("File {0}.{1} is not supported".format(name, ext))
+   
         if ext not in ['h5', 'hdf5', 'json']:
             if par is not None:
                 warnings.warn("Par names (or volume keyword) are ignored for .txt/.dat/.csv files")
@@ -537,24 +553,22 @@ def _prior_gw(par, samples, cosmology = 'Planck15', uniform_dVdz = True, keep_dV
     if cosmology == 'Planck18':
         omega = Planck18
         dVdz  = dVdz_approx_planck18
-        dDLdz = dDLdz_approx_planck18
     elif cosmology == 'Planck15':
         omega = Planck15
         dVdz  = dVdz_approx_planck15
-        dDLdz = dDLdz_approx_planck15
     else:
         raise FIGAROException("Cosmology not supported")
     vol    = omega.ComovingVolume(2.3)/1e9
     DL_max = omega.LuminosityDistance(2.3)
-    prior  = np.ones(len(samples[GW_par[par[0]]]))
+    prior  = np.ones(len(samples[GW_par['z']]))
     # Redshift prior (uniform in comoving source frame)
     if ('z' in par) or ('log_z' in par) or ('luminosity_distance' in par):
         if uniform_dVdz:
             prior *= dVdz(np.array(samples[GW_par['z']]))/((1.+np.array(samples[GW_par['z']]))*vol)
         else:
-            prior *= (np.array(samples[GW_par['luminosity_distance']])**2/DL_max**3)*dDLdz(np.array(samples[GW_par['z']]))
+            prior *= (np.array(samples[GW_par['luminosity_distance']])**2/DL_max**3)*omega.dDLdz(np.array(samples[GW_par['z']]))
         if 'luminosity_distance' in par:
-            prior /= dDLdz(np.array(samples[GW_par['z']]))
+            prior /= omega.dDLdz(np.array(samples[GW_par['z']]))
         if 'log_z' in par:
             prior *= samples[GW_par['z']]
         if keep_dVdz:
@@ -573,7 +587,12 @@ def _prior_gw(par, samples, cosmology = 'Planck15', uniform_dVdz = True, keep_dV
         prior *= (1 + np.array(samples[GW_par['q']])) ** 0.2 / np.array(samples[GW_par['q']]) ** 0.6
     if 'q' in par:
         prior *= np.array(samples[GW_par['m1']])
-    return prior
+    if 'mt' in par:
+        if 'q' in par:
+            prior /= (1 + np.array(samples[GW_par['q']])) 
+        else:
+            prior *= np.array(samples[GW_par['mt']])/(1 + np.array(samples[GW_par['q']]))**2
+    return prior    
     
 def save_density(draws, folder = '.', name = 'density', ext = 'json'):
     """
@@ -779,12 +798,8 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
     """
     if cosmology == 'Planck18':
         omega = Planck18
-        dDLdz = dDLdz_approx_planck18
-        DL_f  = luminosity_distance_approx_planck18
     elif cosmology == 'Planck15':
         omega = Planck15
-        dDLdz = dDLdz_approx_planck15
-        DL_f  = luminosity_distance_approx_planck15
     # Check that a list of parameters is passed
     if par is None:
         raise TypeError("Please provide a list of parameter names you want to load (e.g. ['m1']).")
@@ -844,15 +859,9 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
         m1  = np.array(data[inj_par['m1']])[idx]
         m2  = np.array(data[inj_par['m2']])[idx]
         q   = m2/m1
+        mc = m1*m2**(3./5.)/(m1+m2)**(1./5.)
+        mt = m1 + m2
         z   = np.array(data[inj_par['z']])[idx]
-        try:
-            DL = np.array(data[inj_par['luminosity_distance']])[idx]
-        except:
-            if 'luminosity_distance' in par:
-                DL = DL_f(z)
-            else:
-                pass
-            
         try:
             s1x = np.array(data[inj_par['s1x']])[idx]
             s1y = np.array(data[inj_par['s1y']])[idx]
@@ -907,18 +916,15 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
                     samples[i] = cos_tilt_2
                 # Distance
                 if lab == 'luminosity_distance':
-                    samples[i] = DL
+                    samples[i] = omega.LuminosityDistance(z)
                 if lab == 'log_z':
                     samples[i] = np.log(z)
         # Sampling pdf
         n_mass_pars = len([lab for lab in par if lab in mass_parameters])
         n_det_pars  = len([lab for lab in par if lab in detector_parameters])
-        n_dist_pars = len([lab for lab in par if lab in dist_parameters])
         n_spin_pars = len([lab for lab in par if lab in spin_parameters])
-        if n_dist_pars > 1:
-            raise FIGAROException("Only one distance parameter is allowed")
         if O4:
-            if not ((n_dist_pars == 1) and (n_mass_pars == 2)):
+            if not (('z' in par) and (n_mass_pars == 2)):
                 raise FIGAROException("Cannot unpack individual parameter sampling PDF for O4 injections")
             log_inj_pdf = np.array(data['lnpdraw_mass1_source_mass2_source_redshift_spin1x_spin1y_spin1z_spin2x_spin2y_spin2z'])[idx]
             inj_pdf     = np.exp(log_inj_pdf)*4*np.pi**2*s1**2*s2**2
@@ -941,10 +947,17 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
             if n_spin_pars > 0:
                 inj_pdf *= (np.array(data['spin1x_spin1y_spin1z_sampling_pdf'])[idx]*np.array(data['spin2x_spin2y_spin2z_sampling_pdf'])[idx])**(n_spin_pars/6.)
             # Distance
-            if n_dist_pars == 1:
+            if 'z' in par:
                 inj_pdf *= np.array(data['redshift_sampling_pdf'])[idx]
                 if keep_dVdz:
                     inj_pdf /= omega.ComovingVolumeElement(z)/omega.ComovingVolume(2.3)
+            if 'log_z' in par:
+                inj_pdf *= np.array(data['redshift_sampling_pdf'])[idx]*np.array(data[inj_par['z']])[idx]
+            if 'luminosity_distance' in par:
+                try:
+                    inj_pdf *= np.array(data['luminosity_distance_sampling_pdf'])[idx]
+                except:
+                    inj_pdf *= np.array(data['redshift_sampling_pdf'])[idx]/omega.dDLdz(np.array(data[inj_par['z']])[idx])
             # Sky position
             if 'ra' in par:
                 inj_pdf *= np.array(data['right_ascension_sampling_pdf'])[idx]
@@ -975,25 +988,14 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
         # Change of variable
         if 'q' in par:
             inj_pdf *= m1
+        if 'mt' in par:
+            if 'q' in par:
+                inj_pdf /= (1+q)
+            else:
+                inj_pdf *= mt/(1+q)**2
+        if ('mc' in par or 'mc_detect' in par):
+            inj_pdf *= m1**2/mc
         if n_det_pars > 0:
             inj_pdf /= (1+z)**n_det_pars
-        if 'luminosity_distance' in par:
-            inj_pdf /= dDLdz(z)
-        if 'log_z' in par:
-            inj_pdf *= z
 
     return samples.T, inj_pdf, n_total_inj, duration, weights
-
-def prior_gw(ev, par):
-    """
-    Computes the PE prior for a single GW event.
-    
-    Arguments:
-        np.ndarray ev: posterior samples
-        list par:      GW parameter list
-    
-    Returns:
-        np.ndarray: the evaluated prior
-    """
-    dd = {GW_par[lab]: ev[:,i] for i, lab in enumerate(par)}
-    return _prior_gw(par, dd)
