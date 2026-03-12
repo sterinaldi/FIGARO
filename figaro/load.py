@@ -15,11 +15,11 @@ from tqdm import tqdm
 supported_extensions = ['h5', 'hdf5', 'hdf', 'txt', 'dat', 'csv', 'json']
 supported_waveforms  = ['combined', 'imr', 'seob']
 injected_pars        = ['m1', 'm2', 'z', 's1x', 's1y', 's1z', 's2x', 's2y', 's2z', 'ra', 'dec']
-loadable_inj_pars    = injected_pars + ['q', 'chi_eff', 'chi_p', 's1', 's2', 'luminosity_distance', 'log_z', 'm1_detect', 'm2_detect', 'cos_tilt_1', 'cos_tilt_2']
-mass_parameters      = ['m1', 'm2', 'm1_detect', 'm2_detect', 'mc', 'mt', 'q']
+loadable_inj_pars    = injected_pars + ['q', 'mt','mc','chi_eff', 'chi_p', 's1', 's2', 'luminosity_distance', 'log_z', 'm1_detect', 'm2_detect','mc_detect','cos_tilt_1', 'cos_tilt_2']
+mass_parameters      = ['m1', 'm2', 'm1_detect', 'm2_detect', 'mc', 'mc_detect', 'mt', 'q']
 dist_parameters      = ['z', 'luminosity_distance']
 spin_parameters      = ['s1x', 's1y', 's1z', 's2x', 's2y', 's2z', 's1', 's2', 'chi_eff', 'chi_p', 'cos_tilt_1', 'cos_tilt_2']
-detector_parameters  = ['m1_detect', 'm2_detect']
+detector_parameters  = ['m1_detect', 'm2_detect', 'mc_detect']
 
 GW_par = {'m1'                 : 'mass_1_source',
           'm2'                 : 'mass_2_source',
@@ -573,6 +573,11 @@ def _prior_gw(par, samples, cosmology = 'Planck15', uniform_dVdz = True, keep_dV
         prior *= (1 + np.array(samples[GW_par['q']])) ** 0.2 / np.array(samples[GW_par['q']]) ** 0.6
     if 'q' in par:
         prior *= np.array(samples[GW_par['m1']])
+    if 'mt' in par:
+        if 'q' in par:
+            prior /= (1 + np.array(samples[GW_par['q']]))
+        else:
+            prior *= np.array(samples[GW_par['mt']])/(1 + np.array(samples[GW_par['q']]))**2
     return prior
     
 def save_density(draws, folder = '.', name = 'density', ext = 'json'):
@@ -975,6 +980,13 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
         # Change of variable
         if 'q' in par:
             inj_pdf *= m1
+        if 'mt' in par:
+            if 'q' in par:
+                inj_pdf /= (1+q)
+            else:
+                inj_pdf *= mt/(1+q)**2
+        if ('mc' in par or 'mc_detect' in par):
+            inj_pdf *= m1**2/mc
         if n_det_pars > 0:
             inj_pdf /= (1+z)**n_det_pars
         if 'luminosity_distance' in par:
