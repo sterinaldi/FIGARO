@@ -849,6 +849,8 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
         m1  = np.array(data[inj_par['m1']])[idx]
         m2  = np.array(data[inj_par['m2']])[idx]
         q   = m2/m1
+        mc = m1*m2**(3./5.)/(m1+m2)**(1./5.)
+        mt = m1 + m2
         z   = np.array(data[inj_par['z']])[idx]
         try:
             DL = np.array(data[inj_par['luminosity_distance']])[idx]
