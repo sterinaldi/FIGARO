@@ -897,6 +897,8 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
                     samples[i] = m1*(1+z)
                 if lab == 'm2_detect':
                     samples[i] = m2*(1+z)
+                if lab == 'mc_detect':
+                    samples[i] = mc*(1+z)
                 # Spins
                 if lab == 's1':
                     samples[i] = s1
