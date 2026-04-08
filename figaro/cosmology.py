@@ -145,7 +145,7 @@ class CosmologicalParameters_astropy:
         return self.Cosmology.comoving_distance(z).value
     
     def ComovingVolumeElement(self, z):
-        return self.Cosmology.differential_comoving_volume(z).value
+        return self.Cosmology.differential_comoving_volume(z).value*4*np.pi
     
     def ComovingVolume(self, z):
         return self.Cosmology.comoving_volume(z).value
