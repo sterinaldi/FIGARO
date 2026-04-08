@@ -223,4 +223,4 @@ def prior_component_spins(s1x, s1y, s1z, s2x, s2y, s2z):
     return spin_mag_pdf(s1)*spin_mag_pdf(s2)*spin_costilt_pdf(cos_t1)*spin_costilt_pdf(cos_t2)*(4*np.pi**2*s1**2*s2**2)
 
 def prior_polar_spins(s1, s2, cos_t1, cos_t2):
-    return spin_mag_pdf(s1)*spin_mag_pdf(s2)*spin_costilt_pdf(cos_t1)*spin_costilt_pdf(cos_t2)/(4*np.pi**2)
+    return spin_mag_pdf(s1)*spin_mag_pdf(s2)*spin_costilt_pdf(cos_t1)*spin_costilt_pdf(cos_t2)
