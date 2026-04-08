@@ -774,7 +774,7 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
         str par:              parameter to extract
         double far_threshold: FAR threshold for injection filtering
         double snr_threshold: SNR threshold for injection filtering
-        bool keep_dVdz:     do not remove dV/dz from the likelihood (only if the population model do NOT include it)
+        bool keep_dVdz:       do not remove dV/dz from the likelihood (only if the population model do NOT include it)
     
     Returns:
         np.ndarray:      samples
@@ -936,7 +936,7 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
         elif joint_dataset:
             if not (('z' in par) and (n_mass_pars == 2)):
                 raise FIGAROException("Cannot unpack individual parameter sampling PDF for combined injections")
-            inj_pdf  = np.array(data['sampling_pdf'])[idx]*4*np.pi*s1**2*s2**2
+            inj_pdf  = np.array(data['sampling_pdf'])[idx]*4*np.pi**2*s1**2*s2**2
             if keep_dVdz:
                 inj_pdf /= omega.ComovingVolumeElement(z)/omega.ComovingVolume(2.3)
         else:
