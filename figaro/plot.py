@@ -100,7 +100,7 @@ class PPPlot(axes.Axes):
         
 projection_registry.register(PPPlot)
 
-def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}', median_label = None, fig = None, colors = ['steelblue', 'darkturquoise', 'mediumturquoise'], large_font = True, samples_color = '#1f77b4'):
+def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}', median_label = None, fig = None, colors = ['steelblue', 'darkturquoise', 'mediumturquoise'], large_font = True, samples_color = '#1f77b4', ylim_bottom = 1e-5):
     """
     Plot the recovered 1D distribution along with the injected distribution and samples from the true distribution (both if available).
     
@@ -231,7 +231,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         ax.set_ylabel('$p({0})$'.format(label))
     if samples is not None:
         ax.set_xlim(xlim)
-    ax.set_ylim(bottom = 1e-5, top = np.max(p[95])*1.1)
+    ax.set_ylim(bottom = ylim_bottom, top = np.max(p[95])*1.1)
     ax.legend(loc = 0)
     if large_font:
         ax.tick_params(axis='both', which='both', labelsize=18)
@@ -315,7 +315,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
         else:
             ax.set_ylabel('$p({0})$'.format(label))
         ax.autoscale(True)
-        ax.set_ylim(bottom = 1e-5, top = np.max(p[95])*1.1)
+        ax.set_ylim(bottom = ylim_bottom, top = np.max(p[95])*1.1)
         ax.legend(loc = 0)
         if large_font:
             ax.tick_params(axis='both', which='both', labelsize=18)
@@ -915,6 +915,9 @@ def joyplot(draws, x_values, y_values, credible_regions = False, fill = True, so
             if len(np.shape(draws)) == 3:
                 for perc in percentiles:
                     p[perc] = np.percentile(dd, perc, axis = 0)
+                norm = np.sum(p[50]*(x_values[1]-x_values[0]))
+                for perc in percentiles:
+                    p[perc] /= norm
                 if credible_regions and not joy:
                     ax.fill_between(x_values, p[84], p[16], color = c, alpha = 0.25)
             else:
