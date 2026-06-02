@@ -319,19 +319,29 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                         try:
                             data = f['C01:Mixed']['posterior_samples']
                         except:
-                            # GWTC-4 v1
+                            # GWTC-4.0, GWTC-4.1 and GWTC-5.0
                             try:
                                 data = f['C00:Mixed']['posterior_samples']
                             except:
+                                # fallback if combined not available
                                 try:
-                                    data = f['IMRPhenomXPHM']['posterior_samples']
+                                    data = f['C00:NRSur7dq4']['posterior_samples']
                                 except:
-                                    data = f['SEOBNRv4PHM']['posterior_samples']
+                                    try:
+                                        data = f['C00:IMRPhenomXPHM-SpinTaylor']['posterior_samples']
+                                    except:
+                                        try:
+                                            data = f['IMRPhenomXPHM']['posterior_samples']
+                                        except:
+                                            data = f['SEOBNRv4PHM']['posterior_samples']
                 else:
                     if waveform == 'imr':
                         try:
                             try:
-                                data = f['C01:IMRPhenomXPHM']['posterior_samples']
+                                try:
+                                    data = f['C01:IMRPhenomXPHM']['posterior_samples']
+                                except:
+                                    data = f['C00:IMRPhenomXPHM-SpinTaylor']['posterior_samples']
                             except:
                                 data = f['IMRPhenomXPHM']['posterior_samples']
                         except:
