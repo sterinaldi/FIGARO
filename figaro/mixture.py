@@ -1,6 +1,7 @@
 import numpy as np
 import sys
 import dill
+import warnings
 
 from collections import Counter
 from pathlib import Path
@@ -449,7 +450,11 @@ class density:
         Returns:
             np.ndarray: mixture.pdf(x)
         """
-        return np.sum(np.array([w*mn(mean, cov, allow_singular = True).pdf(x) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
+#        return np.sum(np.array([w*mn(mean, cov, allow_singular = True).pdf(x) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0)
+        if self.dim == 1:
+            return np.sum(np.array([w*pdf_j(x, mean, cov) for mean, cov, w in zip(self.means, np.sqrt(self.covs), self.w)]), axis = 0).flatten()
+        else:
+            return np.sum(np.array([w*pdf_mn_j(x, mean, cov) for mean, cov, w in zip(self.means, self.covs, self.w)]), axis = 0).flatten()
     
     @probit
     def _pdf_array(self, x):
@@ -524,7 +529,11 @@ class density:
         Returns:
             np.ndarray: mixture.logpdf(x)
         """
-        return logsumexp(np.array([w + mn(mean, cov, allow_singular = True).logpdf(x) for mean, cov, w in zip(self.means, self.covs, self.log_w)]), axis = 0)
+#        return logsumexp(np.array([w + mn(mean, cov, allow_singular = True).logpdf(x) for mean, cov, w in zip(self.means, self.covs, self.log_w)]), axis = 0)
+        if self.dim == 1:
+            return logsumexp_j(np.array([w + logpdf_j(x, mean, cov) for mean, cov, w in zip(self.means, np.sqrt(self.covs), self.log_w)]), axis = 0).flatten()
+        else:
+            return logsumexp_j(np.array([w + logpdf_mn_j(x, mean, cov) for mean, cov, w in zip(self.means, self.covs, self.log_w)]), axis = 0).flatten()
 
     def cdf(self, x):
         if self.dim > 1:
@@ -1245,24 +1254,19 @@ class HDPGMM(DPGMM):
                         self.log_alpha_factor = np.array([np.log(np.mean(self.selfunc(mn(m,s, allow_singular = True).rvs(self.MC_draws*1)))) for m, s in zip(self.mu_MC, self.sigma_MC)])
             # Injections
             else:
-                self.log_alpha_factor = np.array([logsumexp(mn(m,s, allow_singular = True).logpdf(self.selfunc_probit) + self.log_jacobian_inj - self.log_inj_pdf, b = self.weights_inj) - np.log(self.total_inj) for m, s in zip(self.mu_MC, self.sigma_MC)])
+                # JAX warning about overflow in logsumexp
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    if self.dim == 1:
+                        self.log_alpha_factor = np.array([logsumexp_j(mn(self.mu_MC[i], self.sigma_MC[i]).logpdf(self.selfunc_probit) + self.log_jacobian_inj - self.log_inj_pdf, b = self.weights_inj) - np.log(self.total_inj) for i in range(len(self.mu_MC))])
+                    else:
+                        self.log_alpha_factor = np.array([logsumexp_j(logpdf_mn_j(self.selfunc_probit, self.mu_MC[i], self.sigma_MC[i]) + self.log_jacobian_inj - self.log_inj_pdf, b = self.weights_inj) - np.log(self.total_inj) for i in range(len(self.mu_MC))])
                 # TODO: make more efficient
-#                std = []
-#                for m, s, a in zip(self.mu_MC, self.sigma_MC, self.log_alpha_factor):
-#                    x = self.weights_inj*(mn(m,s, allow_singular = True).logpdf(self.selfunc_probit) + self.log_jacobian_inj - self.log_inj_pdf)
-##                    std.append(np.sqrt(np.sum((np.exp(x)-np.exp(a))**2)/self.total_inj**2))
-#                    std.append(np.sqrt(np.sum(np.exp(2*x)/self.total_inj**2) - np.exp(2*a)/self.total_inj))
-#                std = np.array(std)
-#                self.log_alpha_factor[100*(np.log(std) - self.log_alpha_factor) > np.log(70)] = np.inf
-                
             self.log_alpha_factor = np.nan_to_num(self.log_alpha_factor, nan = np.inf, posinf = np.inf, neginf = np.inf)
             # Censored regions
             self.log_alpha_factor[self.log_alpha_factor < np.log(self.lower_limit_alpha)] = np.inf
             self.log_alpha_factor[(self.log_alpha_factor > 0.) & (np.isfinite(self.log_alpha_factor))] = 0.
-#            import matplotlib.pyplot as plt
-#            c = plt.scatter(self.mu_MC[:,0], self.mu_MC[:,1], c = 100*std/np.exp(self.log_alpha_factor))
-#            plt.colorbar(c)
-#            plt.show()
+            self.MC_probit_logJ = probit_logJ(self.mu_MC, self.bounds, self.probit)
         else:
             self.log_alpha_factor = np.zeros(self.MC_draws)
         
@@ -1293,9 +1297,9 @@ class HDPGMM(DPGMM):
         logL_N = np.zeros((self.n_cl+1, self.MC_draws))
         if logL_x is None:
             if self.dim == 1:
-                logL_x = evaluate_mixture_MC_draws_1d(self.mu_MC, self.sigma_MC, x.means, x.covs, x.w) - self.log_alpha_factor
+                logL_x = evaluate_mixture_MC_draws_1d(self.mu_MC, self.sigma_MC, x.means, x.covs, x.w) - self.log_alpha_factor - self.MC_probit_logJ
             else:
-                logL_x = evaluate_mixture_MC_draws(self.mu_MC, self.sigma_MC, x.means, x.covs, x.w) - self.log_alpha_factor
+                logL_x = evaluate_mixture_MC_draws(self.mu_MC, self.sigma_MC, x.means, x.covs, x.w) - self.log_alpha_factor - self.MC_probit_logJ
         for i in range(self.n_cl+1):
             if i == 0:
                 ss = None
@@ -1439,7 +1443,7 @@ class HDPGMM(DPGMM):
             log_w, w           = self.log_w, self.w
             self.log_w         = N_pts - logsumexp_jit(N_pts)
             self.w             = np.exp(self.log_w)
-            aa                 = self.compute_alpha_factor()#self._compute_individual_alpha_factors(idx)
+            aa                 = self.compute_alpha_factor()
             N_pts              = (self.w/aa )*self.n_pts
             new_w              = dirichlet(N_pts+self.alpha/self.n_cl).rvs()[0]
             self.w             = new_w
