@@ -1269,6 +1269,7 @@ class HDPGMM(DPGMM):
             self.MC_probit_logJ = probit_logJ(self.mu_MC, self.bounds, self.probit)
         else:
             self.log_alpha_factor = np.zeros(self.MC_draws)
+            self.MC_probit_logJ   = np.zeros(self.MC_draws)
         
     def add_new_point(self, ev):
         """
