@@ -72,10 +72,9 @@ def log_norm_int(x, mu, cov_1, inv_cov_1, cov_2):
     Returns:
         double: MultivariateNormal(m,s).logpdf(x)
     """
-    inv_cov_2  = inv_jit(cov_2)
-    inv_cov    = inv_cov_1@inv_jit(inv_cov_1+inv_cov_2)@inv_cov_2
+    inv_cov    = inv_jit(cov_1+cov_2)
     exponent   = -0.5*scalar_product(x-mu, inv_cov, len(mu))
-    lognorm    = 0.5*len(mu)*LOG2PI+0.5*(logdet_jit(cov_1) + logdet_jit(cov_2) + logdet_jit(inv_cov_1+inv_cov_2))
+    lognorm    = 0.5*len(mu)*LOG2PI+0.5*(logdet_jit(cov_1+cov_2))
     return -lognorm+exponent
 
 #------------#
