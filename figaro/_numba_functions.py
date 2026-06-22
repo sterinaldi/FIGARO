@@ -1,6 +1,10 @@
 import numpy as np
 from numba import njit
 from numba.extending import get_cython_function_address
+from jax import jit
+from jax.scipy.stats.norm import pdf, logpdf
+from jax.scipy.stats.multivariate_normal import logpdf as logpdf_mn, pdf as pdf_mn
+from jax.scipy.special import logsumexp as logsumexp_jax
 import ctypes
 
 @njit
@@ -108,3 +112,11 @@ def _mvn_logpdf(x, means, covs, inv_covs, det_covs):
 
 def _mvn_pdf(x, means, covs, inv_covs, det_covs):
     return np.exp(_mvn_logpdf(x, means, covs, inv_covs, det_covs))
+
+# JAX jit-compiled functions
+
+logpdf_j    = jit(logpdf)
+pdf_j       = jit(pdf)
+logpdf_mn_j = jit(logpdf_mn)
+pdf_mn_j    = jit(pdf_mn)
+logsumexp_j = jit(logsumexp_jax)
