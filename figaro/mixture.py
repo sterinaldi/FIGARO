@@ -1261,7 +1261,6 @@ class HDPGMM(DPGMM):
                         self.log_alpha_factor = np.array([logsumexp_j(mn(self.mu_MC[i], self.sigma_MC[i]).logpdf(self.selfunc_probit) + self.log_jacobian_inj - self.log_inj_pdf, b = self.weights_inj) - np.log(self.total_inj) for i in range(len(self.mu_MC))])
                     else:
                         self.log_alpha_factor = np.array([logsumexp_j(logpdf_mn_j(self.selfunc_probit, self.mu_MC[i], self.sigma_MC[i]) + self.log_jacobian_inj - self.log_inj_pdf, b = self.weights_inj) - np.log(self.total_inj) for i in range(len(self.mu_MC))])
-                # TODO: make more efficient
             self.log_alpha_factor = np.nan_to_num(self.log_alpha_factor, nan = np.inf, posinf = np.inf, neginf = np.inf)
             # Censored regions
             self.log_alpha_factor[self.log_alpha_factor < np.log(self.lower_limit_alpha)] = np.inf
