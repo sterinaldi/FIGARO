@@ -111,7 +111,6 @@ def G(x, alpha, beta):
     out = pre * np.imag(g1 + g2 + g3 + g4)
     return out
 
-
 def g(x, alpha, beta):
     cond1 = np.abs(beta) < 1
     cond2 = (beta == 1) & (alpha <= 0)
@@ -146,7 +145,7 @@ def prior_chieff_chip_isotropic(chieff, chip, q, amax=1):
         + I3(chieff, chip, q)
         + I4(chieff, chip, q)
     ) / amax**2
-    return pdfs
+    return np.nan_to_num(pdfs, nan = 0.)
 
 @np.errstate(divide = 'ignore', invalid = 'ignore')
 def chi_effective_prior_from_isotropic_spins(chi_eff, q, amax=1):
