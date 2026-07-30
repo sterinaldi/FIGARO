@@ -57,7 +57,7 @@ def log_norm(x, mu, cov):
     return -lognorm+exponent
 
 @njit
-def log_norm_int(x, mu, cov_1, inv_cov_1, cov_2):
+def log_norm_int(x, mu, cov_1, cov_2):
     """
     Multivariate Normal logpdf (tailored to this problem!)
     See https://arxiv.org/pdf/1811.04751v1.pdf
@@ -135,8 +135,7 @@ def eval_mix(mu, sigma, means, covs):
     Returns:
         np.ndarray: probability for each event mixture components
     """
-    inv_sigma = inv_jit(sigma)
-    return np.array([log_norm_int(means[i], mu, sigma, inv_sigma, covs[i]) for i in prange(len(means))])
+    return np.array([log_norm_int(means[i], mu, sigma, covs[i]) for i in prange(len(means))])
 
 @njit
 def evaluate_mixture_MC_draws(mu, sigma, means, covs, w):
