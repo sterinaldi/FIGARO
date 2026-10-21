@@ -15,10 +15,10 @@ from tqdm import tqdm
 supported_extensions = ['h5', 'hdf5', 'hdf', 'txt', 'dat', 'csv', 'json']
 supported_waveforms  = ['combined', 'imr', 'seob']
 injected_pars        = ['m1', 'm2', 'z', 's1x', 's1y', 's1z', 's2x', 's2y', 's2z', 'ra', 'dec']
-loadable_inj_pars    = injected_pars + ['q', 'mt','mc','chi_eff', 'chi_p', 's1', 's2', 'luminosity_distance', 'log_z', 'm1_detect', 'm2_detect','mc_detect','cos_tilt_1', 'cos_tilt_2']
+loadable_inj_pars    = injected_pars + ['q', 'mt','mc','chi_eff', 'chi_p', 's1', 's2', 'luminosity_distance', 'log_z', 'm1_detect', 'm2_detect','mc_detect','cos_tilt_1', 'cos_tilt_2', 'tilt_1', 'tilt_2']
 mass_parameters      = ['m1', 'm2', 'm1_detect', 'm2_detect', 'mc', 'mc_detect', 'mt', 'q']
 dist_parameters      = ['z', 'luminosity_distance']
-spin_parameters      = ['s1x', 's1y', 's1z', 's2x', 's2y', 's2z', 's1', 's2', 'chi_eff', 'chi_p', 'cos_tilt_1', 'cos_tilt_2']
+spin_parameters      = ['s1x', 's1y', 's1z', 's2x', 's2y', 's2z', 's1', 's2', 'chi_eff', 'chi_p', 'cos_tilt_1', 'cos_tilt_2', 'tilt_1', 'tilt_2']
 detector_parameters  = ['m1_detect', 'm2_detect', 'mc_detect']
 
 GW_par = {'m1'                 : 'mass_1_source',
@@ -40,6 +40,8 @@ GW_par = {'m1'                 : 'mass_1_source',
           'cos_theta_jn'       : 'cos_theta_jn',
           'cos_tilt_1'         : 'cos_tilt_1',
           'cos_tilt_2'         : 'cos_tilt_2',
+          'tilt_1'             : 'tilt_1',
+          'tilt_2'             : 'tilt_2',
           's1x'                : 'spin_1x',
           's2x'                : 'spin_2x',
           's1y'                : 'spin_1y',
@@ -73,6 +75,8 @@ inj_par['s2x']                 = 'spin2x'
 inj_par['s2y']                 = 'spin2y'
 inj_par['s2z']                 = 'spin2z'
 inj_par['luminosity_distance'] = 'distance'
+inj_par['ra']                  = 'right_ascension'
+inj_par['dec']                 = 'declination'
 
 supported_pars = [p for p in GW_par.keys() if p not in ['snr', 'far']]
 
@@ -418,6 +422,16 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                             samples.append(data[lab])
                         except:
                             samples.append(np.sqrt(data['spin_2x']**2+data['spin_2y']**2+data['spin_2z']**2))
+                    elif name == 'tilt_1':
+                        try:
+                            samples.append(data[lab])
+                        except:
+                            samples.append(np.arccos(data['cos_tilt_1']))
+                    elif name == 'tilt_2':
+                        try:
+                            samples.append(data[lab])
+                        except:
+                            samples.append(np.arccos(data['cos_tilt_2']))
                     elif name == 'luminosity_distance':
                         try:
                             samples.append(data[lab])
@@ -448,8 +462,9 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                 samples = samples.T
             if likelihood:
                 inv_prior = 1./_prior_gw(par, data, cosmology, keep_dVdz = keep_dVdz)
-                h         = np.random.uniform(0,1, len(samples))
-                samples   = samples[h < inv_prior/np.max(inv_prior)]
+                max_prior = np.sort(inv_prior)[-30]
+                h         = np.random.uniform(0, max_prior, len(samples))
+                samples   = samples[h < inv_prior]
             if n_samples > -1:
                 s = int(min([n_samples, len(samples)]))
                 return samples[rdstate.choice(np.arange(len(samples)), size = s, replace = False)]
@@ -500,6 +515,8 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
             ss['eta']     = ss['m1']*ss['m2']/(ss['m1']+ss['m2'])**2
             ss['s1z']     = ss['s1']*ss['cos_tilt_1']
             ss['s2z']     = ss['s2']*ss['cos_tilt_2']
+            ss['tilt_1']  = np.arccos(ss['cos_tilt_1'])
+            ss['tilt_2']  = np.arccos(ss['cos_tilt_2'])
             ss['chi_eff'] = (ss['s1z'] + ss['q']*ss['s2z'])/(1+ss['q'])
 
             for name in GW_par.keys():
@@ -522,7 +539,8 @@ def _unpack_gw_posterior(event, par, cosmology, rdstate, n_samples = -1, wavefor
                 samples = samples.T
             if likelihood:
                 inv_prior = 1./_prior_gw(par, ss, cosmology, keep_dVdz = keep_dVdz)
-                h         = np.random.uniform(0, np.max(inv_prior), len(samples))
+                max_prior = np.sort(inv_prior)[-30]
+                h         = np.random.uniform(0, max_prior, len(samples))
                 samples   = samples[h < inv_prior]
             if n_samples > -1:
                 s = int(min([n_samples, len(samples)]))
@@ -582,12 +600,17 @@ def _prior_gw(par, samples, cosmology = 'Planck15', uniform_dVdz = True, keep_dV
     if ('mc' in par or 'mc_detect' in par):
         prior *= (1 + np.array(samples[GW_par['q']])) ** 0.2 / np.array(samples[GW_par['q']]) ** 0.6
     if 'q' in par:
-        prior *= np.array(samples[GW_par['m1']])
+        if 'm1' in par:
+            prior *= np.array(samples[GW_par['m1']])
     if 'mt' in par:
         if 'q' in par:
             prior /= (1 + np.array(samples[GW_par['q']]))
         else:
             prior *= np.array(samples[GW_par['mt']])/(1 + np.array(samples[GW_par['q']]))**2
+    if 'tilt_1' in par:
+        prior *= np.sin(samples[GW_par['tilt_1']])
+    if 'tilt_2' in par:
+        prior *= np.sin(samples[GW_par['tilt_2']])
     return prior
     
 def save_density(draws, folder = '.', name = 'density', ext = 'json'):
@@ -772,6 +795,7 @@ def load_selection_function(file, par = None, far_threshold = 1, snr_threshold =
             duration    = 1.
         else:
             selfunc, inj_pdf, n_total_inj, duration, weights = _unpack_injections(file, par, far_threshold, snr_threshold, cosmology, keep_dVdz = keep_dVdz)
+#    return selfunc[::5], inj_pdf[::5], n_total_inj//5, duration, weights[::5]
     return selfunc, inj_pdf, n_total_inj, duration, weights
 
 def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmology = 'Planck15', keep_dVdz = False):
@@ -881,6 +905,8 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
             s2  = np.sqrt(s2x**2+s2y**2+s2z**2)
             cos_tilt_1 = s1z/s1
             cos_tilt_2 = s2z/s2
+            t1  = np.arccos(cos_tilt_1)
+            t2  = np.arccos(cos_tilt_2)
         except:
             s1 = np.array(data['spin1_magnitude'])[idx]
             s2 = np.array(data['spin2_magnitude'])[idx]
@@ -888,6 +914,8 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
             cos_tilt_2 = np.cos(np.array(data['spin2_polar_angle'])[idx])
             s1z = s1*cos_tilt_1
             s2z = s2*cos_tilt_2
+            t1  = np.arccos(cos_tilt_1)
+            t2  = np.arccos(cos_tilt_2)
         for i, lab in enumerate(par):
             # Already available parameters:
             if lab in injected_pars:
@@ -924,6 +952,10 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
                     samples[i] = cos_tilt_1
                 if lab == 'cos_tilt_2':
                     samples[i] = cos_tilt_2
+                if lab == 'tilt_1':
+                    samples[i] = t1
+                if lab == 'tilt_2':
+                    samples[i] = t2
                 # Distance
                 if lab == 'luminosity_distance':
                     samples[i] = DL
@@ -937,12 +969,12 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
         if n_dist_pars > 1:
             raise FIGAROException("Only one distance parameter is allowed")
         if O4:
-            if not ((n_dist_pars == 1) and (n_mass_pars == 2)):
-                raise FIGAROException("Cannot unpack individual parameter sampling PDF for O4 injections")
             log_inj_pdf = np.array(data['lnpdraw_mass1_source_mass2_source_redshift_spin1x_spin1y_spin1z_spin2x_spin2y_spin2z'])[idx]
             inj_pdf     = np.exp(log_inj_pdf)*4*np.pi**2*s1**2*s2**2
             if keep_dVdz:
                 inj_pdf /= omega.ComovingVolumeElement(z)/omega.ComovingVolume(3.)
+#            from population_models.redshift import powerlaw_redshift
+#            inj_pdf /= powerlaw_redshift(z, 2.)
         elif joint_dataset:
             if not (('z' in par) and (n_mass_pars == 2)):
                 raise FIGAROException("Cannot unpack individual parameter sampling PDF for combined injections")
@@ -970,23 +1002,24 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
             if 'dec' in par:
                 inj_pdf *= np.array(data['declination_sampling_pdf'])[idx]
         # Spin priors
-        spin_pdf = 1.
+        spin_pdf = (4*np.pi**2)
         if n_spin_pars > 0:
             if 'chi_eff' in par:
-                spin_pdf /= 1./4. * 1./(4*np.pi**2)
                 if not 'q' in par:
                     raise FIGAROException("Effective spin requires mass ratio")
                 if 'chi_p' in par:
                     spin_pdf *= prior_chieff_chip_isotropic(chi_eff, chi_p, q)
                 else:
                     spin_pdf *= chi_effective_prior_from_isotropic_spins(chi_eff, q)
-            else:
-                # Fixes spin distribution to isotropic distribution for unavailable pars
-                spin_pdf /= 1./(4*np.pi**2)
-                if not ('cos_tilt_1' in par):
-                    spin_pdf /= 1./2.
-                if not ('cos_tilt_2' in par):
-                    spin_pdf /= 1./2.
+            # Fixes spin distribution to isotropic distribution for unavailable pars
+            if not ('cos_tilt_1' in par):
+                spin_pdf /= 1./2.
+            if not ('cos_tilt_2' in par):
+                spin_pdf /= 1./2.
+            if 'tilt_1' in par:
+                spin_pdf *= np.sin(t1)/2.
+            if 'tilt_2' in par:
+                spin_pdf *= np.sin(t2)/2.
         else:
             # Remove spin entirely
             spin_pdf /= prior_polar_spins(s1, s2, cos_tilt_1, cos_tilt_2)
@@ -1000,14 +1033,13 @@ def _unpack_injections(file, par, far_threshold = 1., snr_threshold = 10, cosmol
             else:
                 inj_pdf *= mt/(1+q)**2
         if ('mc' in par or 'mc_detect' in par):
-            inj_pdf *= m1**2/mc
+            inj_pdf *= (1 + q) ** 0.2 / q ** 0.6
         if n_det_pars > 0:
             inj_pdf /= (1+z)**n_det_pars
         if 'luminosity_distance' in par:
             inj_pdf /= dDLdz(z)
         if 'log_z' in par:
             inj_pdf *= z
-
     return samples.T, inj_pdf, n_total_inj, duration, weights
 
 def prior_gw(ev, par):
