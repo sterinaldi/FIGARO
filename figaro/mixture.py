@@ -1175,7 +1175,7 @@ class HDPGMM(DPGMM):
                        injection_pdf      = None,
                        total_injections   = None,
                        weights_inj        = None,
-                       lower_limit_alpha  = 1e-3,
+                       lower_limit_alpha  = np.exp(-9),
                        ):
         bounds   = np.atleast_2d(bounds)
         self.dim = len(bounds)
@@ -1260,7 +1260,7 @@ class HDPGMM(DPGMM):
                     if self.dim == 1:
                         self.log_alpha_factor = np.array([logsumexp_j(mn(self.mu_MC[i], self.sigma_MC[i]).logpdf(self.selfunc_probit) + self.log_jacobian_inj - self.log_inj_pdf, b = self.weights_inj) - np.log(self.total_inj) for i in range(len(self.mu_MC))])
                     else:
-                        self.log_alpha_factor = np.array([logsumexp_j(logpdf_mn_j(self.selfunc_probit, self.mu_MC[i], self.sigma_MC[i]) + self.log_jacobian_inj - self.log_inj_pdf, b = self.weights_inj) - np.log(self.total_inj) for i in range(len(self.mu_MC))])
+                        self.log_alpha_factor = np.array([logsumexp_j(np.nan_to_num(logpdf_mn_j(self.selfunc_probit, self.mu_MC[i], self.sigma_MC[i]), nan = -np.inf) + self.log_jacobian_inj - self.log_inj_pdf, b = self.weights_inj) - np.log(self.total_inj) for i in range(len(self.mu_MC))])
             self.log_alpha_factor = np.nan_to_num(self.log_alpha_factor, nan = np.inf, posinf = np.inf, neginf = np.inf)
             # Censored regions
             self.log_alpha_factor[self.log_alpha_factor < np.log(self.lower_limit_alpha)] = np.inf
@@ -1444,7 +1444,7 @@ class HDPGMM(DPGMM):
             self.log_w         = N_pts - logsumexp_jit(N_pts)
             self.w             = np.exp(self.log_w)
             aa                 = self.compute_alpha_factor()
-            N_pts              = (self.w/aa )*self.n_pts
+            N_pts              = (self.w/aa)*self.n_pts
             new_w              = dirichlet(N_pts+self.alpha/self.n_cl).rvs()[0]
             self.w             = new_w
             self.log_w         = np.log(new_w)
