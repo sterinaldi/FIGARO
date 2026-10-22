@@ -16,7 +16,9 @@ from figaro.load import load_single_event, save_density, load_density, supported
 import ray
 from ray.util import ActorPool
 
-@ray.remote
+from dask.distributed import Client
+
+#@ray.remote
 class worker:
     def __init__(self, bounds,
                        sigma   = None,
@@ -39,7 +41,7 @@ class worker:
         self.samples.setflags(write = True)
         self.mixture.initialise(prior_pars = prior_pars)
     
-    def draw_sample(self):
+    def draw_sample(self, x):
         return self.mixture.density_from_samples(self.samples, make_comp = False)
 
 def main():
@@ -138,14 +140,14 @@ def main():
         print("Ignoring points outside bounds.")
     
     if not options.postprocess:
-        ray.init(num_cpus = options.n_parallel)
-        actors = [worker.remote(bounds  = options.bounds,
-                                        sigma   = options.sigma_prior,
-                                        scale   = options.fraction,
-                                        probit  = options.probit,
-                                        )
-                                        for _ in range(options.n_parallel)]
-        pool = ActorPool(actors)
+#        ray.init(num_cpus = options.n_parallel)
+        client = Client(threads_per_worker=options.n_parallel, n_workers=1)
+        actor  = worker(bounds  = options.bounds,
+                        sigma   = options.sigma_prior,
+                        scale   = options.fraction,
+                        probit  = options.probit,
+                        )
+#        pool = ActorPool(actors)
     
     for i, file in enumerate(files):
         # Load samples
@@ -175,16 +177,16 @@ def main():
             # Actual analysis
             desc = name + ' ({0}/{1})'.format(i+1, len(files))
             draws = []
-            [w.initialise_new_event.remote(samples,
-                                           get_priors(bounds       = options.bounds,
-                                                      samples      = samples,
-                                                      std          = options.sigma_prior,
-                                                      scale        = options.fraction,
-                                                      probit       = options.probit,
-                                                      hierarchical = False,
-                                                      )) for w in actors]
-            for s in tqdm(pool.map_unordered(lambda a, v: a.draw_sample.remote(), [_ for _ in range(options.draws)]), total = options.draws, desc = desc):
-                draws.append(s)
+            actor.initialise_new_event(samples,
+                                       get_priors(bounds       = options.bounds,
+                                                  samples      = samples,
+                                                  std          = options.sigma_prior,
+                                                  scale        = options.fraction,
+                                                  probit       = options.probit,
+                                                  hierarchical = False,
+                                                  ))
+            for s in tqdm(client.map(actor.draw_sample, [_ for _ in range(options.draws)], pure = False), total = options.draws, desc = desc):
+                draws.append(s.result())
             draws = np.array(draws)
             # Save reconstruction
             save_density(draws, folder = output_draws, name = 'draws_'+name, ext = options.ext)
