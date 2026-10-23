@@ -88,7 +88,7 @@ class PPPlot(axes.Axes):
         kwargs.setdefault('alpha', 0.5)
         fontsize = kwargs.pop('fontsize', 'x-small')
 
-        return self.fill_betweenx(p, ci_lo, ci_hi, **kwargs, label = '${0}\%\ CR$'.format(int(cl*100)))
+        return self.fill_betweenx(p, ci_lo, ci_hi, **kwargs, label = '${0}\\%\\ CR$'.format(int(cl*100)))
 
     @classmethod
     def _as_mpl_axes(cls):
@@ -100,7 +100,7 @@ class PPPlot(axes.Axes):
         
 projection_registry.register(PPPlot)
 
-def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}', median_label = None, fig = None, colors = ['steelblue', 'darkturquoise', 'mediumturquoise'], large_font = True, samples_color = '#1f77b4', ylim_bottom = 1e-5):
+def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bounds = None, out_folder = '.', name = 'density', n_pts = 1000, label = None, unit = None, hierarchical = False, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\\mathrm{True\\ value}', injected_label = '\\mathrm{Simulated}', median_label = None, fig = None, colors = ['steelblue', 'darkturquoise', 'mediumturquoise'], large_font = True, samples_color = '#1f77b4', ylim_bottom = 1e-5):
     """
     Plot the recovered 1D distribution along with the injected distribution and samples from the true distribution (both if available).
     
@@ -132,9 +132,9 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
     """
     if median_label is None:
         if hierarchical:
-            median_label = '\mathrm{(H)DPGMM}'
+            median_label = '\\mathrm{(H)DPGMM}'
         else:
-            median_label = '\mathrm{DPGMM}'
+            median_label = '\\mathrm{DPGMM}'
     
     color_med, color_68, color_90 = colors
     
@@ -161,7 +161,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
 
     # If samples are available, use them as bounds
     if samples is not None:
-        ax.hist(samples, bins = int(np.sqrt(len(samples))), histtype = 'step', density = True, label = '$\mathrm{Samples}$', log = True, color = samples_color)
+        ax.hist(samples, bins = int(np.sqrt(len(samples))), histtype = 'step', density = True, label = '$\\mathrm{Samples}$', log = True, color = samples_color)
         if bounds is None:
             x_min_l, x_max_l = ax.get_xlim()
             x_min = np.max((x_min, x_min_l))
@@ -203,7 +203,7 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
             injected_label = '$'+injected_label+'$'
         if selfunc is not None:
             filtered_p_x = p_x*f_x
-            ax.plot(x, filtered_p_x/np.sum(filtered_p_x*dx), lw = 0.5, color = 'red', label = '$'+injected_label+'\ \\mathrm{(observed)}$')
+            ax.plot(x, filtered_p_x/np.sum(filtered_p_x*dx), lw = 0.5, color = 'red', label = '$'+injected_label+'\\ \\mathrm{(observed)}$')
         else:
             ax.plot(x, p_x, lw = 0.5, color = 'red', label = injected_label)
         
@@ -222,9 +222,9 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
             ax.set_xlabel('${0}$'.format(label))
     else:
         if large_font:
-            ax.set_xlabel('${0}\ [{1}]$'.format(label, unit), fontsize = 20)
+            ax.set_xlabel('${0}\\ [{1}]$'.format(label, unit), fontsize = 20)
         else:
-            ax.set_xlabel('${0}\ [{1}]$'.format(label, unit))
+            ax.set_xlabel('${0}\\ [{1}]$'.format(label, unit))
     if large_font:
         ax.set_ylabel('$p({0})$'.format(label), fontsize = 20)
     else:
@@ -307,9 +307,9 @@ def plot_median_cr(draws, injected = None, samples = None, selfunc = None, bound
                 ax.set_xlabel('${0}$'.format(label))
         else:
             if large_font:
-                ax.set_xlabel('${0}\ [{1}]$'.format(label, unit), fontsize = 20)
+                ax.set_xlabel('${0}\\ [{1}]$'.format(label, unit), fontsize = 20)
             else:
-                ax.set_xlabel('${0}\ [{1}]$'.format(label, unit))
+                ax.set_xlabel('${0}\\ [{1}]$'.format(label, unit))
         if large_font:
             ax.set_ylabel('$p({0})$'.format(label), fontsize = 20)
         else:
@@ -366,9 +366,9 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
     dim = draws[0].dim
     if median_label is None:
         if hierarchical:
-            median_label = '\mathrm{(H)DPGMM}'
+            median_label = '\\mathrm{(H)DPGMM}'
         else:
-            median_label = '\mathrm{DPGMM}'
+            median_label = '\\mathrm{DPGMM}'
     
     color_med, color_68, color_90 = colors
 
@@ -378,7 +378,7 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
         labels = ['${0}$'.format(l) for l in labels]
     
     if units is not None:
-        labels = [l[:-1]+'\ [{0}]$'.format(u) if not u == '' else l for l, u in zip(labels, units)]
+        labels = [l[:-1]+'\\ [{0}]$'.format(u) if not u == '' else l for l, u in zip(labels, units)]
     
     levels = np.atleast_1d(levels)
     
@@ -425,7 +425,7 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
     # Samples (if available)
     if samples is not None:
         bins = np.array([int(np.sqrt(len(samples[:, c]))) for c in range(dim)])
-        corner(samples, color = samples_color, fig = fig, hist_kwargs = {'density': True, 'label':'$\mathrm{Samples}$', 'linewidth':0.7} , plot_density = False, contour_kwargs = {'linewidths':0.3, 'linestyles':'dashed'}, levels = [0.5,0.68,0.9], no_fill_contours = True, hist_bin_factor = bins/20, quiet = True)
+        corner(samples, color = samples_color, fig = fig, hist_kwargs = {'density': True, 'label':'$\\mathrm{Samples}$', 'linewidth':0.7} , plot_density = False, contour_kwargs = {'linewidths':0.3, 'linestyles':'dashed'}, levels = [0.5,0.68,0.9], no_fill_contours = True, hist_bin_factor = bins/20, quiet = True)
         
     # 1D plots (diagonal)
     for column in range(K):
@@ -537,7 +537,7 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
             if plot_settings.tex_flag:
                 ax.clabel(c1, fmt = {l:'{0:.0f}\\%'.format(100*s) for l,s in zip(c1.levels, np.sort(levels)[::-1])}, fontsize = 3)
             else:
-                ax.clabel(c1, fmt = {l:'{0:.0f}\%'.format(100*s) for l,s in zip(c1.levels, np.sort(levels)[::-1])}, fontsize = 3)
+                ax.clabel(c1, fmt = {l:'{0:.0f}\\%'.format(100*s) for l,s in zip(c1.levels, np.sort(levels)[::-1])}, fontsize = 3)
             # Samples (if available)
             if samples is not None and scatter_points:
                 ax.scatter(samples[:,column], samples[:,row], marker = '+', c = 'firebrick', linewidths = 1)
@@ -577,7 +577,7 @@ def plot_multidim(draws, samples = None, bounds = None, out_folder = '.', name =
         plt.close()
     return fig
     
-def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', name = 'density', label = None, unit = None, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\mathrm{True\ value}', injected_label = '\mathrm{Simulated}', median_label = '\mathrm{Median}', logx = False, logy = False, colors = ['steelblue','darkturquoise','mediumturquoise'], fig = None, large_font = True):
+def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', name = 'density', label = None, unit = None, show = False, save = True, subfolder = False, true_value = None, true_value_label = '\\mathrm{True\\ value}', injected_label = '\\mathrm{Simulated}', median_label = '\\mathrm{Median}', logx = False, logy = False, colors = ['steelblue','darkturquoise','mediumturquoise'], fig = None, large_font = True):
     """
     Plot a 1D distribution along with samples from the true distribution (if available).
     Differently from plot_median_cr, this method requires the distribution to be already evaluated.
@@ -622,7 +622,7 @@ def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', na
     
     # Samples (if available)
     if samples is not None:
-        ax.hist(samples, bins = int(np.sqrt(len(samples))), histtype = 'step', density = True, label = '$\mathrm{Samples}$')
+        ax.hist(samples, bins = int(np.sqrt(len(samples))), histtype = 'step', density = True, label = '$\\mathrm{Samples}$')
         xlim = ax.get_xlim()
         ylim = ax.get_ylim()
     
@@ -656,9 +656,9 @@ def plot_1d_dist(x, draws, injected = None, samples = None, out_folder = '.', na
             ax.set_xlabel('${0}$'.format(label))
     else:
         if large_font:
-            ax.set_xlabel('${0}\ [{1}]$'.format(label, unit), fontsize = 20)
+            ax.set_xlabel('${0}\\ [{1}]$'.format(label, unit), fontsize = 20)
         else:
-            ax.set_xlabel('${0}\ [{1}]$'.format(label, unit))
+            ax.set_xlabel('${0}\\ [{1}]$'.format(label, unit))
     if large_font:
         ax.set_ylabel('$p({0})$'.format(label), fontsize = 20)
     else:
@@ -725,8 +725,8 @@ def plot_n_clusters_alpha(n_cl, alpha, out_folder = '.', name = 'event', show = 
     ax.plot(np.arange(1, len(n_cl)+1), n_cl, ls = '--', marker = '', lw = 0.7, color = 'k')
     ax1.plot(np.arange(1, len(alpha)+1), alpha, ls = '--', marker = '', lw = 0.7, color = 'firebrick')
     ax.set_xlabel('$t$')
-    ax.set_ylabel('$N_{\mathrm{cl}}(t)$', color = 'k')
-    ax1.set_ylabel('$\alpha(t)$', color = 'firebrick')
+    ax.set_ylabel('$N_{\\mathrm{cl}}(t)$', color = 'k')
+    ax1.set_ylabel('$\\alpha(t)$', color = 'firebrick')
     if show:
         plt.show()
     if save:
@@ -764,8 +764,8 @@ def pp_plot_cdf(draws, injection, n_points = 1000, out_folder = '.', name = 'eve
     for cdf in cdf_draws:
         ax.plot(cdf_injection, cdf, lw = 0.5, alpha = 0.5, color = 'darkturquoise')
     ax.plot(cdf_injection, cdf, color = 'steelblue', lw = 0.7)
-    ax.set_xlabel('$\mathrm{Injected}$')
-    ax.set_ylabel('$\mathrm{FIGARO}$')
+    ax.set_xlabel('$\\mathrm{Injected}$')
+    ax.set_ylabel('$\\mathrm{FIGARO}$')
     if show:
         plt.show()
     if save:
@@ -826,7 +826,7 @@ def pp_plot_levels(CR_levels, median_CR = None, out_folder = '.', name = 'MDC', 
         ax.plot(np.sort(x), L, lw = 0.8, color = color, zorder = n_evs+2, label = label)
     # Maquillage
     ax.set_xlabel('$P$')
-    ax.set_ylabel(r'$\mathrm{Fraction\ of\ events\ within\ }CR_P$')
+    ax.set_ylabel(r'$\mathrm{Fraction\\ of\\ events\\ within\\ }CR_P$')
     if show:
         plt.show()
     if save:
@@ -869,13 +869,13 @@ def joyplot(draws, x_values, y_values, credible_regions = False, fill = True, so
     else:
         xlabel = '${0}$'.format(xlabel)
     if xunit is not None:
-        xlabel = xlabel[:-1]+'\ [{0}]$'.format(xunit)
+        xlabel = xlabel[:-1]+'\\ [{0}]$'.format(xunit)
     if ylabel is None:
         ylabel = '$y$'
     else:
         ylabel = '${0}$'.format(ylabel)
     if yunit is not None:
-        ylabel = ylabel[:-1]+'\ [{0}]$'.format(yunit)
+        ylabel = ylabel[:-1]+'\\ [{0}]$'.format(yunit)
     
     # Check that we have as many y values as different draws evaluations
     if not len(y_values) == np.shape(draws)[0]:
